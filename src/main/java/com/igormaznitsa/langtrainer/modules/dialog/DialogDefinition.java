@@ -7,6 +7,10 @@ public record DialogDefinition(
     String description,
     String langA,
     String langB,
-    List<DialogLine> lines
+    List<DialogLine> lines,
+    List<InputEquivalenceRow> inputEqu
 ) {
+  public DialogDefinition {
+    inputEqu = inputEqu == null ? List.of() : List.copyOf(inputEqu);
+  }
 }

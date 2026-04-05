@@ -3,6 +3,102 @@
   "description": "Estonian–Russian B1 everyday short phrases and questions",
   "langA": "Estonian",
   "langB": "Russian",
+  "inputEqu": [
+    {
+      "key": [
+        "е",
+        "Е"
+      ],
+      "value": [
+        "ё",
+        "Ё"
+      ]
+    },
+    {
+      "key": [
+        "ё",
+        "Ё"
+      ],
+      "value": [
+        "е",
+        "Е"
+      ]
+    },
+    {
+      "key": [
+        "е",
+        "Е",
+        "ё",
+        "Ё"
+      ],
+      "value": [
+        "е",
+        "Е",
+        "ё",
+        "Ё"
+      ]
+    },
+    {
+      "key": [
+        "a",
+        "A"
+      ],
+      "value": [
+        "ä",
+        "Ä"
+      ]
+    },
+    {
+      "key": [
+        "o",
+        "O"
+      ],
+      "value": [
+        "ö",
+        "Ö"
+      ]
+    },
+    {
+      "key": [
+        "o",
+        "O"
+      ],
+      "value": [
+        "õ",
+        "Õ"
+      ]
+    },
+    {
+      "key": [
+        "u",
+        "U"
+      ],
+      "value": [
+        "ü",
+        "Ü"
+      ]
+    },
+    {
+      "key": [
+        "s",
+        "S"
+      ],
+      "value": [
+        "š",
+        "Š"
+      ]
+    },
+    {
+      "key": [
+        "z",
+        "Z"
+      ],
+      "value": [
+        "ž",
+        "Ž"
+      ]
+    }
+  ],
   "lines": [
     {
       "A": "Tere!",
@@ -68,7 +164,6 @@
       "A": "Kuhu sa lähed?",
       "B": "Куда ты идёшь?"
     },
-    ыро
     {
       "A": "Ma lähen poodi.",
       "B": "Я иду в магазин."

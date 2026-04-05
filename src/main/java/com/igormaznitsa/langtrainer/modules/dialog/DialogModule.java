@@ -36,13 +36,19 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.JToggleButton;
 import javax.swing.JViewport;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Document;
 
 public final class DialogModule extends AbstractLangTrainerModule {
 
@@ -62,13 +68,23 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private static final Color BANNER_FG = new Color(255, 145, 30);
   private static final float BANNER_FONT_SIZE = 72f;
 
+  private static final Color TIP_ZONE_BG = new Color(255, 205, 205);
+  private static final Color TIP_ZONE_FG = new Color(90, 0, 0);
+  private static final Color TIP_TOGGLE_BG = new Color(255, 152, 0);
+  private static final Color TIP_TOGGLE_FG = new Color(40, 20, 0);
+  private static final Color TIP_TOGGLE_BORDER = new Color(191, 87, 0);
+
   private final DefaultListModel<DialogDefinition> dialogListModel = new DefaultListModel<>();
   private final JPanel rootPanel = new JPanel(new CardLayout());
   private final JTextArea showA = makeShowArea();
   private final JTextArea showB = makeShowArea();
+  private final JToggleButton tipToggle = new JToggleButton("Tip");
+  private final JLabel tipZone = new JLabel(" ", SwingConstants.CENTER);
   private final JTextArea inputA = makeInputArea();
   private final JTextArea inputB = makeInputArea();
   private final JLabel progressHeader = new JLabel(" ", SwingConstants.CENTER);
+  private JScrollPane historyScrollA;
+  private JScrollPane historyScrollB;
   private final List<String> historyA = new ArrayList<>();
   private final List<String> historyB = new ArrayList<>();
   private File lastDialogOpenDirectory;
@@ -79,13 +95,19 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private boolean workRoundActive;
   private JDialog completionOverlay;
   private Timer completionDismissTimer;
+  private boolean applyingInputEquivalence;
 
   public DialogModule() {
-    DialogDataLoader.loadAll().stream().forEach(this.dialogListModel::addElement);
+    DialogDataLoader.loadAll().forEach(this.dialogListModel::addElement);
     bindEnterToSubmit(this.inputA);
     bindEnterToSubmit(this.inputB);
     attachKeepFocusOnWorkField(this.inputA);
     attachKeepFocusOnWorkField(this.inputB);
+    attachInputEquivalence(this.inputA);
+    attachInputEquivalence(this.inputB);
+    attachTipRefreshOnInput(this.inputA);
+    attachTipRefreshOnInput(this.inputB);
+    configureTipUi();
     this.rootPanel.add(makeSelectPanel(), CARD_SELECT);
     this.rootPanel.add(makeWorkPanel(), CARD_WORK);
     showCard(CARD_SELECT);
@@ -96,6 +118,48 @@ public final class DialogModule extends AbstractLangTrainerModule {
     if (parent instanceof JViewport viewport) {
       viewport.setBackground(area.getBackground());
     }
+  }
+
+  private static void scrollHistoryPaneToBottom(final JScrollPane scroll, final JTextArea area) {
+    if (scroll == null || area == null) {
+      return;
+    }
+    try {
+      area.setCaretPosition(area.getDocument().getLength());
+    } catch (final Exception ignored) {
+      // caret move is best-effort for non-editable areas
+    }
+  }
+
+  private static void nudgeScrollBarToEnd(final JScrollPane scroll) {
+    if (scroll == null) {
+      return;
+    }
+    final JScrollBar vertical = scroll.getVerticalScrollBar();
+    vertical.setValue(vertical.getMaximum());
+  }
+
+  /**
+   * Line-wrapped {@link JTextArea} that still reports a real content height so a {@link
+   * JScrollPane} can show a vertical bar (default wrapped text areas track viewport height and
+   * never scroll vertically).
+   */
+  private static JTextArea makeShowArea() {
+    final JTextArea area =
+        new JTextArea() {
+          @Override
+          public boolean getScrollableTracksViewportHeight() {
+            return false;
+          }
+        };
+    area.setEditable(false);
+    area.setFocusable(false);
+    area.setLineWrap(true);
+    area.setWrapStyleWord(true);
+    area.setMargin(new Insets(8, 10, 8, 10));
+    area.setOpaque(true);
+    area.setFont(area.getFont().deriveFont(INPUT_FONT_SIZE));
+    return area;
   }
 
   @Override
@@ -131,15 +195,10 @@ public final class DialogModule extends AbstractLangTrainerModule {
     return result;
   }
 
-  @Override
-  public void onActivation() {
-    dismissCompletionBanner();
-    showCard(CARD_SELECT);
-    SwingUtilities.invokeLater(() -> {
-      if (this.dialogSelectionList != null) {
-        this.dialogSelectionList.requestFocusInWindow();
-      }
-    });
+  private static void configureHistoryScrollPane(final JScrollPane scroll) {
+    scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+    scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+    scroll.setPreferredSize(new Dimension(280, 220));
   }
 
   @Override
@@ -279,43 +338,218 @@ public final class DialogModule extends AbstractLangTrainerModule {
     }
   }
 
-  private JPanel makeWorkPanel() {
-    final JPanel panel = new JPanel(new BorderLayout(8, 8));
-    panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-
-    this.progressHeader.setFont(
-        this.progressHeader.getFont().deriveFont(Font.BOLD, PROGRESS_HEADER_FONT_SIZE));
-    this.progressHeader.setOpaque(true);
-    this.progressHeader.setBackground(PROGRESS_HEADER_BG);
-    this.progressHeader.setForeground(PROGRESS_HEADER_FG);
-    this.progressHeader.setBorder(BorderFactory.createCompoundBorder(
-        BorderFactory.createLineBorder(new Color(160, 140, 80), 2, true),
-        BorderFactory.createEmptyBorder(10, 12, 10, 12)));
-    panel.add(this.progressHeader, BorderLayout.NORTH);
-
-    final JPanel shows = new JPanel(new GridLayout(1, 2, 8, 8));
-    shows.add(new JScrollPane(this.showA));
-    shows.add(new JScrollPane(this.showB));
-    panel.add(shows, BorderLayout.CENTER);
-
-    final JPanel enterPanel = new JPanel(new GridLayout(1, 2, 8, 8));
-    enterPanel.add(wrapInputScroll(this.inputA));
-    enterPanel.add(wrapInputScroll(this.inputB));
-    panel.add(enterPanel, BorderLayout.SOUTH);
-    return panel;
+  /**
+   * Maps a character index in the user's text to the corresponding index in the expected line.
+   * Handles omitted punctuation (e.g. comma after {@code Jah}) and letter case so {@code jah ma
+   * toötan} lines up with {@code Jah, ma töötan}.
+   */
+  private static int expectedOffsetForDocumentIndex(
+      final String doc, final String expected, final int docIndex) {
+    int i = 0;
+    int j = 0;
+    final int target = Math.min(docIndex, doc.length());
+    while (i < target && j < expected.length()) {
+      final int cpd = doc.codePointAt(i);
+      final int cpe = expected.codePointAt(j);
+      final int di = Character.charCount(cpd);
+      final int ej = Character.charCount(cpe);
+      if (codePointsMatchForTip(cpd, cpe)) {
+        i += di;
+        j += ej;
+        continue;
+      }
+      if (isSkippableSeparatorInExpected(cpe)) {
+        final int afterSep = j + ej;
+        if (afterSep < expected.length()) {
+          final int cpNext = expected.codePointAt(afterSep);
+          if (codePointsMatchForTip(cpd, cpNext)) {
+            j = afterSep + Character.charCount(cpNext);
+            i += di;
+            continue;
+          }
+        }
+        if (Character.isWhitespace(cpd)) {
+          j += ej;
+          continue;
+        }
+        i += di;
+        j += ej;
+        continue;
+      }
+      i += di;
+      j += ej;
+    }
+    return j;
   }
 
-  private JTextArea makeShowArea() {
-    final JTextArea area = new JTextArea();
-    area.setEditable(false);
-    area.setFocusable(false);
-    area.setLineWrap(true);
-    area.setWrapStyleWord(true);
-    area.setMargin(new Insets(8, 10, 8, 10));
-    area.setOpaque(true);
-    area.setFont(area.getFont().deriveFont(INPUT_FONT_SIZE));
-    area.setPreferredSize(new Dimension(320, 220));
-    return area;
+  private static boolean isSkippableSeparatorInExpected(final int cp) {
+    return cp == ',' || cp == ';' || cp == ':' || cp == '.' || cp == '!' || cp == '?' || cp == '…';
+  }
+
+  private static String matchInputEquivalence(
+      final String typed,
+      final String expectedChar,
+      final List<InputEquivalenceRow> rules) {
+    for (final InputEquivalenceRow row : rules) {
+      final List<String> keys = row.key();
+      final List<String> vals = row.value();
+      for (int i = 0; i < keys.size(); i++) {
+        if (typed.equals(keys.get(i)) && expectedChar.equals(vals.get(i))) {
+          return vals.get(i);
+        }
+      }
+    }
+    return null;
+  }
+
+  private static String extractDocumentText(final Document doc) {
+    try {
+      return doc.getText(0, doc.getLength());
+    } catch (final BadLocationException ex) {
+      return "";
+    }
+  }
+
+  /**
+   * Tip for the current expected word: correct prefix, then one {@code .} per still-hidden slot
+   * before the last <em>letter</em> of the word (trailing {@code ? ! …} are not used as the
+   * right anchor). If the user finished all letters of a token and only punctuation remains
+   * (e.g. {@code Jah} vs {@code Jah,}), the tip advances to the next word.
+   */
+  private static String computeTypingTip(final String entered, final String expected) {
+    if (expected == null || expected.isEmpty()) {
+      return "";
+    }
+    int ei = 0;
+    int ej = 0;
+    final int enteredLen = entered.length();
+    final int expectedLen = expected.length();
+    while (true) {
+      while (ei < enteredLen && Character.isWhitespace(entered.charAt(ei))) {
+        ei++;
+      }
+      while (ej < expectedLen && Character.isWhitespace(expected.charAt(ej))) {
+        ej++;
+      }
+      if (ej >= expectedLen) {
+        return "";
+      }
+      final int wordStartExpected = ej;
+      while (ej < expectedLen && !Character.isWhitespace(expected.charAt(ej))) {
+        ej++;
+      }
+      final String expectedWord = expected.substring(wordStartExpected, ej);
+      if (expectedWord.isEmpty()) {
+        continue;
+      }
+      final int wordStartEntered = ei;
+      while (ei < enteredLen && !Character.isWhitespace(entered.charAt(ei))) {
+        ei++;
+      }
+      final String enteredWord = entered.substring(wordStartEntered, ei);
+      int eiW = 0;
+      int ejW = 0;
+      while (eiW < enteredWord.length() && ejW < expectedWord.length()) {
+        final int cpa = enteredWord.codePointAt(eiW);
+        final int cpb = expectedWord.codePointAt(ejW);
+        if (!codePointsMatchForTip(cpa, cpb)) {
+          break;
+        }
+        eiW += Character.charCount(cpa);
+        ejW += Character.charCount(cpb);
+      }
+      if (eiW < enteredWord.length()) {
+        if (ejW < expectedWord.length()) {
+          return formatWordTipWithLetterDots(expectedWord, ejW);
+        }
+        return expectedWord;
+      }
+      if (ejW < expectedWord.length()) {
+        if (onlyNonLettersFrom(expectedWord, ejW)) {
+          continue;
+        }
+        return formatWordTipWithLetterDots(expectedWord, ejW);
+      }
+    }
+  }
+
+  /**
+   * True if every code point from {@code from} onward is not a Unicode letter.
+   */
+  private static boolean onlyNonLettersFrom(final String word, final int from) {
+    int i = from;
+    while (i < word.length()) {
+      final int cp = word.codePointAt(i);
+      if (Character.isLetter(cp)) {
+        return false;
+      }
+      i += Character.charCount(cp);
+    }
+    return true;
+  }
+
+  private static boolean codePointsMatchForTip(final int typed, final int expected) {
+    if (typed == expected) {
+      return true;
+    }
+    if (Character.isLetter(typed) && Character.isLetter(expected)) {
+      return Character.toLowerCase(typed) == Character.toLowerCase(expected);
+    }
+    return false;
+  }
+
+  /**
+   * Start index in {@code word} of the last Unicode letter, or {@code -1} if none.
+   */
+  private static int indexOfLastLetterStart(final String word) {
+    int last = -1;
+    for (int i = 0; i < word.length(); ) {
+      final int cp = word.codePointAt(i);
+      if (Character.isLetter(cp)) {
+        last = i;
+      }
+      i += Character.charCount(cp);
+    }
+    return last;
+  }
+
+  private static String substringOneCodePoint(final String word, final int start) {
+    final int cp = word.codePointAt(start);
+    return new String(Character.toChars(cp));
+  }
+
+  private static String formatWordTipWithLetterDots(final String word, final int correctPrefixLen) {
+    if (word.isEmpty() || correctPrefixLen > word.length()) {
+      return "";
+    }
+    if (correctPrefixLen == word.length()) {
+      return "";
+    }
+    final int lastLetterStart = indexOfLastLetterStart(word);
+    if (lastLetterStart < 0) {
+      if (correctPrefixLen == 0) {
+        final int dots = Math.max(0, word.length() - 2);
+        return word.charAt(0) + ".".repeat(dots) + word.charAt(word.length() - 1);
+      }
+      final int dots = Math.max(0, word.length() - correctPrefixLen - 1);
+      return word.substring(0, correctPrefixLen) + ".".repeat(dots) +
+          word.charAt(word.length() - 1);
+    }
+    final String lastLetter = substringOneCodePoint(word, lastLetterStart);
+    if (lastLetterStart == 0) {
+      return lastLetter;
+    }
+    if (correctPrefixLen > lastLetterStart) {
+      final int dots = word.length() - correctPrefixLen - 1;
+      return word.substring(0, correctPrefixLen) + ".".repeat(dots) +
+          word.charAt(word.length() - 1);
+    }
+    if (correctPrefixLen == 0) {
+      final int dots = Math.max(0, lastLetterStart - 1);
+      return word.charAt(0) + ".".repeat(dots) + lastLetter;
+    }
+    final int dots = Math.max(0, lastLetterStart - correctPrefixLen);
+    return word.substring(0, correctPrefixLen) + ".".repeat(dots) + lastLetter;
   }
 
   private JTextArea makeInputArea() {
@@ -334,6 +568,274 @@ public final class DialogModule extends AbstractLangTrainerModule {
     return scroll;
   }
 
+  /**
+   * After history text grows, show the newly appended line (both panes scroll to bottom).
+   */
+  private void scrollHistoryPanesToBottom() {
+    SwingUtilities.invokeLater(() -> {
+      scrollHistoryPaneToBottom(this.historyScrollA, this.showA);
+      scrollHistoryPaneToBottom(this.historyScrollB, this.showB);
+      SwingUtilities.invokeLater(() -> {
+        nudgeScrollBarToEnd(this.historyScrollA);
+        nudgeScrollBarToEnd(this.historyScrollB);
+      });
+    });
+  }
+
+  @Override
+  public void onActivation() {
+    dismissCompletionBanner();
+    setTipControlsWorkMode(false);
+    showCard(CARD_SELECT);
+    SwingUtilities.invokeLater(() -> {
+      if (this.dialogSelectionList != null) {
+        this.dialogSelectionList.requestFocusInWindow();
+      }
+    });
+  }
+
+  private JPanel makeWorkPanel() {
+    final JPanel panel = new JPanel(new BorderLayout(8, 8));
+    panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+
+    this.progressHeader.setFont(
+        this.progressHeader.getFont().deriveFont(Font.BOLD, PROGRESS_HEADER_FONT_SIZE));
+    this.progressHeader.setOpaque(true);
+    this.progressHeader.setBackground(PROGRESS_HEADER_BG);
+    this.progressHeader.setForeground(PROGRESS_HEADER_FG);
+    this.progressHeader.setBorder(BorderFactory.createCompoundBorder(
+        BorderFactory.createLineBorder(new Color(160, 140, 80), 2, true),
+        BorderFactory.createEmptyBorder(10, 12, 10, 12)));
+
+    final JPanel headerRow = new JPanel(new BorderLayout(8, 0));
+    headerRow.setOpaque(false);
+    headerRow.add(this.progressHeader, BorderLayout.CENTER);
+    headerRow.add(this.tipToggle, BorderLayout.EAST);
+
+    final JPanel northStack = new JPanel(new BorderLayout(0, 6));
+    northStack.setOpaque(false);
+    northStack.add(headerRow, BorderLayout.NORTH);
+    northStack.add(this.tipZone, BorderLayout.SOUTH);
+    panel.add(northStack, BorderLayout.NORTH);
+
+    final JPanel shows = new JPanel(new GridLayout(1, 2, 8, 8));
+    this.historyScrollA = new JScrollPane(this.showA);
+    this.historyScrollB = new JScrollPane(this.showB);
+    configureHistoryScrollPane(this.historyScrollA);
+    configureHistoryScrollPane(this.historyScrollB);
+    shows.add(this.historyScrollA);
+    shows.add(this.historyScrollB);
+    panel.add(shows, BorderLayout.CENTER);
+
+    final JPanel enterPanel = new JPanel(new GridLayout(1, 2, 8, 8));
+    enterPanel.add(wrapInputScroll(this.inputA));
+    enterPanel.add(wrapInputScroll(this.inputB));
+    panel.add(enterPanel, BorderLayout.SOUTH);
+    return panel;
+  }
+
+  private void configureTipUi() {
+    this.tipToggle.setFont(this.tipToggle.getFont().deriveFont(Font.BOLD, 16f));
+    this.tipToggle.setOpaque(true);
+    this.tipToggle.setContentAreaFilled(true);
+    this.tipToggle.setBackground(TIP_TOGGLE_BG);
+    this.tipToggle.setForeground(TIP_TOGGLE_FG);
+    this.tipToggle.setFocusPainted(false);
+    this.tipToggle.setBorder(BorderFactory.createCompoundBorder(
+        BorderFactory.createLineBorder(TIP_TOGGLE_BORDER, 2, true),
+        BorderFactory.createEmptyBorder(8, 18, 8, 18)));
+    this.tipToggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    this.tipToggle.setToolTipText(
+        "Show the next character hint under the line counter while typing");
+    this.tipToggle.addActionListener(event -> {
+      if (this.tipToggle.isSelected()) {
+        this.tipToggle.setBackground(new Color(255, 193, 7));
+        this.tipToggle.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(230, 162, 0), 2, true),
+            BorderFactory.createEmptyBorder(8, 18, 8, 18)));
+      } else {
+        this.tipToggle.setBackground(TIP_TOGGLE_BG);
+        this.tipToggle.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(TIP_TOGGLE_BORDER, 2, true),
+            BorderFactory.createEmptyBorder(8, 18, 8, 18)));
+      }
+      refreshTipZone();
+    });
+
+    this.tipZone.setOpaque(true);
+    this.tipZone.setBackground(TIP_ZONE_BG);
+    this.tipZone.setForeground(TIP_ZONE_FG);
+    this.tipZone.setFont(this.tipZone.getFont().deriveFont(Font.BOLD, 18f));
+    this.tipZone.setBorder(BorderFactory.createCompoundBorder(
+        BorderFactory.createLineBorder(new Color(200, 80, 80), 2, true),
+        BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+    this.tipZone.setVisible(false);
+  }
+
+  private void attachInputEquivalence(final JTextArea area) {
+    area.getDocument().addDocumentListener(new DocumentListener() {
+      @Override
+      public void insertUpdate(final DocumentEvent event) {
+        if (DialogModule.this.applyingInputEquivalence) {
+          return;
+        }
+        final int start = event.getOffset();
+        final int insertLen = event.getLength();
+        SwingUtilities.invokeLater(() -> {
+          try {
+            DialogModule.this.applyingInputEquivalence = true;
+            applyInputEquivalence(area, start, insertLen);
+          } finally {
+            DialogModule.this.applyingInputEquivalence = false;
+          }
+        });
+        scheduleTipRefreshAfterInputMutation();
+      }
+
+      @Override
+      public void removeUpdate(final DocumentEvent event) {
+        // only replacements on insert
+      }
+
+      @Override
+      public void changedUpdate(final DocumentEvent event) {
+        // only replacements on insert
+      }
+    });
+  }
+
+  private void applyInputEquivalence(final JTextArea area, final int start, final int insertLen) {
+    if (!this.workRoundActive || this.activeDialog == null || area != focusedInput()) {
+      return;
+    }
+    final List<InputEquivalenceRow> rules = this.activeDialog.inputEqu();
+    if (rules.isEmpty() || insertLen <= 0) {
+      return;
+    }
+    if (this.lineIndex >= this.activeDialog.lines().size()) {
+      return;
+    }
+    final DialogLine line = this.activeDialog.lines().get(this.lineIndex);
+    final String expectedFull = this.userWritesToA ? line.a() : line.b();
+    int p = start;
+    int end = start + insertLen;
+    while (p < end) {
+      final String doc = area.getText();
+      if (p >= doc.length()) {
+        break;
+      }
+      final int cp = doc.codePointAt(p);
+      final int chLen = Character.charCount(cp);
+      if (p + chLen > doc.length()) {
+        break;
+      }
+      final String typedStr = doc.substring(p, p + chLen);
+      final int expPos = expectedOffsetForDocumentIndex(doc, expectedFull, p);
+      if (expPos >= expectedFull.length()) {
+        p += chLen;
+        continue;
+      }
+      final int expLen = Character.charCount(expectedFull.codePointAt(expPos));
+      if (expPos + expLen > expectedFull.length()) {
+        p += chLen;
+        continue;
+      }
+      final String expStr = expectedFull.substring(expPos, expPos + expLen);
+      if (chLen != expLen) {
+        p += chLen;
+        continue;
+      }
+      final String replacement = matchInputEquivalence(typedStr, expStr, rules);
+      if (replacement != null && !replacement.equals(typedStr)) {
+        area.replaceRange(replacement, p, p + chLen);
+        final int delta = replacement.length() - chLen;
+        end += delta;
+        p += replacement.length();
+      } else {
+        p += chLen;
+      }
+    }
+  }
+
+  /**
+   * After input-equivalence adjustments, refresh tips once the document is in its final state.
+   */
+  private void scheduleTipRefreshAfterInputMutation() {
+    if (!this.tipToggle.isSelected() || !this.workRoundActive || this.activeDialog == null) {
+      return;
+    }
+    SwingUtilities.invokeLater(
+        () -> refreshTipZone(extractDocumentText(focusedInput().getDocument())));
+  }
+
+  private void attachTipRefreshOnInput(final JTextArea area) {
+    area.getDocument().addDocumentListener(new DocumentListener() {
+      @Override
+      public void insertUpdate(final DocumentEvent event) {
+        refreshTipZoneFromDocument(area, event.getDocument());
+      }
+
+      @Override
+      public void removeUpdate(final DocumentEvent event) {
+        refreshTipZoneFromDocument(area, event.getDocument());
+      }
+
+      @Override
+      public void changedUpdate(final DocumentEvent event) {
+        refreshTipZoneFromDocument(area, event.getDocument());
+      }
+    });
+  }
+
+  private void refreshTipZoneFromDocument(final JTextArea area, final Document doc) {
+    if (area == focusedInput()) {
+      refreshTipZone(extractDocumentText(doc));
+    } else {
+      refreshTipZone(null);
+    }
+  }
+
+  private void refreshTipZone() {
+    refreshTipZone(null);
+  }
+
+  private void refreshTipZone(final String enteredOverride) {
+    if (!this.tipToggle.isSelected() || !this.workRoundActive || this.activeDialog == null) {
+      this.tipZone.setVisible(false);
+      return;
+    }
+    if (this.lineIndex >= this.activeDialog.lines().size()) {
+      this.tipZone.setVisible(false);
+      return;
+    }
+    final DialogLine line = this.activeDialog.lines().get(this.lineIndex);
+    final String expected = this.userWritesToA ? line.a() : line.b();
+    final String entered =
+        enteredOverride != null
+            ? enteredOverride
+            : extractDocumentText(focusedInput().getDocument());
+    final String snippet = computeTypingTip(entered, expected);
+    if (snippet.isEmpty()) {
+      this.tipZone.setText("—");
+    } else {
+      this.tipZone.setText(snippet);
+    }
+    this.tipZone.setVisible(true);
+    this.tipZone.repaint();
+  }
+
+  private void setTipControlsWorkMode(final boolean workActive) {
+    this.tipToggle.setEnabled(workActive);
+    if (!workActive) {
+      this.tipToggle.setSelected(false);
+      this.tipToggle.setBackground(TIP_TOGGLE_BG);
+      this.tipToggle.setBorder(BorderFactory.createCompoundBorder(
+          BorderFactory.createLineBorder(TIP_TOGGLE_BORDER, 2, true),
+          BorderFactory.createEmptyBorder(8, 18, 8, 18)));
+      this.tipZone.setVisible(false);
+    }
+  }
+
   private void attachKeepFocusOnWorkField(final JTextArea area) {
     area.addFocusListener(new FocusAdapter() {
       @Override
@@ -345,7 +847,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
           return;
         }
         final Component opposite = event.getOppositeComponent();
-        if (opposite instanceof JButton) {
+        if (opposite instanceof JButton || opposite instanceof JToggleButton) {
           return;
         }
         SwingUtilities.invokeLater(() -> {
@@ -463,6 +965,12 @@ public final class DialogModule extends AbstractLangTrainerModule {
     this.activeDialog = definition;
     this.lineIndex = 0;
     this.workRoundActive = true;
+    this.tipToggle.setSelected(false);
+    this.tipToggle.setBackground(TIP_TOGGLE_BG);
+    this.tipToggle.setBorder(BorderFactory.createCompoundBorder(
+        BorderFactory.createLineBorder(TIP_TOGGLE_BORDER, 2, true),
+        BorderFactory.createEmptyBorder(8, 18, 8, 18)));
+    setTipControlsWorkMode(true);
     this.historyA.clear();
     this.historyB.clear();
     this.showA.setText("");
@@ -471,6 +979,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     this.inputB.setText("");
     applyWorkbenchStyles(false);
     updateTargetTextForCurrentLine();
+    refreshTipZone();
     showCard(CARD_WORK);
     this.rootPanel.revalidate();
     SwingUtilities.invokeLater(() -> {
@@ -492,6 +1001,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
       focusedInput().setText("");
     }
     refreshProgressHeader();
+    refreshTipZone();
   }
 
   private void refreshProgressHeader() {
@@ -515,6 +1025,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
         this.historyB.add(line.b());
         this.showA.setText(String.join("\n", this.historyA));
         this.showB.setText(String.join("\n", this.historyB));
+        scrollHistoryPanesToBottom();
         this.lineIndex++;
         if (this.lineIndex >= this.activeDialog.lines().size()) {
           finishDialog();
@@ -529,6 +1040,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
 
   private void finishDialog() {
     this.workRoundActive = false;
+    setTipControlsWorkMode(false);
     applyWorkbenchStyles(true);
     showCompletionBannerOverlay();
   }
@@ -626,14 +1138,14 @@ public final class DialogModule extends AbstractLangTrainerModule {
       result = "";
     } else {
       final String withYeFolded = text
-          .replace('\u0401', '\u0415')
-          .replace('\u0451', '\u0435');
+          .replace('Ё', 'Е')
+          .replace('ё', 'е');
       final String lower = withYeFolded.toLowerCase();
       final StringBuilder builder = new StringBuilder(lower.length());
       lower
           .codePoints()
-          .filter(code -> Character.isLetterOrDigit(code))
-          .forEach(code -> builder.appendCodePoint(code));
+          .filter(Character::isLetterOrDigit)
+          .forEach(builder::appendCodePoint);
       result = builder.toString();
     }
     return result;
