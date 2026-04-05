@@ -12,6 +12,7 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.Window;
@@ -23,7 +24,9 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.Icon;
@@ -70,15 +73,47 @@ public final class DialogModule extends AbstractLangTrainerModule {
 
   private static final Color TIP_ZONE_BG = new Color(255, 205, 205);
   private static final Color TIP_ZONE_FG = new Color(90, 0, 0);
-  private static final Color TIP_TOGGLE_BG = new Color(255, 152, 0);
-  private static final Color TIP_TOGGLE_FG = new Color(40, 20, 0);
-  private static final Color TIP_TOGGLE_BORDER = new Color(191, 87, 0);
+
+  private static final Color TIP_TOGGLE_OFF_BG = new Color(236, 239, 241);
+  private static final Color TIP_TOGGLE_OFF_FG = new Color(55, 71, 79);
+  private static final Color TIP_TOGGLE_OFF_BORDER = new Color(176, 190, 197);
+  private static final Color TIP_TOGGLE_ON_BG = new Color(255, 202, 40);
+  private static final Color TIP_TOGGLE_ON_FG = Color.BLACK;
+  private static final Color TIP_TOGGLE_ON_BORDER = new Color(230, 81, 0);
+
+  private static final Color SHUFFLE_TOGGLE_OFF_BG = new Color(225, 190, 231);
+  private static final Color SHUFFLE_TOGGLE_OFF_FG = new Color(74, 20, 140);
+  private static final Color SHUFFLE_TOGGLE_OFF_BORDER = new Color(171, 71, 188);
+  private static final Color SHUFFLE_TOGGLE_ON_BG = new Color(74, 20, 140);
+  private static final Color SHUFFLE_TOGGLE_ON_FG = Color.WHITE;
+  private static final Color SHUFFLE_TOGGLE_ON_BORDER = new Color(255, 214, 0);
+
+  private static final Color SHOW_PHRASE_BG = new Color(0, 121, 107);
+  private static final Color SHOW_PHRASE_FG = Color.WHITE;
+  private static final Color SHOW_PHRASE_BORDER = new Color(0, 77, 64);
+
+  /**
+   * Same border thickness and padding for Shuffle / Show / Tip so heights align and layout is stable.
+   */
+  private static final int HEADER_ACTION_BORDER_W = 3;
+  private static final Insets HEADER_ACTION_INSETS = new Insets(8, 16, 8, 16);
+
+  /**
+   * Black-and-white flashcard faces for the Show-phrase modal only.
+   */
+  private static final Color PHRASE_FLASH_LIGHT_BG = Color.WHITE;
+  private static final Color PHRASE_FLASH_LIGHT_FG = Color.BLACK;
+  private static final Color PHRASE_FLASH_DARK_BG = Color.BLACK;
+  private static final Color PHRASE_FLASH_DARK_FG = Color.WHITE;
+  private static final Color PHRASE_FLASH_BORDER = new Color(48, 48, 48);
 
   private final DefaultListModel<DialogDefinition> dialogListModel = new DefaultListModel<>();
   private final JPanel rootPanel = new JPanel(new CardLayout());
   private final JTextArea showA = makeShowArea();
   private final JTextArea showB = makeShowArea();
-  private final JToggleButton tipToggle = new JToggleButton("Tip");
+  private final JToggleButton shuffleToggle = new JToggleButton("Shuffle OFF");
+  private final JButton showPhraseButton = new JButton("Show");
+  private final JToggleButton tipToggle = new JToggleButton("Tip OFF");
   private final JLabel tipZone = new JLabel(" ", SwingConstants.CENTER);
   private final JTextArea inputA = makeInputArea();
   private final JTextArea inputB = makeInputArea();
@@ -91,10 +126,21 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private JList<DialogDefinition> dialogSelectionList;
   private DialogDefinition activeDialog;
   private boolean userWritesToA;
-  private int lineIndex;
+  /**
+   * Indices of dialog lines not yet answered correctly. The active prompt is always one of these
+   * until the user submits; then that index is removed so it is never chosen again.
+   */
+  private final List<Integer> remainingLineIndices = new ArrayList<>();
+  /**
+   * Index in {@link DialogDefinition#lines()} for the line the user is typing now.
+   */
+  private int currentLineOrdinal;
   private boolean workRoundActive;
   private JDialog completionOverlay;
   private Timer completionDismissTimer;
+  private JDialog phraseLearningOverlay;
+  private Timer phraseLearningFlipTimer;
+  private Timer phraseLearningDismissTimer;
   private boolean applyingInputEquivalence;
 
   public DialogModule() {
@@ -108,6 +154,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     attachTipRefreshOnInput(this.inputA);
     attachTipRefreshOnInput(this.inputB);
     configureTipUi();
+    configureShuffleAndShowUi();
     this.rootPanel.add(makeSelectPanel(), CARD_SELECT);
     this.rootPanel.add(makeWorkPanel(), CARD_WORK);
     showCard(CARD_SELECT);
@@ -582,9 +629,39 @@ public final class DialogModule extends AbstractLangTrainerModule {
     });
   }
 
+  private static int maxStringWidth(
+      final FontMetrics metrics, final String a, final String b) {
+    return Math.max(metrics.stringWidth(a), metrics.stringWidth(b));
+  }
+
+  /**
+   * Minimum width from label text (avoids ellipsis when the east header is squeezed).
+   */
+  private static int minToggleWidthForLabels(
+      final JToggleButton button, final String offText, final String onText) {
+    final FontMetrics fm = button.getFontMetrics(button.getFont());
+    return HEADER_ACTION_BORDER_W * 2
+        + HEADER_ACTION_INSETS.left
+        + HEADER_ACTION_INSETS.right
+        + maxStringWidth(fm, offText, onText)
+        + 8;
+  }
+
+  private static String htmlEscapeForPhraseBanner(final String text) {
+    if (text == null) {
+      return "";
+    }
+    return text
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\n", "<br/>");
+  }
+
   @Override
   public void onActivation() {
     dismissCompletionBanner();
+    dismissPhraseLearningBanner();
     setTipControlsWorkMode(false);
     showCard(CARD_SELECT);
     SwingUtilities.invokeLater(() -> {
@@ -610,7 +687,13 @@ public final class DialogModule extends AbstractLangTrainerModule {
     final JPanel headerRow = new JPanel(new BorderLayout(8, 0));
     headerRow.setOpaque(false);
     headerRow.add(this.progressHeader, BorderLayout.CENTER);
-    headerRow.add(this.tipToggle, BorderLayout.EAST);
+    final JPanel eastButtons = new JPanel(new GridLayout(1, 3, 8, 0));
+    eastButtons.setOpaque(false);
+    eastButtons.add(this.shuffleToggle);
+    eastButtons.add(this.showPhraseButton);
+    eastButtons.add(this.tipToggle);
+    syncWorkHeaderActionButtonSizes();
+    headerRow.add(eastButtons, BorderLayout.EAST);
 
     final JPanel northStack = new JPanel(new BorderLayout(0, 6));
     northStack.setOpaque(false);
@@ -634,33 +717,90 @@ public final class DialogModule extends AbstractLangTrainerModule {
     return panel;
   }
 
+  private void applyTipToggleLook() {
+    final boolean on = this.tipToggle.isSelected();
+    this.tipToggle.setText(on ? "Tip ON" : "Tip OFF");
+    final Color lineColor = on ? TIP_TOGGLE_ON_BORDER : TIP_TOGGLE_OFF_BORDER;
+    this.tipToggle.setBackground(on ? TIP_TOGGLE_ON_BG : TIP_TOGGLE_OFF_BG);
+    this.tipToggle.setForeground(on ? TIP_TOGGLE_ON_FG : TIP_TOGGLE_OFF_FG);
+    this.tipToggle.setBorder(BorderFactory.createCompoundBorder(
+        BorderFactory.createLineBorder(lineColor, HEADER_ACTION_BORDER_W, true),
+        BorderFactory.createEmptyBorder(
+            HEADER_ACTION_INSETS.top,
+            HEADER_ACTION_INSETS.left,
+            HEADER_ACTION_INSETS.bottom,
+            HEADER_ACTION_INSETS.right)));
+  }
+
+  private void applyShuffleToggleLook() {
+    final boolean on = this.shuffleToggle.isSelected();
+    this.shuffleToggle.setText(on ? "Shuffle ON" : "Shuffle OFF");
+    final Color lineColor = on ? SHUFFLE_TOGGLE_ON_BORDER : SHUFFLE_TOGGLE_OFF_BORDER;
+    this.shuffleToggle.setBackground(on ? SHUFFLE_TOGGLE_ON_BG : SHUFFLE_TOGGLE_OFF_BG);
+    this.shuffleToggle.setForeground(on ? SHUFFLE_TOGGLE_ON_FG : SHUFFLE_TOGGLE_OFF_FG);
+    this.shuffleToggle.setBorder(BorderFactory.createCompoundBorder(
+        BorderFactory.createLineBorder(lineColor, HEADER_ACTION_BORDER_W, true),
+        BorderFactory.createEmptyBorder(
+            HEADER_ACTION_INSETS.top,
+            HEADER_ACTION_INSETS.left,
+            HEADER_ACTION_INSETS.bottom,
+            HEADER_ACTION_INSETS.right)));
+  }
+
+  /**
+   * Sets Shuffle, Show, and Tip to the same width and height (widest/tallest needed). Drops
+   * {@code maximumSize} caps so BorderLayout does not clip labels to "Tip O…".
+   */
+  private void syncWorkHeaderActionButtonSizes() {
+    applyShuffleToggleLook();
+    applyTipToggleLook();
+
+    final int wShuffle =
+        Math.max(
+            this.shuffleToggle.getPreferredSize().width,
+            minToggleWidthForLabels(this.shuffleToggle, "Shuffle OFF", "Shuffle ON"));
+    final int wTip =
+        Math.max(
+            this.tipToggle.getPreferredSize().width,
+            minToggleWidthForLabels(this.tipToggle, "Tip OFF", "Tip ON"));
+    final int wShow = this.showPhraseButton.getPreferredSize().width;
+
+    final int hShuffle = this.shuffleToggle.getPreferredSize().height;
+    final int hTip = this.tipToggle.getPreferredSize().height;
+    final int hShow = this.showPhraseButton.getPreferredSize().height;
+
+    final int cellW = Math.max(Math.max(wShuffle, wShow), wTip);
+    final int cellH = Math.max(Math.max(hShuffle, hTip), hShow);
+    final Dimension cell = new Dimension(cellW, cellH);
+
+    this.shuffleToggle.setPreferredSize(cell);
+    this.shuffleToggle.setMinimumSize(cell);
+    this.shuffleToggle.setMaximumSize(new Dimension(Integer.MAX_VALUE, cell.height));
+
+    this.showPhraseButton.setPreferredSize(cell);
+    this.showPhraseButton.setMinimumSize(cell);
+    this.showPhraseButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, cell.height));
+
+    this.tipToggle.setPreferredSize(cell);
+    this.tipToggle.setMinimumSize(cell);
+    this.tipToggle.setMaximumSize(new Dimension(Integer.MAX_VALUE, cell.height));
+  }
+
   private void configureTipUi() {
     this.tipToggle.setFont(this.tipToggle.getFont().deriveFont(Font.BOLD, 16f));
     this.tipToggle.setOpaque(true);
     this.tipToggle.setContentAreaFilled(true);
-    this.tipToggle.setBackground(TIP_TOGGLE_BG);
-    this.tipToggle.setForeground(TIP_TOGGLE_FG);
     this.tipToggle.setFocusPainted(false);
-    this.tipToggle.setBorder(BorderFactory.createCompoundBorder(
-        BorderFactory.createLineBorder(TIP_TOGGLE_BORDER, 2, true),
-        BorderFactory.createEmptyBorder(8, 18, 8, 18)));
+    this.tipToggle.setHorizontalAlignment(SwingConstants.CENTER);
     this.tipToggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     this.tipToggle.setToolTipText(
         "Show the next character hint under the line counter while typing");
     this.tipToggle.addActionListener(event -> {
-      if (this.tipToggle.isSelected()) {
-        this.tipToggle.setBackground(new Color(255, 193, 7));
-        this.tipToggle.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(230, 162, 0), 2, true),
-            BorderFactory.createEmptyBorder(8, 18, 8, 18)));
-      } else {
-        this.tipToggle.setBackground(TIP_TOGGLE_BG);
-        this.tipToggle.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(TIP_TOGGLE_BORDER, 2, true),
-            BorderFactory.createEmptyBorder(8, 18, 8, 18)));
-      }
+      applyTipToggleLook();
       refreshTipZone();
+      syncWorkHeaderActionButtonSizes();
     });
+    applyTipToggleLook();
 
     this.tipZone.setOpaque(true);
     this.tipZone.setBackground(TIP_ZONE_BG);
@@ -670,6 +810,182 @@ public final class DialogModule extends AbstractLangTrainerModule {
         BorderFactory.createLineBorder(new Color(200, 80, 80), 2, true),
         BorderFactory.createEmptyBorder(8, 12, 8, 12)));
     this.tipZone.setVisible(false);
+  }
+
+  private void configureShuffleAndShowUi() {
+    this.shuffleToggle.setFont(this.shuffleToggle.getFont().deriveFont(Font.BOLD, 16f));
+    this.shuffleToggle.setOpaque(true);
+    this.shuffleToggle.setContentAreaFilled(true);
+    this.shuffleToggle.setFocusPainted(false);
+    this.shuffleToggle.setHorizontalAlignment(SwingConstants.CENTER);
+    this.shuffleToggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    this.shuffleToggle.setToolTipText(
+        "Off: remaining lines follow dialog order. On: each next line is picked at random among lines you have not completed yet.");
+    this.shuffleToggle.addActionListener(event -> {
+      applyShuffleToggleLook();
+      syncWorkHeaderActionButtonSizes();
+    });
+    applyShuffleToggleLook();
+
+    this.showPhraseButton.setFont(this.showPhraseButton.getFont().deriveFont(Font.BOLD, 16f));
+    this.showPhraseButton.setOpaque(true);
+    this.showPhraseButton.setContentAreaFilled(true);
+    this.showPhraseButton.setBackground(SHOW_PHRASE_BG);
+    this.showPhraseButton.setForeground(SHOW_PHRASE_FG);
+    this.showPhraseButton.setFocusPainted(false);
+    this.showPhraseButton.setHorizontalAlignment(SwingConstants.CENTER);
+    this.showPhraseButton.setBorder(BorderFactory.createCompoundBorder(
+        BorderFactory.createLineBorder(SHOW_PHRASE_BORDER, HEADER_ACTION_BORDER_W, true),
+        BorderFactory.createEmptyBorder(
+            HEADER_ACTION_INSETS.top,
+            HEADER_ACTION_INSETS.left,
+            HEADER_ACTION_INSETS.bottom,
+            HEADER_ACTION_INSETS.right)));
+    this.showPhraseButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    this.showPhraseButton.setToolTipText(
+        "Flash the answer and translation for 5s (alternating each second)");
+    this.showPhraseButton.addActionListener(event -> showPhraseLearningBanner());
+  }
+
+  /**
+   * Keeps toggle visuals in sync when the work round ends (buttons may be disabled).
+   */
+  private void refreshHeaderToggleAppearance() {
+    applyTipToggleLook();
+    applyShuffleToggleLook();
+    syncWorkHeaderActionButtonSizes();
+  }
+
+  /**
+   * Chooses {@link #currentLineOrdinal} from {@link #remainingLineIndices}: lowest dialog index
+   * when shuffle is off, otherwise a uniform random remaining index.
+   */
+  private void pickCurrentLineFromRemaining() {
+    if (this.remainingLineIndices.isEmpty()) {
+      return;
+    }
+    if (this.shuffleToggle.isSelected()) {
+      this.currentLineOrdinal =
+          this.remainingLineIndices.get(new Random().nextInt(this.remainingLineIndices.size()));
+    } else {
+      this.currentLineOrdinal = Collections.min(this.remainingLineIndices);
+    }
+  }
+
+  private void dismissPhraseLearningBanner() {
+    if (this.phraseLearningFlipTimer != null) {
+      this.phraseLearningFlipTimer.stop();
+      this.phraseLearningFlipTimer = null;
+    }
+    if (this.phraseLearningDismissTimer != null) {
+      this.phraseLearningDismissTimer.stop();
+      this.phraseLearningDismissTimer = null;
+    }
+    if (this.phraseLearningOverlay != null) {
+      this.phraseLearningOverlay.dispose();
+      this.phraseLearningOverlay = null;
+    }
+  }
+
+  /**
+   * Centered modal: alternates expected line and partner translation every second for 5 seconds,
+   * with inverted colors on each face (flashcard-style).
+   */
+  private void showPhraseLearningBanner() {
+    if (!this.workRoundActive || this.activeDialog == null) {
+      return;
+    }
+    if (this.remainingLineIndices.isEmpty()) {
+      return;
+    }
+    dismissPhraseLearningBanner();
+    final Window owner = SwingUtilities.getWindowAncestor(this.rootPanel);
+    if (owner == null) {
+      return;
+    }
+    final DialogLine line = this.activeDialog.lines().get(this.currentLineOrdinal);
+    final String expected = this.userWritesToA ? line.a() : line.b();
+    final String partner = this.userWritesToA ? line.b() : line.a();
+
+    final JDialog overlay = new JDialog(owner, java.awt.Dialog.ModalityType.APPLICATION_MODAL);
+    this.phraseLearningOverlay = overlay;
+    overlay.setUndecorated(true);
+    overlay.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+    final JPanel pane = new JPanel(new BorderLayout());
+    pane.setOpaque(true);
+    pane.setBorder(BorderFactory.createCompoundBorder(
+        BorderFactory.createLineBorder(PHRASE_FLASH_BORDER, 3, true),
+        BorderFactory.createEmptyBorder(28, 36, 28, 36)));
+    overlay.setContentPane(pane);
+
+    final JLabel label = new JLabel("", SwingConstants.CENTER);
+    label.setOpaque(false);
+    final float phraseFontSize = Math.min(BANNER_FONT_SIZE, 44f);
+    label.setFont(label.getFont().deriveFont(Font.BOLD, phraseFontSize));
+
+    pane.setBackground(PHRASE_FLASH_LIGHT_BG);
+    label.setForeground(PHRASE_FLASH_LIGHT_FG);
+    label.setText(
+        "<html><body style='width:520px;text-align:center;color:#000000;'>"
+            + htmlEscapeForPhraseBanner(expected)
+            + "</body></html>");
+
+    pane.add(label, BorderLayout.CENTER);
+
+    final boolean[] showExpectedRef = {true};
+    final Runnable updateFace = () -> {
+      if (showExpectedRef[0]) {
+        pane.setBackground(PHRASE_FLASH_LIGHT_BG);
+        label.setForeground(PHRASE_FLASH_LIGHT_FG);
+        label.setText(
+            "<html><body style='width:520px;text-align:center;color:#000000;'>"
+                + htmlEscapeForPhraseBanner(expected)
+                + "</body></html>");
+      } else {
+        pane.setBackground(PHRASE_FLASH_DARK_BG);
+        label.setForeground(PHRASE_FLASH_DARK_FG);
+        label.setText(
+            "<html><body style='width:520px;text-align:center;color:#FFFFFF;'>"
+                + htmlEscapeForPhraseBanner(partner)
+                + "</body></html>");
+      }
+    };
+
+    this.phraseLearningFlipTimer = new Timer(1_000, event -> {
+      showExpectedRef[0] = !showExpectedRef[0];
+      updateFace.run();
+      pane.revalidate();
+      pane.repaint();
+    });
+    this.phraseLearningFlipTimer.setInitialDelay(1_000);
+    this.phraseLearningFlipTimer.start();
+
+    final Runnable closeAndRestoreFocus = () -> {
+      dismissPhraseLearningBanner();
+      SwingUtilities.invokeLater(() -> {
+        if (this.workRoundActive && this.activeDialog != null) {
+          final JTextArea work = focusedInput();
+          if (work.isEditable() && work.isShowing()) {
+            work.requestFocusInWindow();
+          }
+        }
+      });
+    };
+
+    this.phraseLearningDismissTimer = new Timer(5_000, event -> closeAndRestoreFocus.run());
+    this.phraseLearningDismissTimer.setRepeats(false);
+    this.phraseLearningDismissTimer.start();
+
+    overlay.pack();
+    overlay.setMinimumSize(overlay.getPreferredSize());
+    final java.awt.Point ownerLoc = owner.getLocationOnScreen();
+    final Dimension ownerSize = owner.getSize();
+    overlay.setLocation(
+        ownerLoc.x + Math.max(0, (ownerSize.width - overlay.getWidth()) / 2),
+        ownerLoc.y + Math.max(0, (ownerSize.height - overlay.getHeight()) / 2));
+
+    SwingUtilities.invokeLater(() -> overlay.setVisible(true));
   }
 
   private void attachInputEquivalence(final JTextArea area) {
@@ -712,10 +1028,10 @@ public final class DialogModule extends AbstractLangTrainerModule {
     if (rules.isEmpty() || insertLen <= 0) {
       return;
     }
-    if (this.lineIndex >= this.activeDialog.lines().size()) {
+    if (this.remainingLineIndices.isEmpty()) {
       return;
     }
-    final DialogLine line = this.activeDialog.lines().get(this.lineIndex);
+    final DialogLine line = this.activeDialog.lines().get(this.currentLineOrdinal);
     final String expectedFull = this.userWritesToA ? line.a() : line.b();
     int p = start;
     int end = start + insertLen;
@@ -804,11 +1120,11 @@ public final class DialogModule extends AbstractLangTrainerModule {
       this.tipZone.setVisible(false);
       return;
     }
-    if (this.lineIndex >= this.activeDialog.lines().size()) {
+    if (this.remainingLineIndices.isEmpty()) {
       this.tipZone.setVisible(false);
       return;
     }
-    final DialogLine line = this.activeDialog.lines().get(this.lineIndex);
+    final DialogLine line = this.activeDialog.lines().get(this.currentLineOrdinal);
     final String expected = this.userWritesToA ? line.a() : line.b();
     final String entered =
         enteredOverride != null
@@ -826,14 +1142,13 @@ public final class DialogModule extends AbstractLangTrainerModule {
 
   private void setTipControlsWorkMode(final boolean workActive) {
     this.tipToggle.setEnabled(workActive);
+    this.shuffleToggle.setEnabled(workActive);
+    this.showPhraseButton.setEnabled(workActive);
     if (!workActive) {
       this.tipToggle.setSelected(false);
-      this.tipToggle.setBackground(TIP_TOGGLE_BG);
-      this.tipToggle.setBorder(BorderFactory.createCompoundBorder(
-          BorderFactory.createLineBorder(TIP_TOGGLE_BORDER, 2, true),
-          BorderFactory.createEmptyBorder(8, 18, 8, 18)));
       this.tipZone.setVisible(false);
     }
+    refreshHeaderToggleAppearance();
   }
 
   private void attachKeepFocusOnWorkField(final JTextArea area) {
@@ -963,13 +1278,14 @@ public final class DialogModule extends AbstractLangTrainerModule {
 
   private void startDialog(final DialogDefinition definition) {
     this.activeDialog = definition;
-    this.lineIndex = 0;
+    final int lineCount = definition.lines().size();
+    this.remainingLineIndices.clear();
+    for (int i = 0; i < lineCount; i++) {
+      this.remainingLineIndices.add(i);
+    }
+    pickCurrentLineFromRemaining();
     this.workRoundActive = true;
     this.tipToggle.setSelected(false);
-    this.tipToggle.setBackground(TIP_TOGGLE_BG);
-    this.tipToggle.setBorder(BorderFactory.createCompoundBorder(
-        BorderFactory.createLineBorder(TIP_TOGGLE_BORDER, 2, true),
-        BorderFactory.createEmptyBorder(8, 18, 8, 18)));
     setTipControlsWorkMode(true);
     this.historyA.clear();
     this.historyB.clear();
@@ -991,8 +1307,8 @@ public final class DialogModule extends AbstractLangTrainerModule {
   }
 
   private void updateTargetTextForCurrentLine() {
-    if (this.activeDialog != null && this.lineIndex < this.activeDialog.lines().size()) {
-      final DialogLine line = this.activeDialog.lines().get(this.lineIndex);
+    if (this.activeDialog != null && !this.remainingLineIndices.isEmpty()) {
+      final DialogLine line = this.activeDialog.lines().get(this.currentLineOrdinal);
       if (this.userWritesToA) {
         this.inputB.setText(line.b());
       } else {
@@ -1010,14 +1326,22 @@ public final class DialogModule extends AbstractLangTrainerModule {
       return;
     }
     final int total = this.activeDialog.lines().size();
-    final int displayLine = Math.min(this.lineIndex + 1, total);
+    if (total == 0) {
+      this.progressHeader.setText(
+          "Dialog %s,  line 0 from 0".formatted(this.activeDialog.menuName()));
+      return;
+    }
+    final int displayLine =
+        this.remainingLineIndices.isEmpty()
+            ? total
+            : total - this.remainingLineIndices.size() + 1;
     this.progressHeader.setText(
         "Dialog %s,  line %d from %d".formatted(this.activeDialog.menuName(), displayLine, total));
   }
 
   private void processEnter() {
-    if (this.activeDialog != null && this.lineIndex < this.activeDialog.lines().size()) {
-      final DialogLine line = this.activeDialog.lines().get(this.lineIndex);
+    if (this.activeDialog != null && !this.remainingLineIndices.isEmpty()) {
+      final DialogLine line = this.activeDialog.lines().get(this.currentLineOrdinal);
       final String expected = this.userWritesToA ? line.a() : line.b();
       final String entered = focusedInput().getText();
       if (isCloseEnough(entered, expected)) {
@@ -1026,10 +1350,11 @@ public final class DialogModule extends AbstractLangTrainerModule {
         this.showA.setText(String.join("\n", this.historyA));
         this.showB.setText(String.join("\n", this.historyB));
         scrollHistoryPanesToBottom();
-        this.lineIndex++;
-        if (this.lineIndex >= this.activeDialog.lines().size()) {
+        this.remainingLineIndices.remove(Integer.valueOf(this.currentLineOrdinal));
+        if (this.remainingLineIndices.isEmpty()) {
           finishDialog();
         } else {
+          pickCurrentLineFromRemaining();
           updateTargetTextForCurrentLine();
         }
       } else {
@@ -1039,6 +1364,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   }
 
   private void finishDialog() {
+    dismissPhraseLearningBanner();
     this.workRoundActive = false;
     setTipControlsWorkMode(false);
     applyWorkbenchStyles(true);
