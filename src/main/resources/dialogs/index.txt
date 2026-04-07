@@ -6,3 +6,4 @@ dialogs/en-ru-50-stock-1.json
 dialogs/en-ru-50-idioms-1.json
 dialogs/est-ru-b1-dialog-1.json
 dialogs/en-ru-100-words-c1-1.json
+dialogs/est-ru-400-freq.json
