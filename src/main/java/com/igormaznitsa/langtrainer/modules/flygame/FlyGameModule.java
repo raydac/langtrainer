@@ -6,6 +6,8 @@ import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.LangTrainerApplication;
 import com.igormaznitsa.langtrainer.modules.dialog.DialogDefinition;
 import com.igormaznitsa.langtrainer.modules.dialog.DialogLine;
+import com.igormaznitsa.langtrainer.modules.dialog.InputEquivalenceRow;
+import com.igormaznitsa.langtrainer.modules.dialog.InputEquivalenceSupport;
 import com.igormaznitsa.langtrainer.text.TypingComparisonUtils;
 import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
@@ -20,7 +22,6 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.Rectangle;
-import java.awt.RenderingHints;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
@@ -30,11 +31,10 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.Ellipse2D;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.Icon;
@@ -52,11 +52,9 @@ import javax.swing.JToggleButton;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.text.AbstractDocument;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.DocumentFilter;
 
 public final class FlyGameModule extends AbstractLangTrainerModule {
 
@@ -66,7 +64,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   /**
    * ~25 FPS; full-sky repaint each tick — keep modest to limit CPU while typing.
    */
-  private static final int TIMER_MS = 60;
+  private static final int TIMER_MS = 50;
   /**
    * Cloud drift was originally tuned per tick at 25 ms; scale so motion stays consistent if {@link #TIMER_MS} changes.
    */
@@ -99,12 +97,12 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
 
   @Override
   public String getName() {
-    return "FLY GAME";
+    return "Words";
   }
 
   @Override
   public String getDescription() {
-    return "Fly across words: type the answer before the helicopter leaves";
+    return "Fly across words: type the answer before the aircraft leaves";
   }
 
   @Override
@@ -145,6 +143,26 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
 
   private void showCard(final String name) {
     ((java.awt.CardLayout) this.rootPanel.getLayout()).show(this.rootPanel, name);
+    final boolean showToolbar = CARD_SELECT.equals(name);
+    final Runnable syncHostToolbar = () -> syncMainFrameToolbarVisibility(showToolbar);
+    if (this.rootPanel.getParent() != null) {
+      syncHostToolbar.run();
+    } else {
+      SwingUtilities.invokeLater(syncHostToolbar);
+    }
+  }
+
+  private void syncMainFrameToolbarVisibility(final boolean toolbarVisible) {
+    final java.awt.Container parent = this.rootPanel.getParent();
+    if (!(parent instanceof JComponent host)) {
+      return;
+    }
+    final Object prop =
+        host.getClientProperty(LangTrainerApplication.SET_TOOLBAR_VISIBLE_CLIENT_PROPERTY);
+    if (prop instanceof Consumer<?> consumer) {
+      @SuppressWarnings("unchecked") final Consumer<Boolean> setter = (Consumer<Boolean>) consumer;
+      setter.accept(toolbarVisible);
+    }
   }
 
   void enterGame(final DialogDefinition definition, final boolean userTypesA) {
@@ -302,8 +320,8 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     private final JButton btnClose = new JButton();
     private final JButton btnPause = new JButton();
     private final JToggleButton btnSound = new JToggleButton();
-    private final LinkedList<Integer> playQueue = new LinkedList<>();
     private final Random queueRandom = new Random();
+    private FlyLeitnerSession leitner;
     private boolean soundEffectsEnabled = true;
     private final FlyGameSfx sfx = new FlyGameSfx(this::isSoundEffectsEnabled);
     private Timer animator;
@@ -312,8 +330,6 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     private DialogDefinition dialog;
     private boolean userTypesA;
     private int currentLineOrdinal;
-    private int wrongSubmitsCurrentWord;
-    private boolean scheduledExtraForTwoWrongSubmits;
     private float heliProgress;
     private int explodeFramesLeft;
     private boolean paused;
@@ -321,6 +337,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     private String answerBannerText = "";
     private JDialog victoryOverlay;
     private Timer victoryDismissTimer;
+    private boolean applyingInputEquivalence;
 
     GameBoard(final FlyGameModule host) {
       this.host = host;
@@ -359,9 +376,6 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       this.input.setBorder(BorderFactory.createEmptyBorder());
       this.input.setPreferredSize(new Dimension(1, 1));
       this.input.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
-      if (this.input.getDocument() instanceof AbstractDocument doc) {
-        doc.setDocumentFilter(new UppercaseAsciiDocumentFilter());
-      }
       this.input.addActionListener(e -> trySubmit());
       this.input.addKeyListener(new KeyAdapter() {
         @Override
@@ -371,6 +385,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
           }
         }
       });
+      attachFlyInputEquivalence();
 
       final JLabel hint = new JLabel("Press Enter to fire", SwingConstants.CENTER);
       hint.setForeground(new Color(240, 248, 255));
@@ -445,78 +460,53 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     }
 
     void appendChar(final char symbol) {
-      final String piece =
-          String.valueOf(symbol).toUpperCase(Locale.ROOT);
-      this.input.replaceSelection(piece);
+      this.input.replaceSelection(String.valueOf(symbol));
       this.input.requestFocusInWindow();
     }
 
-    private void buildInitialPlayQueue(final int lineCount) {
-      this.playQueue.clear();
-      if (lineCount == 0) {
-        return;
-      }
-      final List<Integer> pool = new ArrayList<>(lineCount);
-      for (int i = 0; i < lineCount; i++) {
-        pool.add(i);
-      }
-      final List<Integer> roundA = new ArrayList<>(pool);
-      final List<Integer> roundB = new ArrayList<>(pool);
-      Collections.shuffle(roundA, this.queueRandom);
-      Collections.shuffle(roundB, this.queueRandom);
-      int guard = 0;
-      while (roundA.equals(roundB) && lineCount > 1 && guard++ < 200) {
-        Collections.shuffle(roundB, this.queueRandom);
-      }
-      this.playQueue.addAll(roundA);
-      this.playQueue.addAll(roundB);
-      stripAdjacentDuplicateWords();
-    }
-
-    private void stripAdjacentDuplicateWords() {
-      if (this.playQueue.size() < 2) {
-        return;
-      }
-      final List<Integer> buf = new ArrayList<>(this.playQueue);
-      boolean changed = true;
-      int iterations = 0;
-      while (changed && iterations++ < buf.size() * buf.size()) {
-        changed = false;
-        for (int i = 0; i < buf.size() - 1; i++) {
-          if (!buf.get(i).equals(buf.get(i + 1))) {
-            continue;
+    private void attachFlyInputEquivalence() {
+      this.input.getDocument().addDocumentListener(new DocumentListener() {
+        @Override
+        public void insertUpdate(final DocumentEvent event) {
+          if (GameBoard.this.applyingInputEquivalence) {
+            return;
           }
-          int swapWith = -1;
-          for (int j = i + 2; j < buf.size(); j++) {
-            if (!buf.get(j).equals(buf.get(i))) {
-              swapWith = j;
-              break;
+          final int start = event.getOffset();
+          final int insertLen = event.getLength();
+          SwingUtilities.invokeLater(() -> {
+            try {
+              GameBoard.this.applyingInputEquivalence = true;
+              applyFlyInputEquivalence(start, insertLen);
+            } finally {
+              GameBoard.this.applyingInputEquivalence = false;
             }
-          }
-          if (swapWith < 0) {
-            for (int j = 0; j < i; j++) {
-              if (!buf.get(j).equals(buf.get(i))) {
-                swapWith = j;
-                break;
-              }
-            }
-          }
-          if (swapWith >= 0) {
-            Collections.swap(buf, i + 1, swapWith);
-            changed = true;
-          }
+          });
         }
-      }
-      this.playQueue.clear();
-      buf.forEach(this.playQueue::addLast);
+
+        @Override
+        public void removeUpdate(final DocumentEvent event) {
+        }
+
+        @Override
+        public void changedUpdate(final DocumentEvent event) {
+        }
+      });
     }
 
-    private void injectScheduledOccurrences(final int ordinal, final int copies) {
-      for (int k = 0; k < copies; k++) {
-        final int spread = 3 + this.queueRandom.nextInt(3);
-        final int pos = Math.min(this.playQueue.size(), spread + k * 4);
-        this.playQueue.add(pos, ordinal);
+    private void applyFlyInputEquivalence(final int start, final int insertLen) {
+      if (this.dialog == null
+          || this.showingAnswer
+          || this.explodeFramesLeft > 0
+          || insertLen <= 0) {
+        return;
       }
+      final List<InputEquivalenceRow> rules = this.dialog.inputEqu();
+      if (rules.isEmpty()) {
+        return;
+      }
+      final DialogLine line = this.dialog.lines().get(this.currentLineOrdinal);
+      final String expectedFull = this.userTypesA ? line.a() : line.b();
+      InputEquivalenceSupport.applyAfterInsert(this.input, expectedFull, rules, start, insertLen);
     }
 
     boolean startSession(
@@ -534,10 +524,8 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         this.dialog = null;
         return false;
       }
-      buildInitialPlayQueue(lineCount);
-      this.currentLineOrdinal = this.playQueue.peekFirst();
-      this.wrongSubmitsCurrentWord = 0;
-      this.scheduledExtraForTwoWrongSubmits = false;
+      this.leitner = new FlyLeitnerSession(lineCount, this.queueRandom);
+      this.currentLineOrdinal = this.leitner.nextOrdinalToFly();
       this.heliProgress = 0f;
       this.explodeFramesLeft = 0;
       this.paused = false;
@@ -565,6 +553,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         this.answerDismissTimer = null;
       }
       this.dialog = null;
+      this.leitner = null;
     }
 
     private void dismissVictoryBanner() {
@@ -695,13 +684,16 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
 
     private void onMissedDeadline() {
       this.sfx.play(FlyGameSfx.CAT_ANGRY);
+      if (this.leitner != null) {
+        this.leitner.registerFailure(this.currentLineOrdinal);
+      }
       if (this.animator != null) {
         this.animator.stop();
         this.animator = null;
       }
       final DialogLine line = this.dialog.lines().get(this.currentLineOrdinal);
       final String expected = this.userTypesA ? line.a() : line.b();
-      this.answerBannerText = expected;
+      this.answerBannerText = expected.toUpperCase(Locale.ROOT);
       this.showingAnswer = true;
       this.input.setText("");
       this.repaintSkyFrame();
@@ -718,14 +710,9 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       this.showingAnswer = false;
       this.answerBannerText = "";
       this.heliProgress = 0f;
-      if (this.dialog == null || this.playQueue.isEmpty()) {
+      if (this.dialog == null || this.leitner == null || !this.leitner.hasWorkLeft()) {
         return;
       }
-      final int missed = this.playQueue.removeFirst();
-      injectScheduledOccurrences(missed, 2);
-      this.currentLineOrdinal = this.playQueue.peekFirst();
-      this.wrongSubmitsCurrentWord = 0;
-      this.scheduledExtraForTwoWrongSubmits = false;
       if (this.animator == null) {
         this.animator = makeFrameAnimatorTimer();
       }
@@ -748,27 +735,24 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         this.input.setText("");
       } else {
         this.sfx.play(FlyGameSfx.MISFIRE);
-        this.wrongSubmitsCurrentWord++;
-        if (this.wrongSubmitsCurrentWord >= 2 && !this.scheduledExtraForTwoWrongSubmits) {
-          injectScheduledOccurrences(this.currentLineOrdinal, 1);
-          this.scheduledExtraForTwoWrongSubmits = true;
+        if (this.leitner != null) {
+          this.leitner.registerFailure(this.currentLineOrdinal);
         }
       }
       this.repaintSkyFrame();
     }
 
     private void advanceAfterHit() {
-      this.playQueue.removeFirst();
-      if (this.playQueue.isEmpty()) {
+      final boolean allDone =
+          this.leitner == null || this.leitner.registerCorrect(this.currentLineOrdinal);
+      if (allDone) {
         this.sfx.play(FlyGameSfx.ENDGAME);
         shutdownSession();
         showVictoryBannerOverlay();
         return;
       }
-      this.currentLineOrdinal = this.playQueue.peekFirst();
+      this.currentLineOrdinal = this.leitner.nextOrdinalToFly();
       this.heliProgress = 0f;
-      this.wrongSubmitsCurrentWord = 0;
-      this.scheduledExtraForTwoWrongSubmits = false;
       refreshStatus();
       this.sfx.play(FlyGameSfx.AIR_START);
       SwingUtilities.invokeLater(this.input::requestFocusInWindow);
@@ -779,7 +763,17 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         this.status.setText(" ");
         return;
       }
-      this.status.setText(this.dialog.menuName());
+      if (this.leitner == null) {
+        this.status.setText(this.dialog.menuName());
+        return;
+      }
+      this.status.setText(
+          String.format(
+              "%s · Bucket %d/%d · %d left",
+              this.dialog.menuName(),
+              this.leitner.currentBucketOneBased(),
+              this.leitner.bucketCount(),
+              this.leitner.wordsRemainingInActiveBucket()));
     }
 
     String currentPrompt() {
@@ -796,7 +790,8 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         return "";
       }
       final DialogLine line = this.dialog.lines().get(this.currentLineOrdinal);
-      return this.userTypesA ? line.a() : line.b();
+      final String raw = this.userTypesA ? line.a() : line.b();
+      return raw.toUpperCase(Locale.ROOT);
     }
 
     float heliProgress() {
@@ -815,40 +810,17 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       return this.answerBannerText;
     }
 
+    /**
+     * Uppercase form of the field text for on-screen typing hint, aim logic, and overlays. Raw
+     * text stays in the field for {@code inputEqu}; {@link TypingComparisonUtils} compares answers
+     * case-insensitively.
+     */
     String typedForAim() {
-      return this.input.getText();
+      return this.input.getText().toUpperCase(Locale.ROOT);
     }
 
     boolean isPaused() {
       return this.paused;
-    }
-
-    private static final class UppercaseAsciiDocumentFilter extends DocumentFilter {
-
-      private static String upper(final String text) {
-        return text == null ? null : text.toUpperCase(Locale.ROOT);
-      }
-
-      @Override
-      public void replace(
-          final FilterBypass fb,
-          final int offset,
-          final int length,
-          final String text,
-          final AttributeSet attrs)
-          throws BadLocationException {
-        super.replace(fb, offset, length, upper(text), attrs);
-      }
-
-      @Override
-      public void insertString(
-          final FilterBypass fb,
-          final int offset,
-          final String string,
-          final AttributeSet attr)
-          throws BadLocationException {
-        super.insertString(fb, offset, upper(string), attr);
-      }
     }
 
     private static final class Cloud {
@@ -988,7 +960,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         super.paintComponent(g);
         final Graphics2D g2 = (Graphics2D) g.create();
         try {
-          g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+          ImageResourceLoader.applyHighQualityDrawingHints(g2);
           final int w = getWidth();
           final int h = getHeight();
           if (w <= 0 || h <= 0) {
@@ -1069,9 +1041,9 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         final int tw = fm.stringWidth(draw);
         final int tx = (w - tw) / 2;
         final int ty = (int) (h * 0.11);
-        g2.setColor(Color.BLACK);
+        g2.setColor(Color.BLUE);
         g2.drawString(draw, tx + 2, ty + 2);
-        g2.setColor(Color.ORANGE);
+        g2.setColor(Color.MAGENTA);
         g2.drawString(draw, tx, ty);
       }
 
@@ -1083,7 +1055,8 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
           final int heliCy) {
         final String typed = GameBoard.this.typedForAim();
         final String expected = GameBoard.this.currentExpected();
-        final int maxRadius = Math.min(Math.min(w / 3, 220), Math.min(h / 3, 220));
+        final int maxRadius =
+            Math.min(Math.min(w * 2 / 5, 340), Math.min(h * 2 / 5, 340));
         final int aimX;
         final int aimY;
         if (typed.isEmpty()) {
@@ -1099,7 +1072,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
           final long mix = (long) typed.hashCode() * 31L + expected.hashCode();
           final double theta = (Math.floorMod(mix, 899) + 1) / 900.0 * (Math.PI / 2);
           final double radiusPx =
-              Math.min(Math.max(edits * 14.0, edits > 0 ? 12.0 : 8.0), maxRadius);
+              Math.min(Math.max(edits * 30.0, edits > 0 ? 40.0 : 20.0), maxRadius);
           aimX = heliCx + (int) Math.round(signX * radiusPx * Math.cos(theta));
           aimY = heliCy + (int) Math.round(signY * radiusPx * Math.sin(theta));
         }

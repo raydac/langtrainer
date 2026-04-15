@@ -4,6 +4,7 @@ import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Font;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -18,16 +19,18 @@ public final class ModuleCellRenderer extends JPanel
   private final JLabel nameLabel;
 
   public ModuleCellRenderer() {
-    super(new BorderLayout(8, 8));
+    super(new BorderLayout(10, 10));
     this.iconLabel = new JLabel();
     this.iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
     this.nameLabel = new JLabel();
     this.nameLabel.setHorizontalAlignment(SwingConstants.CENTER);
-    this.nameLabel.setVerticalAlignment(SwingConstants.CENTER);
-    setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+    this.nameLabel.setVerticalAlignment(SwingConstants.TOP);
+    this.nameLabel.setFont(this.nameLabel.getFont().deriveFont(Font.BOLD, 19f));
     add(this.iconLabel, BorderLayout.CENTER);
     add(this.nameLabel, BorderLayout.SOUTH);
-    setOpaque(true);
+    setOpaque(false);
+    this.iconLabel.setOpaque(false);
+    this.nameLabel.setOpaque(false);
   }
 
   @Override
@@ -37,13 +40,12 @@ public final class ModuleCellRenderer extends JPanel
       final int index,
       final boolean isSelected,
       final boolean cellHasFocus) {
-    final Color background = isSelected ? new Color(204, 230, 255) : new Color(245, 245, 245);
-    final Color borderColor = isSelected ? new Color(70, 130, 180) : new Color(210, 210, 210);
+    final Color nameFg = isSelected ? new Color(12, 72, 168) : new Color(28, 38, 58);
     this.iconLabel.setIcon(value.getImage());
     this.nameLabel.setText(value.getName());
+    this.nameLabel.setForeground(nameFg);
     this.nameLabel.setToolTipText(value.getDescription());
-    setBackground(background);
-    setBorder(BorderFactory.createLineBorder(borderColor, 2, true));
+    setBorder(BorderFactory.createEmptyBorder(10, 12, 14, 12));
     return this;
   }
 }

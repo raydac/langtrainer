@@ -2,6 +2,7 @@ package com.igormaznitsa.langtrainer.engine;
 
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -9,6 +10,7 @@ import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.function.Consumer;
 import javax.swing.AbstractAction;
+import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.JList;
 import javax.swing.JPanel;
@@ -24,15 +26,22 @@ public final class MainMenuPanel extends JPanel {
       final List<AbstractLangTrainerModule> modules,
       final Consumer<AbstractLangTrainerModule> onModuleActivate) {
     super(new BorderLayout());
+    final Color menuBg = new Color(248, 250, 252);
+    setBackground(menuBg);
+    setOpaque(true);
     final DefaultListModel<AbstractLangTrainerModule> model = new DefaultListModel<>();
     modules.forEach(model::addElement);
     this.modulesList = new JList<>(model);
+    this.modulesList.setBackground(menuBg);
+    this.modulesList.setOpaque(true);
+    this.modulesList.setSelectionBackground(menuBg);
+    this.modulesList.setSelectionForeground(new Color(28, 38, 58));
     this.modulesList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     this.modulesList.setCellRenderer(new ModuleCellRenderer());
     this.modulesList.setVisibleRowCount(-1);
     this.modulesList.setLayoutOrientation(JList.HORIZONTAL_WRAP);
-    this.modulesList.setFixedCellWidth(180);
-    this.modulesList.setFixedCellHeight(180);
+    this.modulesList.setFixedCellWidth(228);
+    this.modulesList.setFixedCellHeight(200);
     this.modulesList.setSelectedIndex(0);
     this.modulesList.addMouseListener(new MouseAdapter() {
       @Override
@@ -53,7 +62,9 @@ public final class MainMenuPanel extends JPanel {
       }
     });
     final JScrollPane scrollPane = new JScrollPane(this.modulesList);
-    scrollPane.setPreferredSize(new Dimension(640, 420));
+    scrollPane.getViewport().setBackground(menuBg);
+    scrollPane.setBorder(BorderFactory.createEmptyBorder(8, 12, 12, 12));
+    scrollPane.setPreferredSize(new Dimension(720, 440));
     add(scrollPane, BorderLayout.CENTER);
   }
 

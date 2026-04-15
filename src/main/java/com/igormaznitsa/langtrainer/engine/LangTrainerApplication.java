@@ -10,6 +10,7 @@ import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.KeyEvent;
 import java.util.List;
+import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -25,11 +26,18 @@ public final class LangTrainerApplication {
    */
   public static final String CLOSE_MODULE_CLIENT_PROPERTY = "langtrainer.closeModule";
 
+  /**
+   * Placed on the module host panel so modules can show or hide the frame toolbar (virtual keyboard
+   * and exit). Value is a {@code Consumer<Boolean>}; {@code true} means the toolbar is visible.
+   */
+  public static final String SET_TOOLBAR_VISIBLE_CLIENT_PROPERTY = "langtrainer.setToolbarVisible";
+
   private final JFrame mainFrame;
   private final List<AbstractLangTrainerModule> modules;
   private final MainMenuPanel mainMenuPanel;
   private final KeyEventDispatcher realKeyboardDispatcher;
   private JButton keyboardButton;
+  private JPanel moduleToolbarPanel;
   private VirtualKeyboardWindow virtualKeyboardWindow;
   private AbstractLangTrainerModule activeModule;
 
@@ -65,6 +73,8 @@ public final class LangTrainerApplication {
 
     final JPanel container = new JPanel(new BorderLayout());
     container.putClientProperty(CLOSE_MODULE_CLIENT_PROPERTY, (Runnable) this::closeActiveModule);
+    container.putClientProperty(
+        SET_TOOLBAR_VISIBLE_CLIENT_PROPERTY, (Consumer<Boolean>) this::setModuleTopToolbarVisible);
     container.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
     container.add(makeTopPanel(), BorderLayout.NORTH);
     container.add(module.createControlForm(), BorderLayout.CENTER);
@@ -75,6 +85,7 @@ public final class LangTrainerApplication {
 
   private JPanel makeTopPanel() {
     final JPanel topPanel = new JPanel(new BorderLayout());
+    this.moduleToolbarPanel = topPanel;
     topPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
     final JPanel rightButtons = new JPanel();
     this.keyboardButton = new JButton();
@@ -98,6 +109,17 @@ public final class LangTrainerApplication {
     return topPanel;
   }
 
+  private void setModuleTopToolbarVisible(final boolean visible) {
+    if (this.moduleToolbarPanel != null) {
+      this.moduleToolbarPanel.setVisible(visible);
+    }
+    if (!visible) {
+      closeVirtualKeyboard();
+    }
+    this.mainFrame.revalidate();
+    this.mainFrame.repaint();
+  }
+
   private void closeActiveModule() {
     if (this.activeModule != null) {
       this.activeModule.onClose();
@@ -106,6 +128,7 @@ public final class LangTrainerApplication {
     KeyboardFocusManager.getCurrentKeyboardFocusManager()
         .removeKeyEventDispatcher(this.realKeyboardDispatcher);
     closeVirtualKeyboard();
+    this.moduleToolbarPanel = null;
     this.mainFrame.setContentPane(this.mainMenuPanel);
     this.mainFrame.revalidate();
     this.mainFrame.repaint();

@@ -210,25 +210,77 @@ public final class DialogModule extends AbstractLangTrainerModule {
     return area;
   }
 
+  /**
+   * Tip for the current expected word: correct prefix, then one {@code .} per still-hidden slot
+   * before the last <em>letter</em> of the word (trailing {@code ? ! …} are not used as the
+   * right anchor). If the user finished all letters of a token and only punctuation remains
+   * (e.g. {@code Jah} vs {@code Jah,}), the tip advances to the next word.
+   */
+  private static String computeTypingTip(final String entered, final String expected) {
+    if (expected == null || expected.isEmpty()) {
+      return "";
+    }
+    int ei = 0;
+    int ej = 0;
+    final int enteredLen = entered.length();
+    final int expectedLen = expected.length();
+    while (true) {
+      while (ei < enteredLen && Character.isWhitespace(entered.charAt(ei))) {
+        ei++;
+      }
+      while (ej < expectedLen && Character.isWhitespace(expected.charAt(ej))) {
+        ej++;
+      }
+      if (ej >= expectedLen) {
+        return "";
+      }
+      final int wordStartExpected = ej;
+      while (ej < expectedLen && !Character.isWhitespace(expected.charAt(ej))) {
+        ej++;
+      }
+      final String expectedWord = expected.substring(wordStartExpected, ej);
+      if (expectedWord.isEmpty()) {
+        continue;
+      }
+      final int wordStartEntered = ei;
+      while (ei < enteredLen && !Character.isWhitespace(entered.charAt(ei))) {
+        ei++;
+      }
+      final String enteredWord = entered.substring(wordStartEntered, ei);
+      int eiW = 0;
+      int ejW = 0;
+      while (eiW < enteredWord.length() && ejW < expectedWord.length()) {
+        final int cpa = enteredWord.codePointAt(eiW);
+        final int cpb = expectedWord.codePointAt(ejW);
+        if (!InputEquivalenceSupport.codePointsMatchForTip(cpa, cpb)) {
+          break;
+        }
+        eiW += Character.charCount(cpa);
+        ejW += Character.charCount(cpb);
+      }
+      if (eiW < enteredWord.length()) {
+        if (ejW < expectedWord.length()) {
+          return formatWordTipWithLetterDots(expectedWord, ejW);
+        }
+        return expectedWord;
+      }
+      if (ejW < expectedWord.length()) {
+        if (onlyNonLettersFrom(expectedWord, ejW)) {
+          continue;
+        }
+        return formatWordTipWithLetterDots(expectedWord, ejW);
+      }
+    }
+  }
+
   @Override
   public String getName() {
-    String result;
-    result = "DIALOG";
-    return result;
+    return "Dialogs";
   }
 
   @Override
   public String getDescription() {
-    String result;
-    result = "Translation dialog trainer";
-    return result;
-  }
-
-  @Override
-  public Icon getImage() {
-    Icon result;
-    result = ImageResourceLoader.loadIcon("/images/module-dialog.svg", 128, 128);
-    return result;
+    return "Translation dialog trainer";
   }
 
   @Override
@@ -386,70 +438,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
     }
   }
 
-  /**
-   * Maps a character index in the user's text to the corresponding index in the expected line.
-   * Handles omitted punctuation (e.g. comma after {@code Jah}) and letter case so {@code jah ma
-   * toötan} lines up with {@code Jah, ma töötan}.
-   */
-  private static int expectedOffsetForDocumentIndex(
-      final String doc, final String expected, final int docIndex) {
-    int i = 0;
-    int j = 0;
-    final int target = Math.min(docIndex, doc.length());
-    while (i < target && j < expected.length()) {
-      final int cpd = doc.codePointAt(i);
-      final int cpe = expected.codePointAt(j);
-      final int di = Character.charCount(cpd);
-      final int ej = Character.charCount(cpe);
-      if (codePointsMatchForTip(cpd, cpe)) {
-        i += di;
-        j += ej;
-        continue;
-      }
-      if (isSkippableSeparatorInExpected(cpe)) {
-        final int afterSep = j + ej;
-        if (afterSep < expected.length()) {
-          final int cpNext = expected.codePointAt(afterSep);
-          if (codePointsMatchForTip(cpd, cpNext)) {
-            j = afterSep + Character.charCount(cpNext);
-            i += di;
-            continue;
-          }
-        }
-        if (Character.isWhitespace(cpd)) {
-          j += ej;
-          continue;
-        }
-        i += di;
-        j += ej;
-        continue;
-      }
-      i += di;
-      j += ej;
-    }
-    return j;
-  }
-
-  private static boolean isSkippableSeparatorInExpected(final int cp) {
-    return cp == ',' || cp == ';' || cp == ':' || cp == '.' || cp == '!' || cp == '?' || cp == '…';
-  }
-
-  private static String matchInputEquivalence(
-      final String typed,
-      final String expectedChar,
-      final List<InputEquivalenceRow> rules) {
-    for (final InputEquivalenceRow row : rules) {
-      final List<String> keys = row.key();
-      final List<String> vals = row.value();
-      for (int i = 0; i < keys.size(); i++) {
-        if (typed.equals(keys.get(i)) && expectedChar.equals(vals.get(i))) {
-          return vals.get(i);
-        }
-      }
-    }
-    return null;
-  }
-
   private static String extractDocumentText(final Document doc) {
     try {
       return doc.getText(0, doc.getLength());
@@ -458,67 +446,9 @@ public final class DialogModule extends AbstractLangTrainerModule {
     }
   }
 
-  /**
-   * Tip for the current expected word: correct prefix, then one {@code .} per still-hidden slot
-   * before the last <em>letter</em> of the word (trailing {@code ? ! …} are not used as the
-   * right anchor). If the user finished all letters of a token and only punctuation remains
-   * (e.g. {@code Jah} vs {@code Jah,}), the tip advances to the next word.
-   */
-  private static String computeTypingTip(final String entered, final String expected) {
-    if (expected == null || expected.isEmpty()) {
-      return "";
-    }
-    int ei = 0;
-    int ej = 0;
-    final int enteredLen = entered.length();
-    final int expectedLen = expected.length();
-    while (true) {
-      while (ei < enteredLen && Character.isWhitespace(entered.charAt(ei))) {
-        ei++;
-      }
-      while (ej < expectedLen && Character.isWhitespace(expected.charAt(ej))) {
-        ej++;
-      }
-      if (ej >= expectedLen) {
-        return "";
-      }
-      final int wordStartExpected = ej;
-      while (ej < expectedLen && !Character.isWhitespace(expected.charAt(ej))) {
-        ej++;
-      }
-      final String expectedWord = expected.substring(wordStartExpected, ej);
-      if (expectedWord.isEmpty()) {
-        continue;
-      }
-      final int wordStartEntered = ei;
-      while (ei < enteredLen && !Character.isWhitespace(entered.charAt(ei))) {
-        ei++;
-      }
-      final String enteredWord = entered.substring(wordStartEntered, ei);
-      int eiW = 0;
-      int ejW = 0;
-      while (eiW < enteredWord.length() && ejW < expectedWord.length()) {
-        final int cpa = enteredWord.codePointAt(eiW);
-        final int cpb = expectedWord.codePointAt(ejW);
-        if (!codePointsMatchForTip(cpa, cpb)) {
-          break;
-        }
-        eiW += Character.charCount(cpa);
-        ejW += Character.charCount(cpb);
-      }
-      if (eiW < enteredWord.length()) {
-        if (ejW < expectedWord.length()) {
-          return formatWordTipWithLetterDots(expectedWord, ejW);
-        }
-        return expectedWord;
-      }
-      if (ejW < expectedWord.length()) {
-        if (onlyNonLettersFrom(expectedWord, ejW)) {
-          continue;
-        }
-        return formatWordTipWithLetterDots(expectedWord, ejW);
-      }
-    }
+  @Override
+  public Icon getImage() {
+    return ImageResourceLoader.loadIcon("/dialogs/images/module-dialog.svg", 128, 128);
   }
 
   /**
@@ -534,16 +464,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
       i += Character.charCount(cp);
     }
     return true;
-  }
-
-  private static boolean codePointsMatchForTip(final int typed, final int expected) {
-    if (typed == expected) {
-      return true;
-    }
-    if (Character.isLetter(typed) && Character.isLetter(expected)) {
-      return Character.toLowerCase(typed) == Character.toLowerCase(expected);
-    }
-    return false;
   }
 
   /**
@@ -1023,44 +943,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     }
     final DialogLine line = this.activeDialog.lines().get(this.currentLineOrdinal);
     final String expectedFull = this.userWritesToA ? line.a() : line.b();
-    int p = start;
-    int end = start + insertLen;
-    while (p < end) {
-      final String doc = area.getText();
-      if (p >= doc.length()) {
-        break;
-      }
-      final int cp = doc.codePointAt(p);
-      final int chLen = Character.charCount(cp);
-      if (p + chLen > doc.length()) {
-        break;
-      }
-      final String typedStr = doc.substring(p, p + chLen);
-      final int expPos = expectedOffsetForDocumentIndex(doc, expectedFull, p);
-      if (expPos >= expectedFull.length()) {
-        p += chLen;
-        continue;
-      }
-      final int expLen = Character.charCount(expectedFull.codePointAt(expPos));
-      if (expPos + expLen > expectedFull.length()) {
-        p += chLen;
-        continue;
-      }
-      final String expStr = expectedFull.substring(expPos, expPos + expLen);
-      if (chLen != expLen) {
-        p += chLen;
-        continue;
-      }
-      final String replacement = matchInputEquivalence(typedStr, expStr, rules);
-      if (replacement != null && !replacement.equals(typedStr)) {
-        area.replaceRange(replacement, p, p + chLen);
-        final int delta = replacement.length() - chLen;
-        end += delta;
-        p += replacement.length();
-      } else {
-        p += chLen;
-      }
-    }
+    InputEquivalenceSupport.applyAfterInsert(area, expectedFull, rules, start, insertLen);
   }
 
   /**
