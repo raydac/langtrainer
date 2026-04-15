@@ -468,12 +468,8 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       while (roundA.equals(roundB) && lineCount > 1 && guard++ < 200) {
         Collections.shuffle(roundB, this.queueRandom);
       }
-      for (Integer ord : roundA) {
-        this.playQueue.add(ord);
-      }
-      for (Integer ord : roundB) {
-        this.playQueue.add(ord);
-      }
+      this.playQueue.addAll(roundA);
+      this.playQueue.addAll(roundB);
       stripAdjacentDuplicateWords();
     }
 
@@ -883,7 +879,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
 
       private static int aimRasterPixels(final int panelH) {
         final int arm = Math.max(18, Math.min(40, panelH / 18));
-        return Math.max(32, Math.min(128, arm * 2 + 12));
+        return Math.min(128, arm * 2 + 12);
       }
 
       private static float scaleFont(final int panelW, final float minPt, final float maxPt) {
