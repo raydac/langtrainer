@@ -19,6 +19,12 @@ import javax.swing.WindowConstants;
 
 public final class LangTrainerApplication {
 
+  /**
+   * Placed on the module host panel so embedded modules (for example Fly game) can request return
+   * to the main menu the same way as the frame toolbar close action.
+   */
+  public static final String CLOSE_MODULE_CLIENT_PROPERTY = "langtrainer.closeModule";
+
   private final JFrame mainFrame;
   private final List<AbstractLangTrainerModule> modules;
   private final MainMenuPanel mainMenuPanel;
@@ -58,6 +64,7 @@ public final class LangTrainerApplication {
     attachRealKeyboardDispatcher();
 
     final JPanel container = new JPanel(new BorderLayout());
+    container.putClientProperty(CLOSE_MODULE_CLIENT_PROPERTY, (Runnable) this::closeActiveModule);
     container.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
     container.add(makeTopPanel(), BorderLayout.NORTH);
     container.add(module.createControlForm(), BorderLayout.CENTER);

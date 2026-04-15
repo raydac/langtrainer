@@ -25,7 +25,7 @@ public final class MainMenuPanel extends JPanel {
       final Consumer<AbstractLangTrainerModule> onModuleActivate) {
     super(new BorderLayout());
     final DefaultListModel<AbstractLangTrainerModule> model = new DefaultListModel<>();
-    modules.stream().forEach(model::addElement);
+    modules.forEach(model::addElement);
     this.modulesList = new JList<>(model);
     this.modulesList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     this.modulesList.setCellRenderer(new ModuleCellRenderer());

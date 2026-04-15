@@ -1,0 +1,48 @@
+{
+  "menuName": "EN–RU quick words (fly)",
+  "description": "Short single-word pairs for the helicopter game",
+  "langA": "English",
+  "langB": "Russian",
+  "lines": [
+    {
+      "A": "sky",
+      "B": "небо"
+    },
+    {
+      "A": "cloud",
+      "B": "облако"
+    },
+    {
+      "A": "wind",
+      "B": "ветер"
+    },
+    {
+      "A": "bird",
+      "B": "птица"
+    },
+    {
+      "A": "star",
+      "B": "звезда"
+    },
+    {
+      "A": "moon",
+      "B": "луна"
+    },
+    {
+      "A": "sun",
+      "B": "солнце"
+    },
+    {
+      "A": "rain",
+      "B": "дождь"
+    },
+    {
+      "A": "snow",
+      "B": "снег"
+    },
+    {
+      "A": "tree",
+      "B": "дерево"
+    }
+  ]
+}

@@ -3,6 +3,7 @@ package com.igormaznitsa.langtrainer.modules.dialog;
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
+import com.igormaznitsa.langtrainer.text.TypingComparisonUtils;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
@@ -647,17 +648,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
         + 8;
   }
 
-  private static String htmlEscapeForPhraseBanner(final String text) {
-    if (text == null) {
-      return "";
-    }
-    return text
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("\n", "<br/>");
-  }
-
   @Override
   public void onActivation() {
     dismissCompletionBanner();
@@ -928,7 +918,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     label.setForeground(PHRASE_FLASH_LIGHT_FG);
     label.setText(
         "<html><body style='width:520px;text-align:center;color:#000000;'>"
-            + htmlEscapeForPhraseBanner(expected)
+            + TypingComparisonUtils.escapeHtmlForBanner(expected)
             + "</body></html>");
 
     pane.add(label, BorderLayout.CENTER);
@@ -940,14 +930,14 @@ public final class DialogModule extends AbstractLangTrainerModule {
         label.setForeground(PHRASE_FLASH_LIGHT_FG);
         label.setText(
             "<html><body style='width:520px;text-align:center;color:#000000;'>"
-                + htmlEscapeForPhraseBanner(expected)
+                + TypingComparisonUtils.escapeHtmlForBanner(expected)
                 + "</body></html>");
       } else {
         pane.setBackground(PHRASE_FLASH_DARK_BG);
         label.setForeground(PHRASE_FLASH_DARK_FG);
         label.setText(
             "<html><body style='width:520px;text-align:center;color:#FFFFFF;'>"
-                + htmlEscapeForPhraseBanner(partner)
+                + TypingComparisonUtils.escapeHtmlForBanner(partner)
                 + "</body></html>");
       }
     };
@@ -1447,53 +1437,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   }
 
   private boolean isCloseEnough(final String actual, final String expected) {
-    final String left = normalize(actual);
-    final String right = normalize(expected);
-    final int maxLen = Math.max(left.length(), right.length());
-    if (maxLen == 0) {
-      return true;
-    }
-    final int distance = levenshtein(left, right);
-    final double similarity = 1.0d - (double) distance / (double) maxLen;
-    return similarity >= 0.99d;
-  }
-
-  private String normalize(final String text) {
-    String result;
-    if (text == null) {
-      result = "";
-    } else {
-      final String withYeFolded = text
-          .replace('Ё', 'Е')
-          .replace('ё', 'е');
-      final String lower = withYeFolded.toLowerCase();
-      final StringBuilder builder = new StringBuilder(lower.length());
-      lower
-          .codePoints()
-          .filter(Character::isLetterOrDigit)
-          .forEach(builder::appendCodePoint);
-      result = builder.toString();
-    }
-    return result;
-  }
-
-  private int levenshtein(final String a, final String b) {
-    final int[][] dp = new int[a.length() + 1][b.length() + 1];
-    for (int i = 0; i <= a.length(); i++) {
-      dp[i][0] = i;
-    }
-    for (int j = 0; j <= b.length(); j++) {
-      dp[0][j] = j;
-    }
-    for (int i = 1; i <= a.length(); i++) {
-      for (int j = 1; j <= b.length(); j++) {
-        final int cost = a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1;
-        dp[i][j] = Math.min(
-            Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1),
-            dp[i - 1][j - 1] + cost);
-      }
-    }
-    return dp[a.length()][b.length()];
+    return TypingComparisonUtils.isCloseEnough(actual, expected);
   }
 
   private void showCard(final String card) {

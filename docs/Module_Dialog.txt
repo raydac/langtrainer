@@ -24,55 +24,7 @@ Module DIALOG
 +-------------------------------------------------------------+
 
 4. So we have some dialog described in resources as JSON file
-5. Format of such JSON file.
-    {
-        "menuName" :  "Menu name of the dialog",
-        "description" : "Description of the dialog shown as tooltip",
-        "langA" : human-readable name of language A as string,
-        "langB" : human-readable name of language B as string,
-        "lines" : [
-            {
-                "A" : text line in language A,
-                "B" : text line in language B
-            }
-            ...
-            {
-                "A" : text line in language A,
-                "B" : text line in language B
-            }
-        ]
-    }
-
-    There can be special field "inputEqu" in the JSON file, it contains array of objects and its example below
-
-     "inputEqu": [
-        {
-          "key": [
-            "е",
-            "Е"
-          ],
-          "value": [
-            "ё",
-            "Ё"
-          ]
-        },
-        {
-          "key": [
-            "ё",
-            "Ё"
-          ],
-          "value": [
-            "е",
-            "Е"
-          ]
-        },
-     ]
-
-    The field describes rules of substitution for enter user chars based on expected next char. For instance if in entering work
-    expected Russian char 'Ё' but user presses Russian 'Е' or 'е' then expected 'Ё' will replace entered е. "Key" chars expected
-    as input and "Value" chars allowed for substitution.
-
-
+5. Format of such JSON file described in ./JSON_format.txt
 6. We can have multiple such JSON files in resources
 7. Before start of play, the module shows list of named of allowed dialogs and user can select one
 8. Module loads the dialog and shows names of allowed languages for dialog to user to select one of them
