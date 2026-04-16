@@ -4,8 +4,9 @@ import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.function.Consumer;
@@ -17,6 +18,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
+import javax.swing.event.MouseInputAdapter;
 
 public final class MainMenuPanel extends JPanel {
 
@@ -43,16 +45,69 @@ public final class MainMenuPanel extends JPanel {
     this.modulesList.setFixedCellWidth(228);
     this.modulesList.setFixedCellHeight(200);
     this.modulesList.setSelectedIndex(0);
-    this.modulesList.addMouseListener(new MouseAdapter() {
+    final MouseInputAdapter hoverPress = new MouseInputAdapter() {
+      private void syncHover(final Point p) {
+        final int idx = indexAtPoint(MainMenuPanel.this.modulesList, p);
+        final Object prev = MainMenuPanel.this.modulesList.getClientProperty(
+            ModuleCellRenderer.PROP_MODULE_HOVER);
+        final int prevI = prev instanceof Integer ? ((Integer) prev).intValue() : -1;
+        if (idx != prevI) {
+          MainMenuPanel.this.modulesList.putClientProperty(
+              ModuleCellRenderer.PROP_MODULE_HOVER, idx < 0 ? null : Integer.valueOf(idx));
+          MainMenuPanel.this.modulesList.repaint();
+        }
+      }
+
+      @Override
+      public void mouseMoved(final MouseEvent event) {
+        syncHover(event.getPoint());
+      }
+
+      @Override
+      public void mouseDragged(final MouseEvent event) {
+        syncHover(event.getPoint());
+      }
+
+      @Override
+      public void mouseExited(final MouseEvent event) {
+        MainMenuPanel.this.modulesList.putClientProperty(ModuleCellRenderer.PROP_MODULE_HOVER,
+            null);
+        MainMenuPanel.this.modulesList.putClientProperty(ModuleCellRenderer.PROP_MODULE_PRESS,
+            null);
+        MainMenuPanel.this.modulesList.repaint();
+      }
+
+      @Override
+      public void mouseEntered(final MouseEvent event) {
+        syncHover(event.getPoint());
+      }
+
+      @Override
+      public void mousePressed(final MouseEvent event) {
+        final int idx = indexAtPoint(MainMenuPanel.this.modulesList, event.getPoint());
+        MainMenuPanel.this.modulesList.putClientProperty(
+            ModuleCellRenderer.PROP_MODULE_PRESS, idx < 0 ? null : Integer.valueOf(idx));
+        MainMenuPanel.this.modulesList.repaint();
+      }
+
+      @Override
+      public void mouseReleased(final MouseEvent event) {
+        MainMenuPanel.this.modulesList.putClientProperty(ModuleCellRenderer.PROP_MODULE_PRESS,
+            null);
+        MainMenuPanel.this.modulesList.repaint();
+      }
+
       @Override
       public void mouseClicked(final MouseEvent event) {
-        final int index = modulesList.locationToIndex(event.getPoint());
+        final int index = indexAtPoint(MainMenuPanel.this.modulesList, event.getPoint());
         if (index >= 0) {
-          modulesList.setSelectedIndex(index);
+          MainMenuPanel.this.modulesList.setSelectedIndex(index);
           activateSelected(onModuleActivate);
         }
       }
-    });
+    };
+    this.modulesList.addMouseListener(hoverPress);
+    this.modulesList.addMouseMotionListener(hoverPress);
     this.modulesList.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "activate");
     this.modulesList.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0), "activate");
     this.modulesList.getActionMap().put("activate", new AbstractAction() {
@@ -70,6 +125,15 @@ public final class MainMenuPanel extends JPanel {
 
   public void focusList() {
     this.modulesList.requestFocusInWindow();
+  }
+
+  private static int indexAtPoint(final JList<?> list, final Point p) {
+    final int i = list.locationToIndex(p);
+    if (i < 0) {
+      return -1;
+    }
+    final Rectangle r = list.getCellBounds(i, i);
+    return r != null && r.contains(p) ? i : -1;
   }
 
   private void activateSelected(final Consumer<AbstractLangTrainerModule> onModuleActivate) {

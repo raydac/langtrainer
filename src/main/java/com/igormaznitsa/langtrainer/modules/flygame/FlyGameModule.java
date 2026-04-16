@@ -38,6 +38,7 @@ import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.Icon;
+import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
@@ -49,6 +50,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
+import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -72,6 +74,9 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   private static final float FLIGHT_SECONDS = 20f;
   private static final int EXPLODE_FRAMES = 18;
   private static final int ANSWER_SHOW_MS = 5_000;
+
+  private static final Color INPUT_TEXT_COLOR = Color.ORANGE.darker();
+  private static final Color INPUT_TEXT_COLOR_SHADOW = Color.BLACK;
 
   private final DefaultListModel<DialogDefinition> listModel = new DefaultListModel<>();
   private final JPanel rootPanel = new JPanel(new java.awt.CardLayout());
@@ -377,6 +382,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       this.input.setPreferredSize(new Dimension(1, 1));
       this.input.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
       this.input.addActionListener(e -> trySubmit());
+      disableFlyInputCursorKeys(this.input);
       this.input.addKeyListener(new KeyAdapter() {
         @Override
         public void keyPressed(final KeyEvent e) {
@@ -385,6 +391,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
           }
         }
       });
+      this.input.addCaretListener(e -> repaintSkyFrame());
       attachFlyInputEquivalence();
 
       final JLabel hint = new JLabel("Press Enter to fire", SwingConstants.CENTER);
@@ -439,6 +446,19 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       toggle.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
       toggle.setFocusPainted(false);
       toggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    private static void disableFlyInputCursorKeys(final JTextField field) {
+      final InputMap im = field.getInputMap(JComponent.WHEN_FOCUSED);
+      final Object none = "none";
+      im.put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0), none);
+      im.put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0), none);
+      im.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0), none);
+      im.put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0), none);
+      im.put(KeyStroke.getKeyStroke(KeyEvent.VK_KP_LEFT, 0), none);
+      im.put(KeyStroke.getKeyStroke(KeyEvent.VK_KP_RIGHT, 0), none);
+      im.put(KeyStroke.getKeyStroke(KeyEvent.VK_KP_UP, 0), none);
+      im.put(KeyStroke.getKeyStroke(KeyEvent.VK_KP_DOWN, 0), none);
     }
 
     private void refocusInputIfPlaying() {
@@ -858,6 +878,19 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         return Math.min(maxPt, Math.max(minPt, panelW / 28f));
       }
 
+      private static String flyVisibleTypingPrefix(
+          final FontMetrics fm, final String typedUpper, final int maxLineW) {
+        if (typedUpper.isEmpty() || fm.stringWidth(typedUpper) <= maxLineW) {
+          return typedUpper;
+        }
+        final String ell = "…";
+        String prefix = typedUpper;
+        while (prefix.length() > 1 && fm.stringWidth(prefix + ell) > maxLineW) {
+          prefix = prefix.substring(0, prefix.length() - 1);
+        }
+        return prefix;
+      }
+
       private static List<String> wrapText(final FontMetrics fm, final String text,
                                            final int maxWidth) {
         final List<String> lines = new ArrayList<>();
@@ -1022,29 +1055,43 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       }
 
       private void drawTypedAnswerOverlay(final Graphics2D g2, final int w, final int h) {
-        final String typed = GameBoard.this.typedForAim();
-        if (typed.isEmpty()) {
+        if (GameBoard.this.dialog == null) {
           return;
         }
+        final String typedU = GameBoard.this.typedForAim();
+        final String raw = GameBoard.this.input.getText();
+        final int safeCaret =
+            Math.min(Math.max(0, GameBoard.this.input.getCaretPosition()), raw.length());
+        final String beforeCaretU = raw.substring(0, safeCaret).toUpperCase(Locale.ROOT);
         final float fontPt = scaleFont(w, 26f, FLY_INPUT_OVERLAY_FONT_PT);
         g2.setFont(g2.getFont().deriveFont(Font.BOLD, fontPt));
         final FontMetrics fm = g2.getFontMetrics();
         final int maxLineW = Math.max(40, w - 32);
-        String draw = typed;
-        if (fm.stringWidth(draw) > maxLineW) {
-          final String ell = "…";
-          while (draw.length() > 1 && fm.stringWidth(draw + ell) > maxLineW) {
-            draw = draw.substring(0, draw.length() - 1);
-          }
-          draw = draw + ell;
+        final String visiblePrefix = flyVisibleTypingPrefix(fm, typedU, maxLineW);
+        final boolean truncated = visiblePrefix.length() < typedU.length();
+        final String draw = truncated ? visiblePrefix + "…" : typedU;
+        String beforeForBar = beforeCaretU;
+        if (truncated && beforeCaretU.length() >= visiblePrefix.length()) {
+          beforeForBar = visiblePrefix;
         }
         final int tw = fm.stringWidth(draw);
         final int tx = (w - tw) / 2;
         final int ty = (int) (h * 0.11);
-        g2.setColor(Color.BLUE);
-        g2.drawString(draw, tx + 2, ty + 2);
-        g2.setColor(Color.MAGENTA);
-        g2.drawString(draw, tx, ty);
+        if (!draw.isEmpty()) {
+          g2.setColor(INPUT_TEXT_COLOR_SHADOW);
+          g2.drawString(draw, tx + 2, ty + 2);
+          g2.setColor(INPUT_TEXT_COLOR);
+          g2.drawString(draw, tx, ty);
+        }
+        final int prefixBeforeCaretW = fm.stringWidth(beforeForBar);
+        final int barW = Math.max(4, fm.stringWidth("_"));
+        final int barH = Math.max(2, fm.getDescent() / 2 + 1);
+        final int barX = tx + prefixBeforeCaretW;
+        final int barY = ty + 1;
+        g2.setColor(INPUT_TEXT_COLOR_SHADOW);
+        g2.fillRect(barX + 2, barY + 2, barW, barH);
+        g2.setColor(INPUT_TEXT_COLOR);
+        g2.fillRect(barX, barY, barW, barH);
       }
 
       private void drawAim(

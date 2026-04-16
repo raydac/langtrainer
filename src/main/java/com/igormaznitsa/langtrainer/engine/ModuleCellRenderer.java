@@ -15,6 +15,9 @@ import javax.swing.SwingConstants;
 public final class ModuleCellRenderer extends JPanel
     implements ListCellRenderer<AbstractLangTrainerModule> {
 
+  public static final String PROP_MODULE_HOVER = "langtrainer.moduleHoverIndex";
+  public static final String PROP_MODULE_PRESS = "langtrainer.modulePressIndex";
+
   private final JLabel iconLabel;
   private final JLabel nameLabel;
 
@@ -33,6 +36,14 @@ public final class ModuleCellRenderer extends JPanel
     this.nameLabel.setOpaque(false);
   }
 
+  private static int clientIndex(final JList<?> list, final String key) {
+    final Object v = list.getClientProperty(key);
+    if (v instanceof Integer i) {
+      return i.intValue();
+    }
+    return -1;
+  }
+
   @Override
   public Component getListCellRendererComponent(
       final JList<? extends AbstractLangTrainerModule> list,
@@ -45,7 +56,24 @@ public final class ModuleCellRenderer extends JPanel
     this.nameLabel.setText(value.getName());
     this.nameLabel.setForeground(nameFg);
     this.nameLabel.setToolTipText(value.getDescription());
-    setBorder(BorderFactory.createEmptyBorder(10, 12, 14, 12));
+    final int hover = clientIndex(list, PROP_MODULE_HOVER);
+    final int press = clientIndex(list, PROP_MODULE_PRESS);
+    int top = 10;
+    int left = 12;
+    int bottom = 14;
+    int right = 12;
+    if (index == press && press >= 0) {
+      top += 2;
+      left += 2;
+      bottom -= 2;
+      right -= 2;
+    } else if (index == hover && hover >= 0) {
+      top -= 2;
+      left -= 2;
+      bottom += 2;
+      right += 2;
+    }
+    setBorder(BorderFactory.createEmptyBorder(top, left, bottom, right));
     return this;
   }
 }
