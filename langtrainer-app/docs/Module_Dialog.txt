@@ -1,0 +1,37 @@
+Module DIALOG
+---------------
+
+1. It is a child of AbstractLangTrainerModule
+2. The main idea to show for user some text in some language and ask him to enter translation.
+3 As GUI it has such look of main work area
+
++-------------------------------------------------------------+
+|                           |                                 |
+|                           |                                 |
+|                           |                                 |
+|                           |                                 |
+|                           |                                 |
+|                           |                                 |
+|    Zone show A            |  Zone show B                    |
+|                           |                                 |
+|                           |                                 |
+|                           |                                 |
+|                           |                                 |
+|                           |                                 |
++---------------------------+---------------------------------|
+|  Zone enter A             |  Zone enter B                   |
+|                           |                                 |
++-------------------------------------------------------------+
+
+4. So we have some dialog described in resources as JSON file
+5. Format of such JSON file described in ./JSON_format.txt
+6. We can have multiple such JSON files in resources
+7. Before start of play, the module shows list of named of allowed dialogs and user can select one
+8. Module loads the dialog and shows names of allowed languages for dialog to user to select one of them
+9. After select user can start work in main area
+10. Which enter zone will be allowed for user to enter text depends on choosed language
+11. Non-chosen enter zone shows text in target language and user should enter in his edit zone text for his choosen language.
+12. as only user press enter we compare entered text with text line for choosen user languiage, comparation must be not super equals it should be mainly the same 99% so we can ignore very little errors like some wrong but similar chars, ignore not correct dot and commas and capitalization and as only it is correct for our opninion we add expected text to the show zone of user and target text into show zone of target language and move to the next step with next line.
+13. as only all lines completed we show big banner "Hurraa! Completed!" and after action or 10 seconds close module
+
+14. as test make some small English Russian dialog in resources

@@ -1,0 +1,208 @@
+{
+  "menuName": "English Idioms / Английские идиомы",
+  "description": "50 common English idioms with Russian translations",
+  "langA": "English",
+  "langB": "Russian",
+  "lines": [
+    {
+      "A": "break the ice",
+      "B": "разрядить обстановку"
+    },
+    {
+      "A": "hit the nail on the head",
+      "B": "попасть в точку"
+    },
+    {
+      "A": "under the weather",
+      "B": "плохо себя чувствовать"
+    },
+    {
+      "A": "piece of cake",
+      "B": "проще простого"
+    },
+    {
+      "A": "once in a blue moon",
+      "B": "очень редко"
+    },
+    {
+      "A": "cost an arm and a leg",
+      "B": "стоить очень дорого"
+    },
+    {
+      "A": "spill the beans",
+      "B": "выдать секрет"
+    },
+    {
+      "A": "let the cat out of the bag",
+      "B": "раскрыть тайну"
+    },
+    {
+      "A": "hit the sack",
+      "B": "идти спать"
+    },
+    {
+      "A": "burn the midnight oil",
+      "B": "работать допоздна"
+    },
+    {
+      "A": "barking up the wrong tree",
+      "B": "идти по ложному следу"
+    },
+    {
+      "A": "cut corners",
+      "B": "делать кое-как"
+    },
+    {
+      "A": "get out of hand",
+      "B": "выйти из-под контроля"
+    },
+    {
+      "A": "in the long run",
+      "B": "в долгосрочной перспективе"
+    },
+    {
+      "A": "on the same page",
+      "B": "быть на одной волне"
+    },
+    {
+      "A": "pull someone's leg",
+      "B": "подшучивать"
+    },
+    {
+      "A": "the ball is in your court",
+      "B": "теперь твоя очередь"
+    },
+    {
+      "A": "take it with a grain of salt",
+      "B": "относиться скептически"
+    },
+    {
+      "A": "a blessing in disguise",
+      "B": "скрытое благо"
+    },
+    {
+      "A": "beat around the bush",
+      "B": "ходить вокруг да около"
+    },
+    {
+      "A": "bite the bullet",
+      "B": "стиснуть зубы и терпеть"
+    },
+    {
+      "A": "call it a day",
+      "B": "закончить на сегодня"
+    },
+    {
+      "A": "cut to the chase",
+      "B": "перейти к сути"
+    },
+    {
+      "A": "easy does it",
+      "B": "не спеши"
+    },
+    {
+      "A": "get a taste of your own medicine",
+      "B": "получить тем же"
+    },
+    {
+      "A": "give someone the cold shoulder",
+      "B": "игнорировать кого-то"
+    },
+    {
+      "A": "go the extra mile",
+      "B": "сделать больше, чем нужно"
+    },
+    {
+      "A": "hit the road",
+      "B": "отправиться в путь"
+    },
+    {
+      "A": "in hot water",
+      "B": "в неприятностях"
+    },
+    {
+      "A": "keep an eye on",
+      "B": "присматривать"
+    },
+    {
+      "A": "miss the point",
+      "B": "не уловить суть"
+    },
+    {
+      "A": "no pain, no gain",
+      "B": "без труда не вытащишь и рыбку"
+    },
+    {
+      "A": "on thin ice",
+      "B": "в опасном положении"
+    },
+    {
+      "A": "pull yourself together",
+      "B": "взять себя в руки"
+    },
+    {
+      "A": "so far so good",
+      "B": "пока всё хорошо"
+    },
+    {
+      "A": "speak of the devil",
+      "B": "легок на помине"
+    },
+    {
+      "A": "take the bull by the horns",
+      "B": "взять быка за рога"
+    },
+    {
+      "A": "the last straw",
+      "B": "последняя капля"
+    },
+    {
+      "A": "time flies",
+      "B": "время летит"
+    },
+    {
+      "A": "to make matters worse",
+      "B": "в довершение всего"
+    },
+    {
+      "A": "under your nose",
+      "B": "прямо под носом"
+    },
+    {
+      "A": "up in the air",
+      "B": "неопределённо"
+    },
+    {
+      "A": "when pigs fly",
+      "B": "когда рак на горе свистнет"
+    },
+    {
+      "A": "wrap your head around",
+      "B": "понять, осмыслить"
+    },
+    {
+      "A": "you can't judge a book by its cover",
+      "B": "не суди по обложке"
+    },
+    {
+      "A": "your guess is as good as mine",
+      "B": "я знаю не больше твоего"
+    },
+    {
+      "A": "a dime a dozen",
+      "B": "пруд пруди"
+    },
+    {
+      "A": "back to square one",
+      "B": "снова с начала"
+    },
+    {
+      "A": "burn bridges",
+      "B": "сжигать мосты"
+    },
+    {
+      "A": "cry over spilled milk",
+      "B": "плакать над пролитым молоком"
+    }
+  ]
+}

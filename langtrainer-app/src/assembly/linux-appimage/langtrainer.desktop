@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=LangTrainer
+Comment=LangTrainer application
+GenericName=LangTrainerApp
+Terminal=false
+Type=Application
+Icon=icon
+Categories=Application;
+Keywords=langtrainer;words;dialogs;
+StartupWMClass=LangTrainer
+StartupNotify=true

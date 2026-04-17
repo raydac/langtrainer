@@ -17,3 +17,11 @@ buildNumber.properties
 .project
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
+/langtrainer-win-launcher/.build/go.mod
+/langtrainer-win-launcher/.build/go.sum
+/langtrainer-win-launcher/.build/goversioninfo
+/langtrainer-win-launcher/.build/main.go
+/langtrainer-win-launcher/.build/resource_windows.syso
+/langtrainer-win-launcher/.build/versioninfo.go
+/langtrainer-win-launcher/.build/versioninfo.json
+/langtrainer-win-launcher/bin/langtrainer.exe

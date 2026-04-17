@@ -1,0 +1,308 @@
+{
+  "menuName": "Igapäevane dialoog / Повседневный диалог",
+  "description": "Estonian–Russian B1 everyday short phrases and questions",
+  "langA": "Estonian",
+  "langB": "Russian",
+  "inputEqu": [
+    {
+      "key": [
+        "е",
+        "Е"
+      ],
+      "value": [
+        "ё",
+        "Ё"
+      ]
+    },
+    {
+      "key": [
+        "ё",
+        "Ё"
+      ],
+      "value": [
+        "е",
+        "Е"
+      ]
+    },
+    {
+      "key": [
+        "е",
+        "Е",
+        "ё",
+        "Ё"
+      ],
+      "value": [
+        "е",
+        "Е",
+        "ё",
+        "Ё"
+      ]
+    },
+    {
+      "key": [
+        "a",
+        "A"
+      ],
+      "value": [
+        "ä",
+        "Ä"
+      ]
+    },
+    {
+      "key": [
+        "o",
+        "O"
+      ],
+      "value": [
+        "ö",
+        "Ö"
+      ]
+    },
+    {
+      "key": [
+        "o",
+        "O"
+      ],
+      "value": [
+        "õ",
+        "Õ"
+      ]
+    },
+    {
+      "key": [
+        "u",
+        "U"
+      ],
+      "value": [
+        "ü",
+        "Ü"
+      ]
+    },
+    {
+      "key": [
+        "s",
+        "S"
+      ],
+      "value": [
+        "š",
+        "Š"
+      ]
+    },
+    {
+      "key": [
+        "z",
+        "Z"
+      ],
+      "value": [
+        "ž",
+        "Ž"
+      ]
+    }
+  ],
+  "lines": [
+    {
+      "A": "Tere!",
+      "B": "Привет!"
+    },
+    {
+      "A": "Kuidas sul läheb?",
+      "B": "Как у тебя дела?"
+    },
+    {
+      "A": "Mul läheb hästi.",
+      "B": "У меня всё хорошо."
+    },
+    {
+      "A": "Mis su nimi on?",
+      "B": "Как тебя зовут?"
+    },
+    {
+      "A": "Minu nimi on Anna.",
+      "B": "Меня зовут Анна."
+    },
+    {
+      "A": "Kust sa pärit oled?",
+      "B": "Откуда ты?"
+    },
+    {
+      "A": "Ma olen Eestist.",
+      "B": "Я из Эстонии."
+    },
+    {
+      "A": "Kus sa elad?",
+      "B": "Где ты живёшь?"
+    },
+    {
+      "A": "Ma elan Tallinnas.",
+      "B": "Я живу в Таллине."
+    },
+    {
+      "A": "Kas sa räägid vene keelt?",
+      "B": "Ты говоришь по-русски?"
+    },
+    {
+      "A": "Jah, natuke.",
+      "B": "Да, немного."
+    },
+    {
+      "A": "Kas sa saad aidata?",
+      "B": "Ты можешь помочь?"
+    },
+    {
+      "A": "Muidugi saan.",
+      "B": "Конечно могу."
+    },
+    {
+      "A": "Mis kell on?",
+      "B": "Который час?"
+    },
+    {
+      "A": "On kolm.",
+      "B": "Три часа."
+    },
+    {
+      "A": "Kuhu sa lähed?",
+      "B": "Куда ты идёшь?"
+    },
+    {
+      "A": "Ma lähen poodi.",
+      "B": "Я иду в магазин."
+    },
+    {
+      "A": "Mida sa ostad?",
+      "B": "Что ты покупаешь?"
+    },
+    {
+      "A": "Ma ostan leiba.",
+      "B": "Я покупаю хлеб."
+    },
+    {
+      "A": "Kas see on kallis?",
+      "B": "Это дорого?"
+    },
+    {
+      "A": "Ei, see on odav.",
+      "B": "Нет, это дешево."
+    },
+    {
+      "A": "Kas sul on aega?",
+      "B": "У тебя есть время?"
+    },
+    {
+      "A": "Mul ei ole aega.",
+      "B": "У меня нет времени."
+    },
+    {
+      "A": "Millal sa tuled?",
+      "B": "Когда ты придёшь?"
+    },
+    {
+      "A": "Ma tulen homme.",
+      "B": "Я приду завтра."
+    },
+    {
+      "A": "Kas sa töötad?",
+      "B": "Ты работаешь?"
+    },
+    {
+      "A": "Jah, ma töötan.",
+      "B": "Да, я работаю."
+    },
+    {
+      "A": "Kus sa töötad?",
+      "B": "Где ты работаешь?"
+    },
+    {
+      "A": "Ma töötan kontoris.",
+      "B": "Я работаю в офисе."
+    },
+    {
+      "A": "Kas sa õpid?",
+      "B": "Ты учишься?"
+    },
+    {
+      "A": "Ma õpin eesti keelt.",
+      "B": "Я учу эстонский язык."
+    },
+    {
+      "A": "Kas see on raske?",
+      "B": "Это сложно?"
+    },
+    {
+      "A": "See ei ole väga raske.",
+      "B": "Это не очень сложно."
+    },
+    {
+      "A": "Mida sa teed?",
+      "B": "Что ты делаешь?"
+    },
+    {
+      "A": "Ma loen raamatut.",
+      "B": "Я читаю книгу."
+    },
+    {
+      "A": "Kas sa vaatad telekat?",
+      "B": "Ты смотришь телевизор?"
+    },
+    {
+      "A": "Ma ei vaata telekat.",
+      "B": "Я не смотрю телевизор."
+    },
+    {
+      "A": "Kas sa tahad kohvi?",
+      "B": "Хочешь кофе?"
+    },
+    {
+      "A": "Jah, ma tahan.",
+      "B": "Да, хочу."
+    },
+    {
+      "A": "Kas sa jood teed?",
+      "B": "Ты пьёшь чай?"
+    },
+    {
+      "A": "Ma joon teed.",
+      "B": "Я пью чай."
+    },
+    {
+      "A": "Kas sul on pere?",
+      "B": "У тебя есть семья?"
+    },
+    {
+      "A": "Mul on suur pere.",
+      "B": "У меня большая семья."
+    },
+    {
+      "A": "Kas sul on lapsi?",
+      "B": "У тебя есть дети?"
+    },
+    {
+      "A": "Mul on üks laps.",
+      "B": "У меня один ребёнок."
+    },
+    {
+      "A": "Mida sa õhtul teed?",
+      "B": "Что ты делаешь вечером?"
+    },
+    {
+      "A": "Ma puhkan kodus.",
+      "B": "Я отдыхаю дома."
+    },
+    {
+      "A": "Kas sa tuled kaasa?",
+      "B": "Ты пойдёшь со мной?"
+    },
+    {
+      "A": "Jah, ma tulen.",
+      "B": "Да, я пойду."
+    },
+    {
+      "A": "Aitäh!",
+      "B": "Спасибо!"
+    },
+    {
+      "A": "Palun!",
+      "B": "Пожалуйста!"
+    }
+  ]
+}
