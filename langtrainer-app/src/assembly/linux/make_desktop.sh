@@ -3,7 +3,7 @@
 # Script just generates free desktop descriptor to start application
 
 LANGTRAINER_HONE="$(realpath $(dirname ${BASH_SOURCE[0]}))"
-TARGET=$LANGTRAINER_HOME/dcf77soundwave.desktop
+TARGET=$LANGTRAINER_HOME/langtrainer.desktop
 
 echo [Desktop Entry] > $TARGET
 echo Encoding=UTF-8 >> $TARGET

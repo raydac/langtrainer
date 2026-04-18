@@ -1,16 +1,88 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
-    <defs>
-        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#305f9f"/>
-            <stop offset="100%" stop-color="#15345c"/>
-        </linearGradient>
-    </defs>
-    <rect x="0" y="0" width="640" height="360" fill="url(#bg)"/>
-    <rect x="40" y="40" width="560" height="280" rx="24" ry="24" fill="#ffffff" fill-opacity="0.12"/>
-    <text x="320" y="165" text-anchor="middle" font-family="Arial, sans-serif" font-size="52" fill="#f5f8ff"
-          font-weight="bold">LangTrainer
-    </text>
-    <text x="320" y="210" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" fill="#d6e8ff">Loading
-        language modules...
-    </text>
-</svg>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="640"
+   height="360"
+   viewBox="0 0 640 360"
+   version="1.1"
+   id="svg4"
+   xml:space="preserve"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><defs
+     id="defs2"><linearGradient
+       id="bg"
+       x1="0"
+       y1="0"
+       x2="1"
+       y2="1"><stop
+         offset="0%"
+         stop-color="#305f9f"
+         id="stop1" /><stop
+         offset="100%"
+         stop-color="#15345c"
+         id="stop2" /></linearGradient><filter
+       style="color-interpolation-filters:sRGB"
+       id="filter3"
+       x="-0.010197216"
+       y="-0.062306763"
+       width="1.0203944"
+       height="1.1246135"><feGaussianBlur
+         stdDeviation="1.9789257"
+         id="feGaussianBlur3" /></filter></defs><rect
+     x="0"
+     y="0"
+     width="640"
+     height="360"
+     fill="url(#bg)"
+     id="rect2"
+     style="stroke:#000000;fill:#aaffaa;fill-opacity:1" /><g
+     id="g1"
+     transform="matrix(1.2027325,0,0,1.2027325,-120.39959,-43.346533)"
+     style="opacity:0.20837696"><g
+       id="g2"
+       transform="matrix(0.71139881,0,0,0.71139881,332.45994,32.512025)"
+       style="fill:#2aff2a;stroke:#aaffaa;stroke-width:8.33786;stroke-dasharray:none"><path
+         stroke-width="26"
+         d="m 209,15 a 195,195 0 1 0 2,0 z"
+         id="path1"
+         style="fill:#2aff2a;stroke:#aaffaa;stroke-width:8.33786;stroke-dasharray:none" /><path
+         stroke-width="18"
+         d="M 210,15 V 405 M 405,210 H 15 M 59,90 a 260,260 0 0 0 302,0 m 0,240 A 260,260 0 0 0 59,330 M 195,20 a 250,250 0 0 0 0,382 m 30,0 a 250,250 0 0 0 0,-382"
+         id="path2"
+         style="fill:#2aff2a;stroke:#aaffaa;stroke-width:8.33786;stroke-dasharray:none" /></g><g
+       id="g8"
+       transform="matrix(0.86274028,0,0,0.86274028,197.46725,-200.65432)"><path
+         style="fill:#ffffff;stroke:#000000;stroke-width:2.68282"
+         d="m 224.1153,284.39284 h 159.22568 a 46.815295,46.815295 0 0 1 46.68115,46.68116 v 102.69853 a 46.815295,46.815295 0 0 1 -46.68115,46.68114 h -79.38481 l -69.75344,59.98797 a 8.3704135,8.3704135 0 0 1 -11.77761,-0.93898 8.2094439,8.2094439 0 0 1 -2.06576,-5.98272 L 224.008,480.45367 A 46.815295,46.815295 0 0 1 177.43415,433.77253 V 331.074 a 46.815295,46.815295 0 0 1 46.68115,-46.68116 z"
+         id="path1-3" /><path
+         style="fill:#00aad4;stroke:#000000;stroke-width:2.68282"
+         d="m 445.99446,353.88753 a 45.259256,45.259256 0 0 1 36.64737,44.34709 v 102.83267 a 45.259256,45.259256 0 0 1 -45.1251,44.99098 h -1.63651 l 3.78276,54.72963 v 0 a 6.8948598,6.8948598 0 0 1 -1.60968,4.88274 6.8143751,6.8143751 0 0 1 -9.60451,0.75119 L 358.23925,544.2876 h -92.45013 l 45.60801,-46.30554 h 96.58169 a 38.418052,38.418052 0 0 0 38.28391,-38.28393 V 356.97277 c 0,-1.01947 0,-2.03895 0,-3.03157 z"
+         id="path7" /><path
+         style="fill:#000000;stroke:none;stroke-width:2.68282"
+         d="M 251.29233,367.936 A 16.096949,16.096949 0 1 1 235.19538,384.03296 16.096949,16.096949 0 0 1 251.29233,367.936 Z"
+         id="path6" /><path
+         style="fill:#000000;stroke:none;stroke-width:2.68282"
+         d="M 303.71472,367.936 A 16.096949,16.096949 0 1 1 287.61776,384.03296 16.096949,16.096949 0 0 1 303.71472,367.936 Z"
+         id="path5" /><path
+         style="fill:#000000;stroke:none;stroke-width:2.68282"
+         d="M 356.16395,367.936 A 16.096949,16.096949 0 1 1 340.06699,384.03296 16.096949,16.096949 0 0 1 356.16395,367.936 Z"
+         id="path4" /></g></g><text
+     x="260.42279"
+     y="92.762306"
+     text-anchor="middle"
+     font-family="Arial, sans-serif"
+     font-size="82.294px"
+     fill="#f5f8ff"
+     font-weight="bold"
+     id="text3-7"
+     style="fill:#00d400;stroke-width:1.58258;filter:url(#filter3)">LangTrainer</text><g
+     id="g3"
+     transform="translate(0.31515263,-1.4575607)"><text
+       x="257.2854"
+       y="89.696037"
+       text-anchor="middle"
+       font-family="Arial, sans-serif"
+       font-size="82.294px"
+       fill="#f5f8ff"
+       font-weight="bold"
+       id="text3"
+       style="fill:#000080;stroke-width:1.58258">LangTrainer</text></g></svg>

@@ -1,5 +1,7 @@
 package com.igormaznitsa.langtrainer.engine;
 
+import static com.igormaznitsa.langtrainer.engine.EngineUtils.loadResourceImage;
+
 import com.igormaznitsa.langtrainer.Modules;
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
@@ -43,6 +45,11 @@ public final class LangTrainerApplication {
 
   public LangTrainerApplication() {
     this.mainFrame = new JFrame("LangTrainer");
+    try {
+      this.mainFrame.setIconImage(loadResourceImage("/images/icon.png"));
+    } catch (Exception ex) {
+      System.err.println("Can't load app icon");
+    }
     this.modules = Modules.createAll();
     this.mainMenuPanel = new MainMenuPanel(this.modules, this::activateModule);
     this.realKeyboardDispatcher = this::dispatchTypedChar;
