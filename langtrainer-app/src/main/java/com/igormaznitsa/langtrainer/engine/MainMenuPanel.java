@@ -50,10 +50,10 @@ public final class MainMenuPanel extends JPanel {
         final int idx = indexAtPoint(MainMenuPanel.this.modulesList, p);
         final Object prev = MainMenuPanel.this.modulesList.getClientProperty(
             ModuleCellRenderer.PROP_MODULE_HOVER);
-        final int prevI = prev instanceof Integer ? ((Integer) prev).intValue() : -1;
+        final int prevI = prev instanceof Integer ? (Integer) prev : -1;
         if (idx != prevI) {
           MainMenuPanel.this.modulesList.putClientProperty(
-              ModuleCellRenderer.PROP_MODULE_HOVER, idx < 0 ? null : Integer.valueOf(idx));
+              ModuleCellRenderer.PROP_MODULE_HOVER, idx < 0 ? null : idx);
           MainMenuPanel.this.modulesList.repaint();
         }
       }
@@ -86,7 +86,7 @@ public final class MainMenuPanel extends JPanel {
       public void mousePressed(final MouseEvent event) {
         final int idx = indexAtPoint(MainMenuPanel.this.modulesList, event.getPoint());
         MainMenuPanel.this.modulesList.putClientProperty(
-            ModuleCellRenderer.PROP_MODULE_PRESS, idx < 0 ? null : Integer.valueOf(idx));
+            ModuleCellRenderer.PROP_MODULE_PRESS, idx < 0 ? null : idx);
         MainMenuPanel.this.modulesList.repaint();
       }
 

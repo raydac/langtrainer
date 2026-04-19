@@ -5,6 +5,7 @@ import java.awt.Window;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JWindow;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 public final class SplashWindow {
@@ -19,11 +20,18 @@ public final class SplashWindow {
     this.window.getContentPane().add(image, BorderLayout.CENTER);
     this.window.pack();
     this.window.setLocationRelativeTo(null);
+    this.window.setAlwaysOnTop(true);
   }
 
-  public void showForMillis(final int millis, final Runnable onDone) {
+  public void showForMillis(
+      final int millis,
+      final Runnable showOwnerWindow,
+      final Runnable onDone) {
     this.window.setVisible(true);
+    this.window.toFront();
+    SwingUtilities.invokeLater(showOwnerWindow);
     final Timer timer = new Timer(millis, event -> {
+      this.window.setAlwaysOnTop(false);
       this.window.setVisible(false);
       this.window.dispose();
       onDone.run();

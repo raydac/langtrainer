@@ -57,11 +57,16 @@ public final class LangTrainerApplication {
 
   public void start() {
     initMainFrame();
+    this.mainFrame.setEnabled(false);
     final SplashWindow splashWindow = new SplashWindow(this.mainFrame);
-    splashWindow.showForMillis(5000, () -> {
-      this.mainFrame.setVisible(true);
-      this.mainMenuPanel.focusList();
-    });
+    splashWindow.showForMillis(
+        5000,
+        () -> this.mainFrame.setVisible(true),
+        () -> {
+          this.mainFrame.setEnabled(true);
+          this.mainFrame.toFront();
+          this.mainMenuPanel.focusList();
+        });
   }
 
   private void initMainFrame() {

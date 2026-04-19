@@ -39,7 +39,7 @@ public final class ModuleCellRenderer extends JPanel
   private static int clientIndex(final JList<?> list, final String key) {
     final Object v = list.getClientProperty(key);
     if (v instanceof Integer i) {
-      return i.intValue();
+      return i;
     }
     return -1;
   }
