@@ -14,8 +14,10 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.GridLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Rectangle;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -23,16 +25,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.DefaultCellEditor;
-import javax.swing.DefaultListModel;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -43,12 +44,10 @@ import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
-import javax.swing.event.ListSelectionEvent;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
-import javax.swing.table.TableColumn;
 
 public final class EditorModule extends AbstractLangTrainerModule {
 
@@ -67,22 +66,34 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private final JTextField fieldLangA = new JTextField();
   private final JTextField fieldLangB = new JTextField();
   private final DefaultTableModel linesModel =
-      new DefaultTableModel(new Object[] {"A", "B"}, 0) {
+      new DefaultTableModel(new Object[] {"Id", "A", "B"}, 0) {
         @Override
         public Class<?> getColumnClass(final int columnIndex) {
-          return String.class;
+          return columnIndex == 0 ? Integer.class : String.class;
+        }
+
+        @Override
+        public boolean isCellEditable(final int row, final int column) {
+          return column != 0;
         }
       };
   private final JTable linesTable = new JTable(this.linesModel);
-  private final List<InputEquivalenceRow> equivRules = new ArrayList<>();
-  private final DefaultListModel<String> equivRuleListModel = new DefaultListModel<>();
-  private final JList<String> equivRuleList = new JList<>(this.equivRuleListModel);
-  private final JTextArea equivKeysArea = makeGrowingTextArea();
-  private final JTextArea equivValsArea = makeGrowingTextArea();
   /**
-   * Index whose text is currently shown in {@link #equivKeysArea} / {@link #equivValsArea}.
+   * One row per {@link InputEquivalenceRow}; Key/Value cells are comma-separated token lists (e.g. {@code e,E}).
    */
-  private int equivDisplayedIndex = -1;
+  private final DefaultTableModel equivPairModel =
+      new DefaultTableModel(new Object[] {"Id", "Key", "Value"}, 0) {
+        @Override
+        public Class<?> getColumnClass(final int columnIndex) {
+          return columnIndex == 0 ? Integer.class : String.class;
+        }
+
+        @Override
+        public boolean isCellEditable(final int row, final int column) {
+          return column != 0;
+        }
+      };
+  private final JTable equivPairTable = new JTable(this.equivPairModel);
 
   private Path currentFilePath;
 
@@ -90,19 +101,11 @@ public final class EditorModule extends AbstractLangTrainerModule {
     this.contentFont = this.rootPanel.getFont().deriveFont(Font.PLAIN, CONTENT_FONT_PT);
     this.fieldDescription.setRows(2);
     this.fieldDescription.setColumns(40);
-    this.equivKeysArea.setRows(8);
-    this.equivKeysArea.setColumns(20);
-    this.equivValsArea.setRows(8);
-    this.equivValsArea.setColumns(20);
     this.fieldDescription.setLineWrap(true);
     this.fieldDescription.setWrapStyleWord(true);
     styleTextFields();
     configureLinesTable();
-    styleEquivEditAreas();
-    this.equivRuleList.setFixedCellHeight(32);
-    this.equivRuleList.setFont(this.contentFont);
-    this.equivRuleList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-    this.equivRuleList.addListSelectionListener(this::onEquivRuleSelectionChanged);
+    configureEquivPairTable();
     buildUi();
     newDocument();
   }
@@ -132,6 +135,24 @@ public final class EditorModule extends AbstractLangTrainerModule {
     c.setMinimumSize(new Dimension(0, 0));
   }
 
+  /**
+   * Scrolls the table's viewport so {@code row} is in view (after move up/down, etc.).
+   */
+  private static void ensureTableRowVisible(final JTable table, final int row) {
+    if (row < 0 || row >= table.getRowCount()) {
+      return;
+    }
+    SwingUtilities.invokeLater(
+        () -> {
+          Rectangle visible = table.getCellRect(row, 0, true);
+          final int lastCol = table.getColumnCount() - 1;
+          if (lastCol > 0) {
+            visible = visible.union(table.getCellRect(row, lastCol, true));
+          }
+          table.scrollRectToVisible(visible);
+        });
+  }
+
   private static void stylePrimary(final JButton button, final Color bg) {
     button.setFont(button.getFont().deriveFont(Font.BOLD, 15f));
     button.setForeground(Color.WHITE);
@@ -155,18 +176,24 @@ public final class EditorModule extends AbstractLangTrainerModule {
     }
   }
 
-  private static InputEquivalenceRow rowFromTextAreas(final JTextArea keys, final JTextArea vals) {
-    return new InputEquivalenceRow(linesFromArea(keys), linesFromArea(vals));
+  private static String cellString(final Object cell) {
+    if (cell == null) {
+      return "";
+    }
+    return String.valueOf(cell).strip();
   }
 
-  private static String joinLines(final List<String> parts) {
-    return parts.stream().collect(Collectors.joining("\n"));
+  private static String joinCommaSeparated(final List<String> parts) {
+    return String.join(",", parts);
   }
 
-  private static List<String> linesFromArea(final JTextArea area) {
+  private static List<String> splitCommaSeparated(final String raw) {
+    if (raw == null || raw.isBlank()) {
+      return List.of();
+    }
     final List<String> out = new ArrayList<>();
-    for (final String line : area.getText().split("\\R", -1)) {
-      final String s = line.strip();
+    for (final String p : raw.split(",")) {
+      final String s = p.strip();
       if (!s.isEmpty()) {
         out.add(s);
       }
@@ -174,50 +201,146 @@ public final class EditorModule extends AbstractLangTrainerModule {
     return List.copyOf(out);
   }
 
-  private void styleEquivEditAreas() {
-    final Font f = this.contentFont;
-    this.equivKeysArea.setFont(f);
-    this.equivValsArea.setFont(f);
-    this.equivKeysArea.setMargin(new Insets(8, 10, 8, 10));
-    this.equivValsArea.setMargin(new Insets(8, 10, 8, 10));
-    this.equivKeysArea.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
-    this.equivValsArea.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
-  }
-
-  private void onEquivRuleSelectionChanged(final ListSelectionEvent event) {
-    if (event.getValueIsAdjusting()) {
-      return;
-    }
-    final int newIdx = this.equivRuleList.getSelectedIndex();
-    commitEquivAtDisplayedIndex();
-    this.equivDisplayedIndex = newIdx;
-    fillEquivEditorsFromModel(newIdx);
-  }
-
   /**
-   * Persists text areas into {@link #equivRules} for {@link #equivDisplayedIndex}.
+   * Key/Value cells: comma-separated tokens; spaces inside a token are allowed (e.g. {@code A,B, C, D}).
+   * Empty segments from extra commas are invalid ({@code A,,B}, leading/trailing comma).
    */
-  private void commitEquivAtDisplayedIndex() {
-    if (this.equivDisplayedIndex < 0 || this.equivDisplayedIndex >= this.equivRules.size()) {
-      return;
+  private static Optional<String> validateEquivTokenListSyntax(final String raw) {
+    if (raw == null || raw.isBlank()) {
+      return Optional.of("must not be empty or blank");
     }
-    this.equivRules.set(
-        this.equivDisplayedIndex, rowFromTextAreas(this.equivKeysArea, this.equivValsArea));
+    for (final String part : raw.split(",", -1)) {
+      if (part.strip().isEmpty()) {
+        return Optional.of(
+            "invalid comma-separated list (empty segment); examples: \"A\", \"A,B\", \"a, b, c\"");
+      }
+    }
+    return Optional.empty();
   }
 
-  private void fillEquivEditorsFromModel(final int index) {
-    if (index < 0 || index >= this.equivRules.size()) {
-      this.equivKeysArea.setText("");
-      this.equivValsArea.setText("");
-      this.equivKeysArea.setEnabled(false);
-      this.equivValsArea.setEnabled(false);
-      return;
+  private static void requireValidEquivTokens(final int rowId, final String column,
+                                              final String raw) {
+    validateEquivTokenListSyntax(raw)
+        .ifPresent(
+            msg -> {
+              throw new IllegalStateException(
+                  "Input equivalence rules: row Id " + rowId + " (" + column + "): " + msg);
+            });
+  }
+
+  private void validateLinesForSave() {
+    for (int i = 0; i < this.linesModel.getRowCount(); i++) {
+      final int id = i + 1;
+      final String a = cellString(this.linesModel.getValueAt(i, 1));
+      final String b = cellString(this.linesModel.getValueAt(i, 2));
+      if (a.isEmpty()) {
+        throw new IllegalStateException(
+            "Lines: row Id " + id + ": column A must not be empty or blank.");
+      }
+      if (b.isEmpty()) {
+        throw new IllegalStateException(
+            "Lines: row Id " + id + ": column B must not be empty or blank.");
+      }
     }
-    final InputEquivalenceRow row = this.equivRules.get(index);
-    this.equivKeysArea.setText(joinLines(row.key()));
-    this.equivValsArea.setText(joinLines(row.value()));
-    this.equivKeysArea.setEnabled(true);
-    this.equivValsArea.setEnabled(true);
+  }
+
+  private void validateEquivPairsForSave() {
+    for (int i = 0; i < this.equivPairModel.getRowCount(); i++) {
+      final int id = i + 1;
+      final String keyStr = cellString(this.equivPairModel.getValueAt(i, 1));
+      final String valStr = cellString(this.equivPairModel.getValueAt(i, 2));
+      if (keyStr.isEmpty() && valStr.isEmpty()) {
+        continue;
+      }
+      if (keyStr.isEmpty() || valStr.isEmpty()) {
+        throw new IllegalStateException(
+            "Input equivalence rules: row Id "
+                + id
+                + ": Key and Value must both be filled, or both left empty.");
+      }
+      requireValidEquivTokens(id, "Key", keyStr);
+      requireValidEquivTokens(id, "Value", valStr);
+    }
+  }
+
+  private void stopEquivTableEditing() {
+    if (this.equivPairTable.isEditing()) {
+      final var editor = this.equivPairTable.getCellEditor();
+      if (editor != null) {
+        editor.stopCellEditing();
+      }
+    }
+  }
+
+  private void stopLinesTableEditing() {
+    if (this.linesTable.isEditing()) {
+      final var editor = this.linesTable.getCellEditor();
+      if (editor != null) {
+        editor.stopCellEditing();
+      }
+    }
+  }
+
+  private List<InputEquivalenceRow> inputEquivalenceRowsFromTable() {
+    final List<InputEquivalenceRow> out = new ArrayList<>();
+    for (int i = 0; i < this.equivPairModel.getRowCount(); i++) {
+      final String keyStr = cellString(this.equivPairModel.getValueAt(i, 1));
+      final String valStr = cellString(this.equivPairModel.getValueAt(i, 2));
+      if (keyStr.isEmpty() && valStr.isEmpty()) {
+        continue;
+      }
+      out.add(new InputEquivalenceRow(splitCommaSeparated(keyStr), splitCommaSeparated(valStr)));
+    }
+    return out;
+  }
+
+  private void fillEquivTableFromRules(final List<InputEquivalenceRow> rules) {
+    this.equivPairModel.setRowCount(0);
+    if (rules.isEmpty()) {
+      this.equivPairModel.addRow(new Object[] {0, "", ""});
+    } else {
+      for (final InputEquivalenceRow row : rules) {
+        this.equivPairModel.addRow(
+            new Object[] {0, joinCommaSeparated(row.key()), joinCommaSeparated(row.value())});
+      }
+    }
+    refreshEquivPairIds();
+    this.equivPairTable.setEnabled(true);
+    this.equivPairTable.getTableHeader().setEnabled(true);
+  }
+
+  private void configureEquivPairTable() {
+    final Font f = this.contentFont;
+    this.equivPairTable.setFont(f);
+    this.equivPairTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+    this.equivPairTable.setRowHeight(Math.max(32, (int) (f.getSize2D() + 14f)));
+    final JTableHeader header = this.equivPairTable.getTableHeader();
+    header.setFont(f.deriveFont(Font.BOLD));
+    header.setReorderingAllowed(false);
+    ((DefaultTableCellRenderer) header.getDefaultRenderer()).setHorizontalAlignment(JLabel.CENTER);
+
+    final DefaultTableCellRenderer strRenderer = new DefaultTableCellRenderer();
+    strRenderer.setFont(f);
+    this.equivPairTable.setDefaultRenderer(String.class, strRenderer);
+    final DefaultTableCellRenderer idRenderer = new DefaultTableCellRenderer();
+    idRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+    idRenderer.setFont(f);
+    this.equivPairTable.getColumnModel().getColumn(0).setCellRenderer(idRenderer);
+    final JTextField cellField = new JTextField();
+    cellField.setFont(f);
+    cellField.setMargin(new Insets(4, 8, 4, 8));
+    this.equivPairTable.setDefaultEditor(String.class, new DefaultCellEditor(cellField));
+    this.equivPairTable.setFillsViewportHeight(true);
+    this.equivPairTable.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
+    this.equivPairTable.getColumnModel().getColumn(0).setPreferredWidth(44);
+    this.equivPairTable.getColumnModel().getColumn(1).setPreferredWidth(200);
+    this.equivPairTable.getColumnModel().getColumn(2).setPreferredWidth(200);
+  }
+
+  private void refreshEquivPairIds() {
+    for (int i = 0; i < this.equivPairModel.getRowCount(); i++) {
+      this.equivPairModel.setValueAt(i + 1, i, 0);
+    }
   }
 
   private void styleTextFields() {
@@ -240,20 +363,31 @@ public final class EditorModule extends AbstractLangTrainerModule {
     final JTableHeader header = this.linesTable.getTableHeader();
     header.setFont(f.deriveFont(Font.BOLD));
     header.setReorderingAllowed(false);
+    ((DefaultTableCellRenderer) header.getDefaultRenderer()).setHorizontalAlignment(JLabel.CENTER);
+
     final DefaultTableCellRenderer renderer = new DefaultTableCellRenderer();
     renderer.setFont(f);
     this.linesTable.setDefaultRenderer(Object.class, renderer);
     this.linesTable.setDefaultRenderer(String.class, renderer);
+    final DefaultTableCellRenderer idRenderer = new DefaultTableCellRenderer();
+    idRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+    idRenderer.setFont(f);
+    this.linesTable.getColumnModel().getColumn(0).setCellRenderer(idRenderer);
     final JTextField cellField = new JTextField();
     cellField.setFont(f);
     cellField.setMargin(new Insets(4, 8, 4, 8));
     this.linesTable.setDefaultEditor(String.class, new DefaultCellEditor(cellField));
     this.linesTable.setFillsViewportHeight(true);
     this.linesTable.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
-    final TableColumn colA = this.linesTable.getColumnModel().getColumn(0);
-    final TableColumn colB = this.linesTable.getColumnModel().getColumn(1);
-    colA.setPreferredWidth(280);
-    colB.setPreferredWidth(280);
+    this.linesTable.getColumnModel().getColumn(0).setPreferredWidth(44);
+    this.linesTable.getColumnModel().getColumn(1).setPreferredWidth(280);
+    this.linesTable.getColumnModel().getColumn(2).setPreferredWidth(280);
+  }
+
+  private void refreshLineIds() {
+    for (int i = 0; i < this.linesModel.getRowCount(); i++) {
+      this.linesModel.setValueAt(i + 1, i, 0);
+    }
   }
 
   private void buildUi() {
@@ -265,20 +399,82 @@ public final class EditorModule extends AbstractLangTrainerModule {
     heading.setForeground(ACCENT);
     heading.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
 
-    final JPanel header = new JPanel(new GridLayout(4, 2, 10, 8));
-    header.setOpaque(false);
-    shrinkWrap(header);
-    header.add(label("Title (menuName)"));
-    header.add(this.fieldTitle);
-    header.add(label("Description"));
+    final JPanel generalBlock = new JPanel(new GridBagLayout());
+    generalBlock.setOpaque(false);
+    shrinkWrap(generalBlock);
+    generalBlock.setBorder(BorderFactory.createTitledBorder(
+        BorderFactory.createLineBorder(new Color(90, 120, 160), 2, true),
+        "General",
+        0,
+        0,
+        this.fieldTitle.getFont().deriveFont(Font.BOLD, 16f),
+        ACCENT));
+    generalBlock.setPreferredSize(new Dimension(300, 0));
+
     final JScrollPane descScroll = new JScrollPane(this.fieldDescription);
     shrinkWrap(descScroll);
-    descScroll.setPreferredSize(new Dimension(200, 72));
-    header.add(descScroll);
-    header.add(label("Language A"));
-    header.add(this.fieldLangA);
-    header.add(label("Language B"));
-    header.add(this.fieldLangB);
+    descScroll.setPreferredSize(new Dimension(200, 96));
+
+    final Insets cellPad = new Insets(4, 4, 4, 4);
+    final GridBagConstraints gbc = new GridBagConstraints();
+    gbc.insets = cellPad;
+
+    gbc.gridx = 0;
+    gbc.gridy = 0;
+    gbc.gridwidth = 1;
+    gbc.gridheight = 1;
+    gbc.weightx = 1.0;
+    gbc.weighty = 1.0;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    gbc.anchor = GridBagConstraints.WEST;
+    generalBlock.add(label("Title (menuName)"), gbc);
+
+    gbc.gridy = 1;
+    gbc.weightx = 100.0;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    generalBlock.add(this.fieldTitle, gbc);
+
+    gbc.gridy = 2;
+    gbc.weightx = 1.0;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    gbc.anchor = GridBagConstraints.NORTHWEST;
+    generalBlock.add(label("Description"), gbc);
+
+    gbc.gridy = 3;
+    gbc.weightx = 1.0;
+    gbc.weighty = 100.0;
+    gbc.fill = GridBagConstraints.BOTH;
+    gbc.anchor = GridBagConstraints.CENTER;
+    generalBlock.add(descScroll, gbc);
+
+    gbc.gridy = 4;
+    gbc.weightx = 1.0;
+    gbc.weighty = 1.0;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    gbc.anchor = GridBagConstraints.WEST;
+    generalBlock.add(label("Language A"), gbc);
+
+    gbc.gridy = 5;
+    gbc.weightx = 100.0;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    generalBlock.add(this.fieldLangA, gbc);
+
+    gbc.gridy = 6;
+    gbc.weightx = 1.0;
+    gbc.weighty = 1.0;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    generalBlock.add(label("Language B"), gbc);
+
+    gbc.gridy = 7;
+    gbc.weightx = 1.0;
+    gbc.weighty = 100.0;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    generalBlock.add(this.fieldLangB, gbc);
+
+    gbc.gridy = 8;
+    gbc.weighty = 1000.0;
+    gbc.fill = GridBagConstraints.VERTICAL;
+    generalBlock.add(Box.createVerticalGlue(), gbc);
 
     final JPanel linesWrap = new JPanel(new BorderLayout(8, 8));
     linesWrap.setOpaque(false);
@@ -292,43 +488,26 @@ public final class EditorModule extends AbstractLangTrainerModule {
         ACCENT));
     final JScrollPane linesScroll = new JScrollPane(this.linesTable);
     shrinkWrap(linesScroll);
-    linesScroll.setPreferredSize(new Dimension(400, 160));
     linesWrap.add(linesScroll, BorderLayout.CENTER);
     linesWrap.add(lineButtons(), BorderLayout.SOUTH);
 
-    final JPanel topBlock = new JPanel(new BorderLayout(0, 10));
-    topBlock.setOpaque(false);
-    shrinkWrap(topBlock);
-    topBlock.add(header, BorderLayout.NORTH);
-    topBlock.add(linesWrap, BorderLayout.CENTER);
-
-    final JPanel keysCol = wrapEquivColumn("Key equivalents (one per line)", this.equivKeysArea);
-    final JPanel valsCol = wrapEquivColumn("Value equivalents (one per line)", this.equivValsArea);
-    final JPanel detailGrid = new JPanel(new GridLayout(1, 2, 12, 0));
-    detailGrid.setOpaque(false);
-    shrinkWrap(detailGrid);
-    detailGrid.add(keysCol);
-    detailGrid.add(valsCol);
-    final JPanel detailPanel = new JPanel(new BorderLayout());
-    detailPanel.setOpaque(true);
-    detailPanel.setBackground(Color.WHITE);
-    detailPanel.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
-    shrinkWrap(detailPanel);
-    detailPanel.add(detailGrid, BorderLayout.CENTER);
-    final JScrollPane detailScroll = new JScrollPane(detailPanel);
-    detailScroll.getViewport().setBackground(Color.WHITE);
-    shrinkWrap(detailScroll);
-
-    final JScrollPane equivListScroll = new JScrollPane(this.equivRuleList);
-    shrinkWrap(equivListScroll);
-    equivListScroll.setMinimumSize(new Dimension(120, 60));
-    equivListScroll.setPreferredSize(new Dimension(168, 200));
-    final JSplitPane equivSplit =
-        new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, equivListScroll, detailScroll);
-    equivSplit.setResizeWeight(0.22);
-    equivSplit.setContinuousLayout(true);
-    equivSplit.setOneTouchExpandable(true);
-    equivSplit.setBorder(BorderFactory.createEmptyBorder());
+    final JLabel pairHint =
+        new JLabel(
+            "Each row is one equivalence rule. Key and Value are comma-separated tokens (e.g. e,E and e,E,ё,Ё).",
+            SwingConstants.LEADING);
+    pairHint.setFont(pairHint.getFont().deriveFont(Font.PLAIN, 14f));
+    pairHint.setForeground(new Color(55, 71, 79));
+    pairHint.setBorder(BorderFactory.createEmptyBorder(0, 0, 6, 0));
+    final JScrollPane pairScroll = new JScrollPane(this.equivPairTable);
+    shrinkWrap(pairScroll);
+    pairScroll.getViewport().setBackground(Color.WHITE);
+    final JPanel equivTableWrap = new JPanel(new BorderLayout(0, 6));
+    equivTableWrap.setOpaque(true);
+    equivTableWrap.setBackground(Color.WHITE);
+    equivTableWrap.setBorder(BorderFactory.createEmptyBorder(4, 8, 8, 8));
+    shrinkWrap(equivTableWrap);
+    equivTableWrap.add(pairHint, BorderLayout.NORTH);
+    equivTableWrap.add(pairScroll, BorderLayout.CENTER);
 
     final JPanel equivBlock = new JPanel(new BorderLayout());
     equivBlock.setOpaque(false);
@@ -340,21 +519,31 @@ public final class EditorModule extends AbstractLangTrainerModule {
         0,
         this.fieldTitle.getFont().deriveFont(Font.BOLD, 16f),
         new Color(74, 20, 140)));
-    equivBlock.add(equivSplit, BorderLayout.CENTER);
+    equivBlock.add(equivTableWrap, BorderLayout.CENTER);
     equivBlock.add(equivButtons(), BorderLayout.SOUTH);
 
-    final JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, topBlock, equivBlock);
-    split.setResizeWeight(0.55);
-    split.setContinuousLayout(true);
-    split.setOneTouchExpandable(true);
-    split.setBorder(BorderFactory.createEmptyBorder());
-    split.setOpaque(false);
+    final JSplitPane linesEquivSplit =
+        new JSplitPane(JSplitPane.VERTICAL_SPLIT, linesWrap, equivBlock);
+    linesEquivSplit.setResizeWeight(0.5);
+    linesEquivSplit.setContinuousLayout(true);
+    linesEquivSplit.setOneTouchExpandable(true);
+    linesEquivSplit.setBorder(BorderFactory.createEmptyBorder());
+    linesEquivSplit.setOpaque(false);
+    shrinkWrap(linesEquivSplit);
+
+    final JSplitPane mainSplit =
+        new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, generalBlock, linesEquivSplit);
+    mainSplit.setResizeWeight(0.0);
+    mainSplit.setContinuousLayout(true);
+    mainSplit.setOneTouchExpandable(true);
+    mainSplit.setBorder(BorderFactory.createEmptyBorder());
+    mainSplit.setOpaque(false);
 
     final JPanel center = new JPanel(new BorderLayout());
     center.setOpaque(false);
     shrinkWrap(center);
     center.add(heading, BorderLayout.NORTH);
-    center.add(split, BorderLayout.CENTER);
+    center.add(mainSplit, BorderLayout.CENTER);
 
     final JPanel newDocRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
     newDocRow.setOpaque(false);
@@ -369,20 +558,6 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
     this.rootPanel.add(newDocRow, BorderLayout.NORTH);
     this.rootPanel.add(center, BorderLayout.CENTER);
-  }
-
-  private JPanel wrapEquivColumn(final String title, final JTextArea area) {
-    final JPanel col = new JPanel(new BorderLayout(0, 6));
-    col.setOpaque(false);
-    shrinkWrap(col);
-    final JLabel lab = new JLabel(title);
-    lab.setFont(lab.getFont().deriveFont(Font.BOLD, 15f));
-    lab.setForeground(new Color(55, 71, 79));
-    col.add(lab, BorderLayout.NORTH);
-    final JScrollPane sp = new JScrollPane(area);
-    shrinkWrap(sp);
-    col.add(sp, BorderLayout.CENTER);
-    return col;
   }
 
   private boolean confirmLoseChanges() {
@@ -406,7 +581,12 @@ public final class EditorModule extends AbstractLangTrainerModule {
     stylePrimary(remove, new Color(198, 40, 40));
     stylePrimary(up, new Color(25, 118, 210));
     stylePrimary(down, new Color(25, 118, 210));
-    add.addActionListener(e -> this.linesModel.addRow(new Object[] {"", ""}));
+    add.addActionListener(e -> {
+      this.linesModel.addRow(new Object[] {0, "", ""});
+      refreshLineIds();
+      final int last = this.linesModel.getRowCount() - 1;
+      this.linesTable.setRowSelectionInterval(last, last);
+    });
     remove.addActionListener(e -> removeSelectedLine());
     up.addActionListener(e -> moveLine(-1));
     down.addActionListener(e -> moveLine(1));
@@ -429,11 +609,10 @@ public final class EditorModule extends AbstractLangTrainerModule {
     stylePrimary(up, new Color(123, 31, 162));
     stylePrimary(down, new Color(123, 31, 162));
     add.addActionListener(e -> {
-      commitEquivAtDisplayedIndex();
-      this.equivRules.add(new InputEquivalenceRow(List.of(), List.of()));
-      refreshEquivRuleTitles();
-      final int last = this.equivRules.size() - 1;
-      this.equivRuleList.setSelectedIndex(last);
+      this.equivPairModel.addRow(new Object[] {0, "", ""});
+      refreshEquivPairIds();
+      final int last = this.equivPairModel.getRowCount() - 1;
+      this.equivPairTable.setRowSelectionInterval(last, last);
     });
     remove.addActionListener(e -> removeSelectedEquiv());
     up.addActionListener(e -> moveEquiv(-1));
@@ -447,9 +626,18 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
   private void removeSelectedLine() {
     final int r = this.linesTable.getSelectedRow();
-    if (r >= 0) {
-      this.linesModel.removeRow(r);
+    if (r < 0) {
+      return;
     }
+    if (this.linesModel.getRowCount() == 1) {
+      stopLinesTableEditing();
+      this.linesModel.setValueAt("", r, 1);
+      this.linesModel.setValueAt("", r, 2);
+      return;
+    }
+    stopLinesTableEditing();
+    this.linesModel.removeRow(r);
+    refreshLineIds();
   }
 
   private void moveLine(final int delta) {
@@ -459,72 +647,68 @@ public final class EditorModule extends AbstractLangTrainerModule {
     if (r < 0 || to < 0 || to >= n) {
       return;
     }
-    for (int c = 0; c < 2; c++) {
+    for (int c = 1; c <= 2; c++) {
       final Object a = this.linesModel.getValueAt(r, c);
       final Object b = this.linesModel.getValueAt(to, c);
       this.linesModel.setValueAt(b, r, c);
       this.linesModel.setValueAt(a, to, c);
     }
+    refreshLineIds();
     this.linesTable.setRowSelectionInterval(to, to);
+    ensureTableRowVisible(this.linesTable, to);
   }
 
   private void removeSelectedEquiv() {
-    if (this.equivRules.isEmpty()) {
+    if (this.equivPairModel.getRowCount() == 0) {
       return;
     }
-    final int idx = this.equivRuleList.getSelectedIndex();
+    final int idx = this.equivPairTable.getSelectedRow();
     if (idx < 0) {
       JOptionPane.showMessageDialog(
           this.rootPanel,
-          "Select a rule in the list on the left.",
+          "Select a rule row in the table.",
           "No rule selected",
           JOptionPane.INFORMATION_MESSAGE);
       return;
     }
-    commitEquivAtDisplayedIndex();
-    this.equivRules.remove(idx);
-    refreshEquivRuleTitles();
-    this.equivDisplayedIndex = -1;
-    if (this.equivRules.isEmpty()) {
-      this.equivRuleList.clearSelection();
-      fillEquivEditorsFromModel(-1);
-    } else {
-      final int sel = Math.min(idx, this.equivRules.size() - 1);
-      this.equivRuleList.setSelectedIndex(sel);
+    this.equivPairModel.removeRow(idx);
+    if (this.equivPairModel.getRowCount() == 0) {
+      this.equivPairModel.addRow(new Object[] {0, "", ""});
+    }
+    refreshEquivPairIds();
+    final int n = this.equivPairModel.getRowCount();
+    if (n > 0) {
+      final int sel = Math.min(idx, n - 1);
+      this.equivPairTable.setRowSelectionInterval(sel, sel);
     }
   }
 
   private void moveEquiv(final int delta) {
-    if (this.equivRules.isEmpty()) {
+    if (this.equivPairModel.getRowCount() == 0) {
       return;
     }
-    final int idx = this.equivRuleList.getSelectedIndex();
+    final int idx = this.equivPairTable.getSelectedRow();
     if (idx < 0) {
       JOptionPane.showMessageDialog(
           this.rootPanel,
-          "Select a rule in the list on the left.",
+          "Select a rule row in the table.",
           "No rule selected",
           JOptionPane.INFORMATION_MESSAGE);
       return;
     }
     final int to = idx + delta;
-    if (to < 0 || to >= this.equivRules.size()) {
+    if (to < 0 || to >= this.equivPairModel.getRowCount()) {
       return;
     }
-    commitEquivAtDisplayedIndex();
-    final InputEquivalenceRow a = this.equivRules.get(idx);
-    final InputEquivalenceRow b = this.equivRules.get(to);
-    this.equivRules.set(idx, b);
-    this.equivRules.set(to, a);
-    refreshEquivRuleTitles();
-    this.equivRuleList.setSelectedIndex(to);
-  }
-
-  private void refreshEquivRuleTitles() {
-    this.equivRuleListModel.clear();
-    for (int i = 0; i < this.equivRules.size(); i++) {
-      this.equivRuleListModel.addElement("Rule " + (i + 1));
+    for (int c = 1; c <= 2; c++) {
+      final Object a = this.equivPairModel.getValueAt(idx, c);
+      final Object b = this.equivPairModel.getValueAt(to, c);
+      this.equivPairModel.setValueAt(b, idx, c);
+      this.equivPairModel.setValueAt(a, to, c);
     }
+    refreshEquivPairIds();
+    this.equivPairTable.setRowSelectionInterval(to, to);
+    ensureTableRowVisible(this.equivPairTable, to);
   }
 
   private void newDocument() {
@@ -534,18 +718,16 @@ public final class EditorModule extends AbstractLangTrainerModule {
     this.fieldLangA.setText("");
     this.fieldLangB.setText("");
     this.linesModel.setRowCount(0);
-    this.linesModel.addRow(new Object[] {"", ""});
+    this.linesModel.addRow(new Object[] {0, "", ""});
+    refreshLineIds();
     clearEquivRules();
     this.linesTable.setRowSelectionInterval(0, 0);
   }
 
   private void clearEquivRules() {
-    commitEquivAtDisplayedIndex();
-    this.equivRules.clear();
-    this.equivDisplayedIndex = -1;
-    refreshEquivRuleTitles();
-    this.equivRuleList.clearSelection();
-    fillEquivEditorsFromModel(-1);
+    stopEquivTableEditing();
+    fillEquivTableFromRules(List.of());
+    this.equivPairTable.setEnabled(true);
   }
 
   private void applyDefinition(final DialogDefinition def) {
@@ -555,37 +737,32 @@ public final class EditorModule extends AbstractLangTrainerModule {
     this.fieldLangB.setText(def.langB());
     this.linesModel.setRowCount(0);
     for (final DialogLine line : def.lines()) {
-      this.linesModel.addRow(new Object[] {line.a(), line.b()});
+      this.linesModel.addRow(new Object[] {0, line.a(), line.b()});
     }
-    commitEquivAtDisplayedIndex();
-    this.equivRules.clear();
-    this.equivRules.addAll(def.inputEqu());
-    this.equivDisplayedIndex = -1;
-    refreshEquivRuleTitles();
-    if (!this.equivRules.isEmpty()) {
-      this.equivRuleList.setSelectedIndex(0);
-    } else {
-      this.equivRuleList.clearSelection();
-      fillEquivEditorsFromModel(-1);
-    }
+    refreshLineIds();
+    stopEquivTableEditing();
+    fillEquivTableFromRules(def.inputEqu());
     if (this.linesModel.getRowCount() > 0) {
       this.linesTable.setRowSelectionInterval(0, 0);
     }
   }
 
   private DialogDefinition readDefinitionFromUi() {
-    commitEquivAtDisplayedIndex();
+    stopLinesTableEditing();
+    stopEquivTableEditing();
     if (this.linesModel.getRowCount() == 0) {
       throw new IllegalStateException("Add at least one dialog line.");
     }
+    validateLinesForSave();
+    validateEquivPairsForSave();
     final List<DialogLine> lines = new ArrayList<>();
     for (int i = 0; i < this.linesModel.getRowCount(); i++) {
-      final String a = String.valueOf(this.linesModel.getValueAt(i, 0) == null
-          ? ""
-          : this.linesModel.getValueAt(i, 0));
-      final String b = String.valueOf(this.linesModel.getValueAt(i, 1) == null
+      final String a = String.valueOf(this.linesModel.getValueAt(i, 1) == null
           ? ""
           : this.linesModel.getValueAt(i, 1));
+      final String b = String.valueOf(this.linesModel.getValueAt(i, 2) == null
+          ? ""
+          : this.linesModel.getValueAt(i, 2));
       lines.add(new DialogLine(a, b));
     }
     return new DialogDefinition(
@@ -594,7 +771,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
         this.fieldLangA.getText().strip(),
         this.fieldLangB.getText().strip(),
         lines,
-        List.copyOf(this.equivRules));
+        inputEquivalenceRowsFromTable());
   }
 
   private void loadFromUser() {
