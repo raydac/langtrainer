@@ -70,6 +70,7 @@ public final class LangTrainerApplication {
     this.mainFrame.setContentPane(this.mainMenuPanel);
     this.mainFrame.pack();
     this.mainFrame.setLocationRelativeTo(null);
+    this.mainFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
   }
 
   private void activateModule(final AbstractLangTrainerModule module) {
