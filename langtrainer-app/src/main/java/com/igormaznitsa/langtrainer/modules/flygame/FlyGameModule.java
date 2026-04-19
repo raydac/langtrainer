@@ -2,11 +2,11 @@ package com.igormaznitsa.langtrainer.modules.flygame;
 
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
+import com.igormaznitsa.langtrainer.engine.DialogDefinition;
+import com.igormaznitsa.langtrainer.engine.DialogLine;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
+import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
 import com.igormaznitsa.langtrainer.engine.LangTrainerApplication;
-import com.igormaznitsa.langtrainer.modules.dialog.DialogDefinition;
-import com.igormaznitsa.langtrainer.modules.dialog.DialogLine;
-import com.igormaznitsa.langtrainer.modules.dialog.InputEquivalenceRow;
 import com.igormaznitsa.langtrainer.modules.dialog.InputEquivalenceSupport;
 import com.igormaznitsa.langtrainer.text.TypingComparisonUtils;
 import java.awt.AlphaComposite;

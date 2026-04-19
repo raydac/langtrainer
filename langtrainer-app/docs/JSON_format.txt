@@ -43,6 +43,80 @@ JSON file format describes language learning resources and keyboard behaviour.
         },
      ]
 
+    The array "key" contains all expected chars entered by user to be substituted by expected char from the "value" section.
+
     The field describes rules of substitution for enter user chars based on expected next char. For instance if in entering work
     expected Russian char 'Ё' but user presses Russian 'Е' or 'е' then expected 'Ё' will replace entered е. "Key" chars expected
-    as input and "Value" chars allowed for substitution.
+    as input and "Value" chars allowed for substitution. So if expected 'Ё' and user presses 'е' then there will be substitution by 'Ё'.
+
+    It is possible to have more variants as substitution for pressed keys, for instance in Estonian language
+
+  "inputEqu": [
+    {
+      "key": [
+        "е",
+        "Е",
+        "ё",
+        "Ё"
+      ],
+      "value": [
+        "е",
+        "Е",
+        "ё",
+        "Ё"
+      ]
+    },
+    {
+      "key": [
+        "a",
+        "A"
+      ],
+      "value": [
+        "ä",
+        "Ä"
+      ]
+    },
+    {
+      "key": [
+        "o",
+        "O"
+      ],
+      "value": [
+        "ö",
+        "Ö",
+        "õ",
+        "Õ"
+      ]
+    },
+    {
+      "key": [
+        "u",
+        "U"
+      ],
+      "value": [
+        "ü",
+        "Ü"
+      ]
+    },
+    {
+      "key": [
+        "s",
+        "S"
+      ],
+      "value": [
+        "š",
+        "Š"
+      ]
+    },
+    {
+      "key": [
+        "z",
+        "Z"
+      ],
+      "value": [
+        "ž",
+        "Ž"
+      ]
+    }
+  ]
+

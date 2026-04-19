@@ -1,4 +1,4 @@
-package com.igormaznitsa.langtrainer.modules.dialog;
+package com.igormaznitsa.langtrainer.engine;
 
 import java.util.List;
 

@@ -2,7 +2,10 @@ package com.igormaznitsa.langtrainer.modules.dialog;
 
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
+import com.igormaznitsa.langtrainer.engine.DialogDefinition;
+import com.igormaznitsa.langtrainer.engine.DialogLine;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
+import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
 import com.igormaznitsa.langtrainer.text.TypingComparisonUtils;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;

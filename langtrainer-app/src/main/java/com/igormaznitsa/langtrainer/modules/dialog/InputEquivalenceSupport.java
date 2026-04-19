@@ -1,5 +1,7 @@
 package com.igormaznitsa.langtrainer.modules.dialog;
 
+import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
+
 import java.util.List;
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.BadLocationException;
@@ -122,6 +124,11 @@ public final class InputEquivalenceSupport {
     return new String(Character.toChars(Character.toLowerCase(m)));
   }
 
+  /**
+   * Same-sized {@code key} and {@code value}: {@code key[i]} pairs with {@code value[i]}. Different
+   * sizes: typed may match any {@code key} entry and the expected character any {@code value}
+   * entry (multiple substitution targets per key group; see {@code docs/JSON_format.txt}).
+   */
   public static String matchInputEquivalence(
       final String typed,
       final String expectedChar,
@@ -129,14 +136,25 @@ public final class InputEquivalenceSupport {
     for (final InputEquivalenceRow row : rules) {
       final List<String> keys = row.key();
       final List<String> vals = row.value();
-      for (int i = 0; i < keys.size(); i++) {
-        if (!typedKeyMatches(typed, keys.get(i))) {
+      if (keys.size() == vals.size()) {
+        for (int i = 0; i < keys.size(); i++) {
+          if (!typedKeyMatches(typed, keys.get(i))) {
+            continue;
+          }
+          if (!valueMatchesExpectedSlot(vals.get(i), expectedChar)) {
+            continue;
+          }
+          return alignMappedLetterCaseToExpected(vals.get(i), expectedChar);
+        }
+      } else {
+        if (!keys.stream().anyMatch(k -> typedKeyMatches(typed, k))) {
           continue;
         }
-        if (!valueMatchesExpectedSlot(vals.get(i), expectedChar)) {
-          continue;
+        for (final String v : vals) {
+          if (valueMatchesExpectedSlot(v, expectedChar)) {
+            return alignMappedLetterCaseToExpected(v, expectedChar);
+          }
         }
-        return alignMappedLetterCaseToExpected(vals.get(i), expectedChar);
       }
     }
     return null;
