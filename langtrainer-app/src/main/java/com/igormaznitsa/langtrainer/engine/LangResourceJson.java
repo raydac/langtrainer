@@ -246,8 +246,8 @@ public final class LangResourceJson {
       result.add(new DialogLine(matcher.group(1), matcher.group(2)));
     }
     if (result.isEmpty()) {
-      throw new IllegalStateException("Dialog lines are empty");
+      return List.of(new DialogLine("", ""));
     }
-    return result;
+    return List.copyOf(result);
   }
 }
