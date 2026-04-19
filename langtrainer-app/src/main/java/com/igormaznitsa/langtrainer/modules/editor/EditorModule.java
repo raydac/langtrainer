@@ -48,6 +48,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.table.TableColumn;
 
 public final class EditorModule extends AbstractLangTrainerModule {
 
@@ -62,7 +63,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
   private final JPanel rootPanel = new JPanel(new BorderLayout(0, 10));
   private final JTextField fieldTitle = new JTextField();
-  private final JTextArea fieldDescription = new JTextArea(2, 40);
+  private final JTextArea fieldDescription = makeGrowingTextArea();
   private final JTextField fieldLangA = new JTextField();
   private final JTextField fieldLangB = new JTextField();
   private final DefaultTableModel linesModel =
@@ -76,8 +77,8 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private final List<InputEquivalenceRow> equivRules = new ArrayList<>();
   private final DefaultListModel<String> equivRuleListModel = new DefaultListModel<>();
   private final JList<String> equivRuleList = new JList<>(this.equivRuleListModel);
-  private final JTextArea equivKeysArea = new JTextArea(10, 22);
-  private final JTextArea equivValsArea = new JTextArea(10, 22);
+  private final JTextArea equivKeysArea = makeGrowingTextArea();
+  private final JTextArea equivValsArea = makeGrowingTextArea();
   /**
    * Index whose text is currently shown in {@link #equivKeysArea} / {@link #equivValsArea}.
    */
@@ -87,6 +88,12 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
   public EditorModule() {
     this.contentFont = this.rootPanel.getFont().deriveFont(Font.PLAIN, CONTENT_FONT_PT);
+    this.fieldDescription.setRows(2);
+    this.fieldDescription.setColumns(40);
+    this.equivKeysArea.setRows(8);
+    this.equivKeysArea.setColumns(20);
+    this.equivValsArea.setRows(8);
+    this.equivValsArea.setColumns(20);
     this.fieldDescription.setLineWrap(true);
     this.fieldDescription.setWrapStyleWord(true);
     styleTextFields();
@@ -98,6 +105,31 @@ public final class EditorModule extends AbstractLangTrainerModule {
     this.equivRuleList.addListSelectionListener(this::onEquivRuleSelectionChanged);
     buildUi();
     newDocument();
+  }
+
+  /**
+   * Text area that expands with its {@link JScrollPane} viewport when the window is resized (default
+   * {@link JTextArea} keeps a fixed preferred height and ignores extra vertical space).
+   */
+  private static JTextArea makeGrowingTextArea() {
+    final JTextArea area =
+        new JTextArea() {
+          @Override
+          public boolean getScrollableTracksViewportWidth() {
+            return true;
+          }
+
+          @Override
+          public boolean getScrollableTracksViewportHeight() {
+            return true;
+          }
+        };
+    area.setMinimumSize(new Dimension(0, 0));
+    return area;
+  }
+
+  private static void shrinkWrap(final JComponent c) {
+    c.setMinimumSize(new Dimension(0, 0));
   }
 
   private static void stylePrimary(final JButton button, final Color bg) {
@@ -216,6 +248,12 @@ public final class EditorModule extends AbstractLangTrainerModule {
     cellField.setFont(f);
     cellField.setMargin(new Insets(4, 8, 4, 8));
     this.linesTable.setDefaultEditor(String.class, new DefaultCellEditor(cellField));
+    this.linesTable.setFillsViewportHeight(true);
+    this.linesTable.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
+    final TableColumn colA = this.linesTable.getColumnModel().getColumn(0);
+    final TableColumn colB = this.linesTable.getColumnModel().getColumn(1);
+    colA.setPreferredWidth(280);
+    colB.setPreferredWidth(280);
   }
 
   private void buildUi() {
@@ -229,11 +267,13 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
     final JPanel header = new JPanel(new GridLayout(4, 2, 10, 8));
     header.setOpaque(false);
+    shrinkWrap(header);
     header.add(label("Title (menuName)"));
     header.add(this.fieldTitle);
     header.add(label("Description"));
     final JScrollPane descScroll = new JScrollPane(this.fieldDescription);
-    descScroll.setPreferredSize(new Dimension(200, 52));
+    shrinkWrap(descScroll);
+    descScroll.setPreferredSize(new Dimension(200, 72));
     header.add(descScroll);
     header.add(label("Language A"));
     header.add(this.fieldLangA);
@@ -242,6 +282,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
     final JPanel linesWrap = new JPanel(new BorderLayout(8, 8));
     linesWrap.setOpaque(false);
+    shrinkWrap(linesWrap);
     linesWrap.setBorder(BorderFactory.createTitledBorder(
         BorderFactory.createLineBorder(new Color(100, 130, 170), 2, true),
         "Lines (phrases)",
@@ -250,12 +291,14 @@ public final class EditorModule extends AbstractLangTrainerModule {
         this.fieldTitle.getFont().deriveFont(Font.BOLD, 16f),
         ACCENT));
     final JScrollPane linesScroll = new JScrollPane(this.linesTable);
-    linesScroll.setPreferredSize(new Dimension(400, 200));
+    shrinkWrap(linesScroll);
+    linesScroll.setPreferredSize(new Dimension(400, 160));
     linesWrap.add(linesScroll, BorderLayout.CENTER);
     linesWrap.add(lineButtons(), BorderLayout.SOUTH);
 
     final JPanel topBlock = new JPanel(new BorderLayout(0, 10));
     topBlock.setOpaque(false);
+    shrinkWrap(topBlock);
     topBlock.add(header, BorderLayout.NORTH);
     topBlock.add(linesWrap, BorderLayout.CENTER);
 
@@ -263,19 +306,23 @@ public final class EditorModule extends AbstractLangTrainerModule {
     final JPanel valsCol = wrapEquivColumn("Value equivalents (one per line)", this.equivValsArea);
     final JPanel detailGrid = new JPanel(new GridLayout(1, 2, 12, 0));
     detailGrid.setOpaque(false);
+    shrinkWrap(detailGrid);
     detailGrid.add(keysCol);
     detailGrid.add(valsCol);
     final JPanel detailPanel = new JPanel(new BorderLayout());
     detailPanel.setOpaque(true);
     detailPanel.setBackground(Color.WHITE);
     detailPanel.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+    shrinkWrap(detailPanel);
     detailPanel.add(detailGrid, BorderLayout.CENTER);
     final JScrollPane detailScroll = new JScrollPane(detailPanel);
     detailScroll.getViewport().setBackground(Color.WHITE);
+    shrinkWrap(detailScroll);
 
     final JScrollPane equivListScroll = new JScrollPane(this.equivRuleList);
-    equivListScroll.setMinimumSize(new Dimension(140, 80));
-    equivListScroll.setPreferredSize(new Dimension(160, 200));
+    shrinkWrap(equivListScroll);
+    equivListScroll.setMinimumSize(new Dimension(120, 60));
+    equivListScroll.setPreferredSize(new Dimension(168, 200));
     final JSplitPane equivSplit =
         new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, equivListScroll, detailScroll);
     equivSplit.setResizeWeight(0.22);
@@ -285,6 +332,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
     final JPanel equivBlock = new JPanel(new BorderLayout());
     equivBlock.setOpaque(false);
+    shrinkWrap(equivBlock);
     equivBlock.setBorder(BorderFactory.createTitledBorder(
         BorderFactory.createLineBorder(new Color(120, 100, 160), 2, true),
         "Input equivalence rules",
@@ -297,10 +345,14 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
     final JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, topBlock, equivBlock);
     split.setResizeWeight(0.55);
+    split.setContinuousLayout(true);
+    split.setOneTouchExpandable(true);
+    split.setBorder(BorderFactory.createEmptyBorder());
     split.setOpaque(false);
 
     final JPanel center = new JPanel(new BorderLayout());
     center.setOpaque(false);
+    shrinkWrap(center);
     center.add(heading, BorderLayout.NORTH);
     center.add(split, BorderLayout.CENTER);
 
@@ -322,11 +374,14 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private JPanel wrapEquivColumn(final String title, final JTextArea area) {
     final JPanel col = new JPanel(new BorderLayout(0, 6));
     col.setOpaque(false);
+    shrinkWrap(col);
     final JLabel lab = new JLabel(title);
     lab.setFont(lab.getFont().deriveFont(Font.BOLD, 15f));
     lab.setForeground(new Color(55, 71, 79));
     col.add(lab, BorderLayout.NORTH);
-    col.add(new JScrollPane(area), BorderLayout.CENTER);
+    final JScrollPane sp = new JScrollPane(area);
+    shrinkWrap(sp);
+    col.add(sp, BorderLayout.CENTER);
     return col;
   }
 
