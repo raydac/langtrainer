@@ -22,16 +22,7 @@ import javax.swing.WindowConstants;
 
 public final class LangTrainerApplication {
 
-  /**
-   * Placed on the module host panel so embedded modules (for example Fly game) can request return
-   * to the main menu the same way as the frame toolbar close action.
-   */
   public static final String CLOSE_MODULE_CLIENT_PROPERTY = "langtrainer.closeModule";
-
-  /**
-   * Placed on the module host panel so modules can show or hide the frame toolbar (virtual keyboard
-   * and exit). Value is a {@code Consumer<Boolean>}; {@code true} means the toolbar is visible.
-   */
   public static final String SET_TOOLBAR_VISIBLE_CLIENT_PROPERTY = "langtrainer.setToolbarVisible";
 
   private final JFrame mainFrame;
@@ -195,15 +186,15 @@ public final class LangTrainerApplication {
   }
 
   private boolean dispatchTypedChar(final KeyEvent event) {
-    boolean result;
-    result = false;
-    if (this.activeModule != null && event.getID() == KeyEvent.KEY_TYPED) {
-      final char symbol = event.getKeyChar();
-      if (symbol != KeyEvent.CHAR_UNDEFINED && !Character.isISOControl(symbol)) {
-        onCharInput(symbol);
-        result = true;
-      }
+    if (this.activeModule == null || event.getID() != KeyEvent.KEY_TYPED) {
+      return false;
     }
-    return result;
+    final char symbol = event.getKeyChar();
+    if (symbol == KeyEvent.CHAR_UNDEFINED || Character.isISOControl(symbol)) {
+      return false;
+    }
+    onCharInput(symbol);
+    return true;
   }
 }
+

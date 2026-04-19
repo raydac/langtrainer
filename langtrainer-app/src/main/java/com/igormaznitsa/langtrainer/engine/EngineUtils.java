@@ -5,7 +5,6 @@ import static java.util.Objects.requireNonNull;
 import java.awt.Image;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Objects;
 import javax.imageio.ImageIO;
 
 public final class EngineUtils {

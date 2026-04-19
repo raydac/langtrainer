@@ -1,17 +1,12 @@
 package com.igormaznitsa.langtrainer.modules.dialog;
 
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
-
 import java.util.List;
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import javax.swing.text.JTextComponent;
 
-/**
- * Shared logic for {@code inputEqu} rules: map typed characters to expected positions and replace
- * known alternative spellings with the canonical expected substring.
- */
 public final class InputEquivalenceSupport {
 
   private InputEquivalenceSupport() {
@@ -31,10 +26,6 @@ public final class InputEquivalenceSupport {
     return cp == ',' || cp == ';' || cp == ':' || cp == '.' || cp == '!' || cp == '?' || cp == '…';
   }
 
-  /**
-   * Maps a character index in the user's text to the corresponding index in the expected line.
-   * Handles omitted punctuation and letter case so typed text lines up with the expected string.
-   */
   public static int expectedOffsetForDocumentIndex(
       final String doc, final String expected, final int docIndex) {
     int i = 0;
@@ -74,38 +65,17 @@ public final class InputEquivalenceSupport {
     return j;
   }
 
-  /**
-   * True if {@code a} equals {@code b}, or both are a single letter and match ignoring case
-   * (covers ASCII {@code a}/{@code A} after filters vs keys in JSON).
-   */
-  private static boolean typedKeyMatches(final String typed, final String key) {
-    if (typed.equals(key)) {
+  private static boolean sameSlotOrLetterCaseInsensitive(final String a, final String b) {
+    if (a.equals(b)) {
       return true;
     }
-    if (typed.length() != 1 || key.length() != 1) {
+    if (a.length() != 1 || b.length() != 1) {
       return false;
     }
-    final int t = typed.codePointAt(0);
-    final int k = key.codePointAt(0);
-    return Character.isLetter(t) && Character.isLetter(k)
-        && Character.toLowerCase(t) == Character.toLowerCase(k);
-  }
-
-  /**
-   * True if the rule value matches the expected slot (exact, or same letter ignoring case for
-   * single code points so {@code A}↔{@code Ä} rows still apply when the answer has {@code ä}).
-   */
-  private static boolean valueMatchesExpectedSlot(final String value, final String expectedChar) {
-    if (value.equals(expectedChar)) {
-      return true;
-    }
-    if (value.length() != 1 || expectedChar.length() != 1) {
-      return false;
-    }
-    final int v = value.codePointAt(0);
-    final int e = expectedChar.codePointAt(0);
-    return Character.isLetter(v) && Character.isLetter(e)
-        && Character.toLowerCase(v) == Character.toLowerCase(e);
+    final int ca = a.codePointAt(0);
+    final int cb = b.codePointAt(0);
+    return Character.isLetter(ca) && Character.isLetter(cb)
+        && Character.toLowerCase(ca) == Character.toLowerCase(cb);
   }
 
   private static String alignMappedLetterCaseToExpected(
@@ -124,11 +94,6 @@ public final class InputEquivalenceSupport {
     return new String(Character.toChars(Character.toLowerCase(m)));
   }
 
-  /**
-   * Same-sized {@code key} and {@code value}: {@code key[i]} pairs with {@code value[i]}. Different
-   * sizes: typed may match any {@code key} entry and the expected character any {@code value}
-   * entry (multiple substitution targets per key group; see {@code docs/JSON_format.txt}).
-   */
   public static String matchInputEquivalence(
       final String typed,
       final String expectedChar,
@@ -136,34 +101,50 @@ public final class InputEquivalenceSupport {
     for (final InputEquivalenceRow row : rules) {
       final List<String> keys = row.key();
       final List<String> vals = row.value();
-      if (keys.size() == vals.size()) {
-        for (int i = 0; i < keys.size(); i++) {
-          if (!typedKeyMatches(typed, keys.get(i))) {
-            continue;
-          }
-          if (!valueMatchesExpectedSlot(vals.get(i), expectedChar)) {
-            continue;
-          }
-          return alignMappedLetterCaseToExpected(vals.get(i), expectedChar);
-        }
-      } else {
-        if (!keys.stream().anyMatch(k -> typedKeyMatches(typed, k))) {
-          continue;
-        }
-        for (final String v : vals) {
-          if (valueMatchesExpectedSlot(v, expectedChar)) {
-            return alignMappedLetterCaseToExpected(v, expectedChar);
-          }
-        }
+      final String matched =
+          keys.size() == vals.size()
+              ? matchPositional(typed, expectedChar, keys, vals)
+              : matchAnyKeyToExpectedValue(typed, expectedChar, keys, vals);
+      if (matched != null) {
+        return matched;
       }
     }
     return null;
   }
 
-  /**
-   * After {@code insertLen} characters were inserted at {@code start}, replace any segments that
-   * match {@code inputEqu} rules for the corresponding expected substring.
-   */
+  private static String matchPositional(
+      final String typed,
+      final String expectedChar,
+      final List<String> keys,
+      final List<String> vals) {
+    for (int i = 0; i < keys.size(); i++) {
+      if (!sameSlotOrLetterCaseInsensitive(typed, keys.get(i))) {
+        continue;
+      }
+      if (!sameSlotOrLetterCaseInsensitive(vals.get(i), expectedChar)) {
+        continue;
+      }
+      return alignMappedLetterCaseToExpected(vals.get(i), expectedChar);
+    }
+    return null;
+  }
+
+  private static String matchAnyKeyToExpectedValue(
+      final String typed,
+      final String expectedChar,
+      final List<String> keys,
+      final List<String> vals) {
+    if (!keys.stream().anyMatch(k -> sameSlotOrLetterCaseInsensitive(typed, k))) {
+      return null;
+    }
+    for (final String v : vals) {
+      if (sameSlotOrLetterCaseInsensitive(v, expectedChar)) {
+        return alignMappedLetterCaseToExpected(v, expectedChar);
+      }
+    }
+    return null;
+  }
+
   public static void applyAfterInsert(
       final JTextComponent area,
       final String expectedFull,
@@ -204,8 +185,7 @@ public final class InputEquivalenceSupport {
       final String replacement = matchInputEquivalence(typedStr, expStr, rules);
       if (replacement != null && !replacement.equals(typedStr)) {
         replaceSubstring(area, p, p + chLen, replacement);
-        final int delta = replacement.length() - chLen;
-        end += delta;
+        end += replacement.length() - chLen;
         p += replacement.length();
       } else {
         p += chLen;
@@ -213,10 +193,6 @@ public final class InputEquivalenceSupport {
     }
   }
 
-  /**
-   * {@link JTextComponent#replaceRange} exists only from Java 21; use {@link AbstractDocument}
-   * APIs so Fly (single-line) and Dialog work on the project's Java 17 baseline.
-   */
   private static void replaceSubstring(
       final JTextComponent area,
       final int startInclusive,

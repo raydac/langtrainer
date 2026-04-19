@@ -11,8 +11,12 @@ import java.util.regex.Pattern;
 
 public final class LangResourceJson {
 
-  private static final Pattern STRING_FIELD_PATTERN =
-      Pattern.compile("\"%s\"\\s*:\\s*\"([^\"]*)\"");
+  private static final Pattern FIELD_MENU_NAME =
+      Pattern.compile("\"menuName\"\\s*:\\s*\"([^\"]*)\"");
+  private static final Pattern FIELD_DESCRIPTION =
+      Pattern.compile("\"description\"\\s*:\\s*\"([^\"]*)\"");
+  private static final Pattern FIELD_LANG_A = Pattern.compile("\"langA\"\\s*:\\s*\"([^\"]*)\"");
+  private static final Pattern FIELD_LANG_B = Pattern.compile("\"langB\"\\s*:\\s*\"([^\"]*)\"");
   private static final Pattern LINE_PATTERN = Pattern.compile(
       "\\{\\s*\"A\"\\s*:\\s*\"([^\"]*)\"\\s*,\\s*\"B\"\\s*:\\s*\"([^\"]*)\"\\s*\\}");
 
@@ -20,13 +24,13 @@ public final class LangResourceJson {
   }
 
   public static DialogDefinition parse(final String jsonText) {
-    final String menuName = extractStringField(jsonText, "menuName");
-    final String description = extractStringField(jsonText, "description");
-    final String langA = extractStringField(jsonText, "langA");
-    final String langB = extractStringField(jsonText, "langB");
-    final List<DialogLine> lines = extractLines(jsonText);
-    final List<InputEquivalenceRow> inputEqu = extractInputEqu(jsonText);
-    return new DialogDefinition(menuName, description, langA, langB, lines, inputEqu);
+    return new DialogDefinition(
+        requiredGroup(FIELD_MENU_NAME, jsonText, "menuName"),
+        requiredGroup(FIELD_DESCRIPTION, jsonText, "description"),
+        requiredGroup(FIELD_LANG_A, jsonText, "langA"),
+        requiredGroup(FIELD_LANG_B, jsonText, "langB"),
+        extractLines(jsonText),
+        extractInputEqu(jsonText));
   }
 
   public static DialogDefinition parseFromPath(final Path path) {
@@ -35,6 +39,15 @@ public final class LangResourceJson {
     } catch (final IOException ex) {
       throw new IllegalStateException("Can't load JSON file: " + path, ex);
     }
+  }
+
+  private static String requiredGroup(
+      final Pattern field, final String jsonText, final String label) {
+    final Matcher matcher = field.matcher(jsonText);
+    if (!matcher.find()) {
+      throw new IllegalStateException("Field not found: " + label);
+    }
+    return matcher.group(1);
   }
 
   private static List<InputEquivalenceRow> extractInputEqu(final String text) {
@@ -58,10 +71,7 @@ public final class LangResourceJson {
     int i = 0;
     final int n = arrayInner.length();
     while (i < n) {
-      while (i < n &&
-          (Character.isWhitespace(arrayInner.charAt(i)) || arrayInner.charAt(i) == ',')) {
-        i++;
-      }
+      i = skipCommaWhitespace(arrayInner, i, n);
       if (i >= n) {
         break;
       }
@@ -79,10 +89,16 @@ public final class LangResourceJson {
     return List.copyOf(rows);
   }
 
+  private static int skipCommaWhitespace(final String s, int i, final int n) {
+    while (i < n && (Character.isWhitespace(s.charAt(i)) || s.charAt(i) == ',')) {
+      i++;
+    }
+    return i;
+  }
+
   private static InputEquivalenceRow parseInputEquObject(final String objBody) {
-    final List<String> keys = extractNamedStringArray(objBody, "key");
-    final List<String> values = extractNamedStringArray(objBody, "value");
-    return new InputEquivalenceRow(keys, values);
+    return new InputEquivalenceRow(
+        extractNamedStringArray(objBody, "key"), extractNamedStringArray(objBody, "value"));
   }
 
   private static List<String> extractNamedStringArray(final String obj, final String fieldName) {
@@ -107,9 +123,7 @@ public final class LangResourceJson {
     int i = 0;
     final int n = inner.length();
     while (i < n) {
-      while (i < n && (Character.isWhitespace(inner.charAt(i)) || inner.charAt(i) == ',')) {
-        i++;
-      }
+      i = skipCommaWhitespace(inner, i, n);
       if (i >= n) {
         break;
       }
@@ -117,9 +131,8 @@ public final class LangResourceJson {
         throw new IllegalStateException("Expected string literal in inputEqu array");
       }
       final StringBuilder sb = new StringBuilder();
-      final int after = readJsonStringChars(inner, i + 1, sb);
+      i = readJsonStringChars(inner, i + 1, sb);
       result.add(sb.toString());
-      i = after;
     }
     return result;
   }
@@ -224,15 +237,6 @@ public final class LangResourceJson {
       }
     }
     return null;
-  }
-
-  private static String extractStringField(final String text, final String fieldName) {
-    final Pattern pattern = Pattern.compile(STRING_FIELD_PATTERN.pattern().formatted(fieldName));
-    final Matcher matcher = pattern.matcher(text);
-    if (!matcher.find()) {
-      throw new IllegalStateException("Field not found: " + fieldName);
-    }
-    return matcher.group(1);
   }
 
   private static List<DialogLine> extractLines(final String text) {

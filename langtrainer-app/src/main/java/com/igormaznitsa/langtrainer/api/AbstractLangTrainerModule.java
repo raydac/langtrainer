@@ -15,9 +15,7 @@ public abstract class AbstractLangTrainerModule {
   public abstract JComponent createControlForm();
 
   public List<KeyboardLanguage> getSupportedLanguages() {
-    List<KeyboardLanguage> result;
-    result = List.of(KeyboardLanguage.ENG);
-    return result;
+    return List.of(KeyboardLanguage.ENG);
   }
 
   public void onCharClick(final char symbol) {

@@ -37,29 +37,21 @@ public final class ImageResourceLoader {
   private ImageResourceLoader() {
   }
 
-  /**
-   * Applies interpolation, anti-aliasing, and related Java2D hints for sharp sprite and text
-   * drawing.
-   */
   public static void applyHighQualityDrawingHints(final Graphics2D graphics) {
     graphics.addRenderingHints(HIGH_QUALITY_DRAWING_HINTS);
   }
 
   public static Icon loadIcon(final String resourcePath, final int width, final int height) {
-    Icon result;
     if (resourcePath.toLowerCase().endsWith(".svg")) {
-      result = new ImageIcon(loadSvgImage(resourcePath, width, height));
-    } else {
-      final URL resource = ImageResourceLoader.class.getResource(resourcePath);
-      if (resource == null) {
-        throw new IllegalArgumentException("Resource is not found: " + resourcePath);
-      }
-      final ImageIcon imageIcon = new ImageIcon(resource);
-      final Image scaled =
-          imageIcon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
-      result = new ImageIcon(scaled);
+      return new ImageIcon(loadSvgImage(resourcePath, width, height));
     }
-    return result;
+    final URL resource = ImageResourceLoader.class.getResource(resourcePath);
+    if (resource == null) {
+      throw new IllegalArgumentException("Resource is not found: " + resourcePath);
+    }
+    final Image scaled =
+        new ImageIcon(resource).getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+    return new ImageIcon(scaled);
   }
 
   public static Image loadImage(final String resourcePath, final int width, final int height) {
