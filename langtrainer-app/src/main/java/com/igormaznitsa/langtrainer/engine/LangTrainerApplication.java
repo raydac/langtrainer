@@ -7,6 +7,7 @@ import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Font;
 import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
@@ -19,6 +20,7 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.WindowConstants;
+import javax.swing.text.JTextComponent;
 
 public final class LangTrainerApplication {
 
@@ -108,6 +110,9 @@ public final class LangTrainerApplication {
     closeButton.setFont(closeButton.getFont().deriveFont(Font.BOLD, 24.0f));
     closeButton.addActionListener(event -> closeActiveModule());
     rightButtons.add(this.keyboardButton);
+    if (this.activeModule != null) {
+      this.activeModule.populateMainToolbar(rightButtons);
+    }
     rightButtons.add(closeButton);
     topPanel.add(rightButtons, BorderLayout.EAST);
     return topPanel;
@@ -187,6 +192,11 @@ public final class LangTrainerApplication {
 
   private boolean dispatchTypedChar(final KeyEvent event) {
     if (this.activeModule == null || event.getID() != KeyEvent.KEY_TYPED) {
+      return false;
+    }
+    final Component focus =
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+    if (focus instanceof JTextComponent text && text.isEditable()) {
       return false;
     }
     final char symbol = event.getKeyChar();

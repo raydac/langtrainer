@@ -4,6 +4,7 @@ import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
 import com.igormaznitsa.langtrainer.engine.DialogDefinition;
 import com.igormaznitsa.langtrainer.engine.DialogLine;
+import com.igormaznitsa.langtrainer.engine.DialogListEntry;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
 import com.igormaznitsa.langtrainer.engine.LangTrainerApplication;
@@ -78,14 +79,15 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   private static final Color INPUT_TEXT_COLOR = Color.ORANGE.darker();
   private static final Color INPUT_TEXT_COLOR_SHADOW = Color.BLACK;
 
-  private final DefaultListModel<DialogDefinition> listModel = new DefaultListModel<>();
+  private final DefaultListModel<DialogListEntry> listModel = new DefaultListModel<>();
   private final JPanel rootPanel = new JPanel(new java.awt.CardLayout());
   private final GameBoard gameBoard = new GameBoard(this);
-  private JList<DialogDefinition> selectionList;
+  private JList<DialogListEntry> selectionList;
   private File lastOpenDir;
 
   public FlyGameModule() {
-    FlyGameDataLoader.loadAll().forEach(this.listModel::addElement);
+    FlyGameDataLoader.loadAll()
+        .forEach(d -> this.listModel.addElement(new DialogListEntry(d, false)));
     this.rootPanel.add(makeSelectPanel(), CARD_SELECT);
     this.rootPanel.add(this.gameBoard, CARD_GAME);
     showCard(CARD_SELECT);
@@ -187,7 +189,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     title.setForeground(new Color(25, 55, 120));
     panel.add(title, BorderLayout.NORTH);
 
-    final JList<DialogDefinition> list = new JList<>(this.listModel);
+    final JList<DialogListEntry> list = new JList<>(this.listModel);
     this.selectionList = list;
     list.setFont(list.getFont().deriveFont(18f));
     list.setFixedCellHeight(48);
@@ -195,7 +197,9 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       list.setSelectedIndex(0);
     }
     list.setCellRenderer((jList, value, index, isSelected, cellHasFocus) -> {
-      final JLabel cell = new JLabel(value.menuName());
+      final String rowTitle =
+          (value.fromExternalFile() ? "* " : "") + value.definition().menuName();
+      final JLabel cell = new JLabel(rowTitle);
       cell.setOpaque(true);
       cell.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
       cell.setFont(cell.getFont().deriveFont(Font.BOLD, 17f));
@@ -206,7 +210,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         cell.setBackground(Color.WHITE);
         cell.setForeground(new Color(40, 50, 70));
       }
-      cell.setToolTipText(value.description());
+      cell.setToolTipText(value.definition().description());
       return cell;
     });
     final JScrollPane scroll = new JScrollPane(list);
@@ -221,9 +225,9 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     final JButton start = new JButton("Choose language and play");
     stylePrimaryButton(start, new Color(46, 125, 50));
     start.addActionListener(e -> {
-      final DialogDefinition def = list.getSelectedValue();
-      if (def != null) {
-        chooseLanguage(def);
+      final DialogListEntry entry = list.getSelectedValue();
+      if (entry != null) {
+        chooseLanguage(entry.definition());
       }
     });
     south.add(open);
@@ -232,7 +236,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     return panel;
   }
 
-  private void openFromFile(final JList<DialogDefinition> list) {
+  private void openFromFile(final JList<DialogListEntry> list) {
     final JFileChooser chooser = new JFileChooser();
     chooser.setFileFilter(new FileNameExtensionFilter("JSON word list (*.json)", "json"));
     chooser.setAcceptAllFileFilterUsed(false);
@@ -248,7 +252,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     }
     try {
       final DialogDefinition loaded = FlyGameDataLoader.loadFromFile(file.toPath());
-      this.listModel.addElement(loaded);
+      this.listModel.addElement(new DialogListEntry(loaded, true));
       list.setSelectedIndex(this.listModel.getSize() - 1);
       final File parent = file.getParentFile();
       if (parent != null) {

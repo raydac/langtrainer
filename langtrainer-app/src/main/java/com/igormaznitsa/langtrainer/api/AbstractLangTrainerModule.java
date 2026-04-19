@@ -3,6 +3,7 @@ package com.igormaznitsa.langtrainer.api;
 import java.util.List;
 import javax.swing.Icon;
 import javax.swing.JComponent;
+import javax.swing.JPanel;
 
 public abstract class AbstractLangTrainerModule {
 
@@ -25,5 +26,12 @@ public abstract class AbstractLangTrainerModule {
   }
 
   public void onClose() {
+  }
+
+  /**
+   * Optional controls placed in the main window toolbar after the virtual-keyboard button and
+   * before the close (exit module) control.
+   */
+  public void populateMainToolbar(final JPanel eastToolbar) {
   }
 }

@@ -4,6 +4,7 @@ import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
 import com.igormaznitsa.langtrainer.engine.DialogDefinition;
 import com.igormaznitsa.langtrainer.engine.DialogLine;
+import com.igormaznitsa.langtrainer.engine.DialogListEntry;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
 import com.igormaznitsa.langtrainer.text.TypingComparisonUtils;
@@ -111,7 +112,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private static final Color PHRASE_FLASH_DARK_FG = Color.WHITE;
   private static final Color PHRASE_FLASH_BORDER = new Color(48, 48, 48);
 
-  private final DefaultListModel<DialogDefinition> dialogListModel = new DefaultListModel<>();
+  private final DefaultListModel<DialogListEntry> dialogListModel = new DefaultListModel<>();
   private final JPanel rootPanel = new JPanel(new CardLayout());
   private final JTextArea showA = makeShowArea();
   private final JTextArea showB = makeShowArea();
@@ -127,7 +128,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private final List<String> historyA = new ArrayList<>();
   private final List<String> historyB = new ArrayList<>();
   private File lastDialogOpenDirectory;
-  private JList<DialogDefinition> dialogSelectionList;
+  private JList<DialogListEntry> dialogSelectionList;
   private DialogDefinition activeDialog;
   private boolean userWritesToA;
   /**
@@ -148,7 +149,8 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private boolean applyingInputEquivalence;
 
   public DialogModule() {
-    DialogDataLoader.loadAll().forEach(this.dialogListModel::addElement);
+    DialogDataLoader.loadAll()
+        .forEach(d -> this.dialogListModel.addElement(new DialogListEntry(d, false)));
     bindEnterToSubmit(this.inputA);
     bindEnterToSubmit(this.inputB);
     attachKeepFocusOnWorkField(this.inputA);
@@ -329,7 +331,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     title.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
     panel.add(title, BorderLayout.NORTH);
 
-    final JList<DialogDefinition> list = new JList<>(this.dialogListModel);
+    final JList<DialogListEntry> list = new JList<>(this.dialogListModel);
     this.dialogSelectionList = list;
     list.setBackground(unselectedBg);
     list.setSelectionBackground(selectedBg);
@@ -339,14 +341,17 @@ public final class DialogModule extends AbstractLangTrainerModule {
     list.setSelectedIndex(0);
     list.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
     list.setCellRenderer((jList, value, index, isSelected, cellHasFocus) -> {
-      final JLabel label = new JLabel(value.menuName());
+      final String rowTitle =
+          (value.fromExternalFile() ? "* " : "") + value.definition().menuName();
+      final JLabel label = new JLabel(rowTitle);
       label.setOpaque(true);
       label.setFont(label.getFont().deriveFont(Font.BOLD, 19f));
       label.setBorder(BorderFactory.createCompoundBorder(
           BorderFactory.createMatteBorder(0, 0, 1, 0, rowDivider),
           BorderFactory.createEmptyBorder(12, 18, 12, 18)));
       label.setToolTipText(
-          "<html><body style='width:280px;'>%s</body></html>".formatted(value.description()));
+          "<html><body style='width:280px;'>%s</body></html>"
+              .formatted(value.definition().description()));
       if (isSelected) {
         label.setBackground(selectedBg);
         label.setForeground(Color.WHITE);
@@ -377,9 +382,9 @@ public final class DialogModule extends AbstractLangTrainerModule {
         BorderFactory.createEmptyBorder(14, 32, 14, 32)));
     start.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     start.addActionListener(event -> {
-      final DialogDefinition selected = list.getSelectedValue();
+      final DialogListEntry selected = list.getSelectedValue();
       if (selected != null) {
-        chooseUserLanguageAndStart(selected);
+        chooseUserLanguageAndStart(selected.definition());
       }
     });
 
@@ -409,7 +414,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     return panel;
   }
 
-  private void openDialogFromFile(final JList<DialogDefinition> list) {
+  private void openDialogFromFile(final JList<DialogListEntry> list) {
     final JFileChooser chooser = new JFileChooser();
     chooser.setFileFilter(new FileNameExtensionFilter("Dialog JSON (*.json)", "json"));
     chooser.setAcceptAllFileFilterUsed(false);
@@ -426,7 +431,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     }
     try {
       final DialogDefinition loaded = DialogDataLoader.loadFromFile(file.toPath());
-      this.dialogListModel.addElement(loaded);
+      this.dialogListModel.addElement(new DialogListEntry(loaded, true));
       list.setSelectedIndex(this.dialogListModel.getSize() - 1);
       final File parent = file.getParentFile();
       if (parent != null) {
