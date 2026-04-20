@@ -463,6 +463,8 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       im.put(KeyStroke.getKeyStroke(KeyEvent.VK_KP_RIGHT, 0), none);
       im.put(KeyStroke.getKeyStroke(KeyEvent.VK_KP_UP, 0), none);
       im.put(KeyStroke.getKeyStroke(KeyEvent.VK_KP_DOWN, 0), none);
+      im.put(KeyStroke.getKeyStroke(KeyEvent.VK_HOME, 0), none);
+      im.put(KeyStroke.getKeyStroke(KeyEvent.VK_END, 0), none);
     }
 
     private void refocusInputIfPlaying() {
