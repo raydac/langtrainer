@@ -48,6 +48,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.table.TableCellEditor;
 
 public final class EditorModule extends AbstractLangTrainerModule {
 
@@ -103,11 +104,11 @@ public final class EditorModule extends AbstractLangTrainerModule {
     this.fieldDescription.setColumns(40);
     this.fieldDescription.setLineWrap(true);
     this.fieldDescription.setWrapStyleWord(true);
-    styleTextFields();
-    configureLinesTable();
-    configureEquivPairTable();
-    buildUi();
-    newDocument();
+    this.styleTextFields();
+    this.configureLinesTable();
+    this.configureEquivPairTable();
+    this.buildUi();
+    this.newDocument();
   }
 
   /**
@@ -263,22 +264,22 @@ public final class EditorModule extends AbstractLangTrainerModule {
     }
   }
 
-  private void stopEquivTableEditing() {
-    if (this.equivPairTable.isEditing()) {
-      final var editor = this.equivPairTable.getCellEditor();
-      if (editor != null) {
-        editor.stopCellEditing();
-      }
+  private static void stopTableCellEditingIfActive(final JTable table) {
+    if (!table.isEditing()) {
+      return;
+    }
+    final TableCellEditor editor = table.getCellEditor();
+    if (editor != null) {
+      editor.stopCellEditing();
     }
   }
 
+  private void stopEquivTableEditing() {
+    stopTableCellEditingIfActive(this.equivPairTable);
+  }
+
   private void stopLinesTableEditing() {
-    if (this.linesTable.isEditing()) {
-      final var editor = this.linesTable.getCellEditor();
-      if (editor != null) {
-        editor.stopCellEditing();
-      }
-    }
+    stopTableCellEditingIfActive(this.linesTable);
   }
 
   private List<InputEquivalenceRow> inputEquivalenceRowsFromTable() {
@@ -304,7 +305,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
             new Object[] {0, joinCommaSeparated(row.key()), joinCommaSeparated(row.value())});
       }
     }
-    refreshEquivPairIds();
+    this.refreshEquivPairIds();
     this.equivPairTable.setEnabled(true);
     this.equivPairTable.getTableHeader().setEnabled(true);
   }
@@ -489,7 +490,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     final JScrollPane linesScroll = new JScrollPane(this.linesTable);
     shrinkWrap(linesScroll);
     linesWrap.add(linesScroll, BorderLayout.CENTER);
-    linesWrap.add(lineButtons(), BorderLayout.SOUTH);
+    linesWrap.add(this.lineButtons(), BorderLayout.SOUTH);
 
     final JLabel pairHint =
         new JLabel(
@@ -520,7 +521,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
         this.fieldTitle.getFont().deriveFont(Font.BOLD, 16f),
         new Color(74, 20, 140)));
     equivBlock.add(equivTableWrap, BorderLayout.CENTER);
-    equivBlock.add(equivButtons(), BorderLayout.SOUTH);
+    equivBlock.add(this.equivButtons(), BorderLayout.SOUTH);
 
     final JSplitPane linesEquivSplit =
         new JSplitPane(JSplitPane.VERTICAL_SPLIT, linesWrap, equivBlock);
@@ -550,8 +551,8 @@ public final class EditorModule extends AbstractLangTrainerModule {
     final JButton newDoc = new JButton("New document");
     stylePrimary(newDoc, new Color(93, 64, 55));
     newDoc.addActionListener(e -> {
-      if (confirmLoseChanges()) {
-        newDocument();
+      if (this.confirmLoseChanges()) {
+        this.newDocument();
       }
     });
     newDocRow.add(newDoc);
@@ -583,13 +584,13 @@ public final class EditorModule extends AbstractLangTrainerModule {
     stylePrimary(down, new Color(25, 118, 210));
     add.addActionListener(e -> {
       this.linesModel.addRow(new Object[] {0, "", ""});
-      refreshLineIds();
+      this.refreshLineIds();
       final int last = this.linesModel.getRowCount() - 1;
       this.linesTable.setRowSelectionInterval(last, last);
     });
-    remove.addActionListener(e -> removeSelectedLine());
-    up.addActionListener(e -> moveLine(-1));
-    down.addActionListener(e -> moveLine(1));
+    remove.addActionListener(e -> this.removeSelectedLine());
+    up.addActionListener(e -> this.moveLine(-1));
+    down.addActionListener(e -> this.moveLine(1));
     p.add(add);
     p.add(remove);
     p.add(up);
@@ -610,13 +611,13 @@ public final class EditorModule extends AbstractLangTrainerModule {
     stylePrimary(down, new Color(123, 31, 162));
     add.addActionListener(e -> {
       this.equivPairModel.addRow(new Object[] {0, "", ""});
-      refreshEquivPairIds();
+      this.refreshEquivPairIds();
       final int last = this.equivPairModel.getRowCount() - 1;
       this.equivPairTable.setRowSelectionInterval(last, last);
     });
-    remove.addActionListener(e -> removeSelectedEquiv());
-    up.addActionListener(e -> moveEquiv(-1));
-    down.addActionListener(e -> moveEquiv(1));
+    remove.addActionListener(e -> this.removeSelectedEquiv());
+    up.addActionListener(e -> this.moveEquiv(-1));
+    down.addActionListener(e -> this.moveEquiv(1));
     p.add(add);
     p.add(remove);
     p.add(up);
@@ -630,14 +631,14 @@ public final class EditorModule extends AbstractLangTrainerModule {
       return;
     }
     if (this.linesModel.getRowCount() == 1) {
-      stopLinesTableEditing();
+      this.stopLinesTableEditing();
       this.linesModel.setValueAt("", r, 1);
       this.linesModel.setValueAt("", r, 2);
       return;
     }
-    stopLinesTableEditing();
+    this.stopLinesTableEditing();
     this.linesModel.removeRow(r);
-    refreshLineIds();
+    this.refreshLineIds();
   }
 
   private void moveLine(final int delta) {
@@ -653,7 +654,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
       this.linesModel.setValueAt(b, r, c);
       this.linesModel.setValueAt(a, to, c);
     }
-    refreshLineIds();
+    this.refreshLineIds();
     this.linesTable.setRowSelectionInterval(to, to);
     ensureTableRowVisible(this.linesTable, to);
   }
@@ -675,7 +676,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     if (this.equivPairModel.getRowCount() == 0) {
       this.equivPairModel.addRow(new Object[] {0, "", ""});
     }
-    refreshEquivPairIds();
+    this.refreshEquivPairIds();
     final int n = this.equivPairModel.getRowCount();
     if (n > 0) {
       final int sel = Math.min(idx, n - 1);
@@ -706,7 +707,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
       this.equivPairModel.setValueAt(b, idx, c);
       this.equivPairModel.setValueAt(a, to, c);
     }
-    refreshEquivPairIds();
+    this.refreshEquivPairIds();
     this.equivPairTable.setRowSelectionInterval(to, to);
     ensureTableRowVisible(this.equivPairTable, to);
   }
@@ -719,14 +720,14 @@ public final class EditorModule extends AbstractLangTrainerModule {
     this.fieldLangB.setText("");
     this.linesModel.setRowCount(0);
     this.linesModel.addRow(new Object[] {0, "", ""});
-    refreshLineIds();
-    clearEquivRules();
+    this.refreshLineIds();
+    this.clearEquivRules();
     this.linesTable.setRowSelectionInterval(0, 0);
   }
 
   private void clearEquivRules() {
-    stopEquivTableEditing();
-    fillEquivTableFromRules(List.of());
+    this.stopEquivTableEditing();
+    this.fillEquivTableFromRules(List.of());
     this.equivPairTable.setEnabled(true);
   }
 
@@ -739,22 +740,22 @@ public final class EditorModule extends AbstractLangTrainerModule {
     for (final DialogLine line : def.lines()) {
       this.linesModel.addRow(new Object[] {0, line.a(), line.b()});
     }
-    refreshLineIds();
-    stopEquivTableEditing();
-    fillEquivTableFromRules(def.inputEqu());
+    this.refreshLineIds();
+    this.stopEquivTableEditing();
+    this.fillEquivTableFromRules(def.inputEqu());
     if (this.linesModel.getRowCount() > 0) {
       this.linesTable.setRowSelectionInterval(0, 0);
     }
   }
 
   private DialogDefinition readDefinitionFromUi() {
-    stopLinesTableEditing();
-    stopEquivTableEditing();
+    this.stopLinesTableEditing();
+    this.stopEquivTableEditing();
     if (this.linesModel.getRowCount() == 0) {
       throw new IllegalStateException("Add at least one dialog line.");
     }
-    validateLinesForSave();
-    validateEquivPairsForSave();
+    this.validateLinesForSave();
+    this.validateEquivPairsForSave();
     final List<DialogLine> lines = new ArrayList<>();
     for (int i = 0; i < this.linesModel.getRowCount(); i++) {
       final String a = String.valueOf(this.linesModel.getValueAt(i, 1) == null
@@ -771,7 +772,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
         this.fieldLangA.getText().strip(),
         this.fieldLangB.getText().strip(),
         lines,
-        inputEquivalenceRowsFromTable());
+        this.inputEquivalenceRowsFromTable());
   }
 
   private void loadFromUser() {
@@ -793,7 +794,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
       final String text = Files.readString(f.toPath(), StandardCharsets.UTF_8);
       final DialogDefinition def = LangResourceJson.parse(text);
       this.currentFilePath = f.toPath();
-      applyDefinition(def);
+      this.applyDefinition(def);
     } catch (final Exception ex) {
       JOptionPane.showMessageDialog(
           this.rootPanel,
@@ -806,7 +807,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private void saveToUser() {
     final DialogDefinition def;
     try {
-      def = readDefinitionFromUi();
+      def = this.readDefinitionFromUi();
       LangResourceJson.parse(DialogJsonSerializer.toPrettyJson(def));
     } catch (final Exception ex) {
       JOptionPane.showMessageDialog(
@@ -857,14 +858,14 @@ public final class EditorModule extends AbstractLangTrainerModule {
     load.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
     load.setFocusPainted(false);
     load.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    load.addActionListener(e -> loadFromUser());
+    load.addActionListener(e -> this.loadFromUser());
     final JButton save =
         new JButton(ImageResourceLoader.loadIcon("/editor/images/editor-save.svg", 24, 24));
     save.setToolTipText("Save JSON file…");
     save.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
     save.setFocusPainted(false);
     save.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    save.addActionListener(e -> saveToUser());
+    save.addActionListener(e -> this.saveToUser());
     eastToolbar.add(load);
     eastToolbar.add(save);
   }

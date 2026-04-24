@@ -1,9 +1,8 @@
 package com.igormaznitsa.langtrainer.engine;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.igormaznitsa.langtrainer.api.LangTrainerModuleId;
+import java.util.stream.StreamSupport;
 
 /**
  * How shared entries in {@code /common/jsons/index.json} are visible to a module. If a resource
@@ -26,13 +25,9 @@ public final class LangTrainerResourceAccess {
     if (!entry.has("modules") || !entry.get("modules").isJsonArray()) {
       return true;
     }
-    final JsonArray modules = entry.getAsJsonArray("modules");
-    for (JsonElement m : modules) {
-      if (m.isJsonPrimitive() && sameModuleId(m.getAsString(), target)) {
-        return true;
-      }
-    }
-    return false;
+    return StreamSupport.stream(entry.getAsJsonArray("modules").spliterator(), false)
+        .anyMatch(
+            m -> m.isJsonPrimitive() && sameModuleId(m.getAsString(), target));
   }
 
   private static boolean sameModuleId(final String raw, final LangTrainerModuleId id) {

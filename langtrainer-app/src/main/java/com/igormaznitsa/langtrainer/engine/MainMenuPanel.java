@@ -29,8 +29,8 @@ public final class MainMenuPanel extends JPanel {
       final Consumer<AbstractLangTrainerModule> onModuleActivate) {
     super(new BorderLayout());
     final Color menuBg = new Color(248, 250, 252);
-    setBackground(menuBg);
-    setOpaque(true);
+    this.setBackground(menuBg);
+    this.setOpaque(true);
     final DefaultListModel<AbstractLangTrainerModule> model = new DefaultListModel<>();
     modules.forEach(model::addElement);
     this.modulesList = new JList<>(model);
@@ -102,7 +102,7 @@ public final class MainMenuPanel extends JPanel {
         final int index = indexAtPoint(MainMenuPanel.this.modulesList, event.getPoint());
         if (index >= 0) {
           MainMenuPanel.this.modulesList.setSelectedIndex(index);
-          activateSelected(onModuleActivate);
+          MainMenuPanel.this.activateSelected(onModuleActivate);
         }
       }
     };
@@ -113,14 +113,14 @@ public final class MainMenuPanel extends JPanel {
     this.modulesList.getActionMap().put("activate", new AbstractAction() {
       @Override
       public void actionPerformed(final java.awt.event.ActionEvent event) {
-        activateSelected(onModuleActivate);
+        MainMenuPanel.this.activateSelected(onModuleActivate);
       }
     });
     final JScrollPane scrollPane = new JScrollPane(this.modulesList);
     scrollPane.getViewport().setBackground(menuBg);
     scrollPane.setBorder(BorderFactory.createEmptyBorder(8, 12, 12, 12));
     scrollPane.setPreferredSize(new Dimension(720, 440));
-    add(scrollPane, BorderLayout.CENTER);
+    this.add(scrollPane, BorderLayout.CENTER);
   }
 
   public void focusList() {

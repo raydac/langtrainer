@@ -38,13 +38,13 @@ public final class VirtualKeyboardWindow {
     this.shiftButton = new JButton();
     this.keysPanel = new JPanel();
     this.shiftEnabled = false;
-    initDialog();
+    this.initDialog();
   }
 
   public void show() {
-    refreshLanguageButton();
-    refreshShiftButton();
-    rebuildKeys();
+    this.refreshLanguageButton();
+    this.refreshShiftButton();
+    this.rebuildKeys();
     this.dialog.setVisible(true);
   }
 
@@ -53,9 +53,7 @@ public final class VirtualKeyboardWindow {
   }
 
   public boolean isVisible() {
-    boolean result;
-    result = this.dialog.isVisible();
-    return result;
+    return this.dialog.isVisible();
   }
 
   public void dispose() {
@@ -72,11 +70,11 @@ public final class VirtualKeyboardWindow {
     this.dialog.setLocationByPlatform(true);
 
     final JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-    this.languageButton.addActionListener(event -> switchLanguage());
-    this.shiftButton.addActionListener(event -> toggleShift());
+    this.languageButton.addActionListener(event -> this.switchLanguage());
+    this.shiftButton.addActionListener(event -> this.toggleShift());
     final JButton hideButton = new JButton("Hide");
     hideButton.addActionListener(event -> {
-      hide();
+      this.hide();
       this.onHide.run();
     });
     topPanel.add(this.languageButton);
@@ -89,15 +87,15 @@ public final class VirtualKeyboardWindow {
     this.dialog.addComponentListener(new java.awt.event.ComponentAdapter() {
       @Override
       public void componentHidden(final java.awt.event.ComponentEvent event) {
-        onHide.run();
+        VirtualKeyboardWindow.this.onHide.run();
       }
     });
   }
 
   private void switchLanguage() {
     this.currentLanguage = this.currentLanguage.nextIn(this.languages);
-    refreshLanguageButton();
-    rebuildKeys();
+    this.refreshLanguageButton();
+    this.rebuildKeys();
   }
 
   private void refreshLanguageButton() {
@@ -113,7 +111,9 @@ public final class VirtualKeyboardWindow {
     this.keysPanel.removeAll();
     final List<String> rows = this.currentLanguage.getRows();
     this.keysPanel.setLayout(new GridLayout(rows.size(), 1, 4, 4));
-    rows.stream().forEach(row -> this.keysPanel.add(makeRowPanel(row)));
+    for (final String row : rows) {
+      this.keysPanel.add(this.makeRowPanel(row));
+    }
     this.keysPanel.revalidate();
     this.keysPanel.repaint();
   }
@@ -122,39 +122,32 @@ public final class VirtualKeyboardWindow {
     final JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 2));
     row.chars()
         .mapToObj(code -> (char) code)
-        .forEach(symbol -> panel.add(makeCharButton(symbol)));
+        .forEach(symbol -> panel.add(this.makeCharButton(symbol)));
     return panel;
   }
 
   private JButton makeCharButton(final char symbol) {
-    final char mapped = applyShift(symbol);
-    final JButton button = new JButton(toButtonText(mapped));
+    final char mapped = this.applyShift(symbol);
+    final JButton button = new JButton(this.toButtonText(mapped));
     button.setFocusable(false);
     button.addActionListener(event -> this.charConsumer.accept(mapped));
     return button;
   }
 
   private String toButtonText(final char symbol) {
-    String result;
-    result = symbol == ' ' ? "Space" : Character.toString(symbol);
-    return result;
+    return symbol == ' ' ? "Space" : Character.toString(symbol);
   }
 
   private void toggleShift() {
     this.shiftEnabled = !this.shiftEnabled;
-    refreshShiftButton();
-    rebuildKeys();
+    this.refreshShiftButton();
+    this.rebuildKeys();
   }
 
   private char applyShift(final char symbol) {
-    final char result;
-    if (this.shiftEnabled && Character.isLetter(symbol)) {
-      result = Character.toUpperCase(symbol);
-    } else if (!this.shiftEnabled && Character.isLetter(symbol)) {
-      result = Character.toLowerCase(symbol);
-    } else {
-      result = symbol;
+    if (!Character.isLetter(symbol)) {
+      return symbol;
     }
-    return result;
+    return this.shiftEnabled ? Character.toUpperCase(symbol) : Character.toLowerCase(symbol);
   }
 }

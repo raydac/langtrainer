@@ -20,7 +20,7 @@ public final class SoundClip implements AutoCloseable {
       this.clip = AudioSystem.getClip();
       this.clip.addLineListener(event -> {
         if (event.getType() == LineEvent.Type.STOP) {
-          playing.set(false);
+          this.playing.set(false);
         }
       });
       this.clip.open(FORMAT, data, 0, data.length);

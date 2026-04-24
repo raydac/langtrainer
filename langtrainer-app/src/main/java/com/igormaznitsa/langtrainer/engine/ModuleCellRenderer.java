@@ -29,9 +29,9 @@ public final class ModuleCellRenderer extends JPanel
     this.nameLabel.setHorizontalAlignment(SwingConstants.CENTER);
     this.nameLabel.setVerticalAlignment(SwingConstants.TOP);
     this.nameLabel.setFont(this.nameLabel.getFont().deriveFont(Font.BOLD, 19f));
-    add(this.iconLabel, BorderLayout.CENTER);
-    add(this.nameLabel, BorderLayout.SOUTH);
-    setOpaque(false);
+    this.add(this.iconLabel, BorderLayout.CENTER);
+    this.add(this.nameLabel, BorderLayout.SOUTH);
+    this.setOpaque(false);
     this.iconLabel.setOpaque(false);
     this.nameLabel.setOpaque(false);
   }
@@ -73,7 +73,7 @@ public final class ModuleCellRenderer extends JPanel
       bottom += 2;
       right += 2;
     }
-    setBorder(BorderFactory.createEmptyBorder(top, left, bottom, right));
+    this.setBorder(BorderFactory.createEmptyBorder(top, left, bottom, right));
     return this;
   }
 }

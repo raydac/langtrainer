@@ -125,14 +125,14 @@ public final class DialogModule extends AbstractLangTrainerModule {
 
   private final DefaultListModel<DialogListEntry> dialogListModel = new DefaultListModel<>();
   private final JPanel rootPanel = new JPanel(new CardLayout());
-  private final JTextArea showA = makeShowArea();
-  private final JTextArea showB = makeShowArea();
+  private final JTextArea showA = DialogModule.makeShowArea();
+  private final JTextArea showB = DialogModule.makeShowArea();
   private final JToggleButton shuffleToggle = new JToggleButton("Shuffle OFF");
   private final JButton showPhraseButton = new JButton("Show");
   private final JToggleButton tipToggle = new JToggleButton("Tip OFF");
   private final JLabel tipZone = new JLabel(" ", SwingConstants.CENTER);
-  private final JTextArea inputA = makeInputArea();
-  private final JTextArea inputB = makeInputArea();
+  private final JTextArea inputA = this.makeInputArea();
+  private final JTextArea inputB = this.makeInputArea();
   private final JLabel progressHeader = new JLabel(" ", SwingConstants.CENTER);
   private JScrollPane historyScrollA;
   private JScrollPane historyScrollB;
@@ -163,19 +163,19 @@ public final class DialogModule extends AbstractLangTrainerModule {
     ClasspathLangResourceIndex.loadShared(
             DialogModule.class, this, "Can't load dialog definitions")
         .forEach(d -> this.dialogListModel.addElement(new DialogListEntry(d, false)));
-    bindEnterToSubmit(this.inputA);
-    bindEnterToSubmit(this.inputB);
-    attachKeepFocusOnWorkField(this.inputA);
-    attachKeepFocusOnWorkField(this.inputB);
-    attachInputEquivalence(this.inputA);
-    attachInputEquivalence(this.inputB);
-    attachTipRefreshOnInput(this.inputA);
-    attachTipRefreshOnInput(this.inputB);
-    configureTipUi();
-    configureShuffleAndShowUi();
-    this.rootPanel.add(makeSelectPanel(), CARD_SELECT);
-    this.rootPanel.add(makeWorkPanel(), CARD_WORK);
-    showCard(CARD_SELECT);
+    this.bindEnterToSubmit(this.inputA);
+    this.bindEnterToSubmit(this.inputB);
+    this.attachKeepFocusOnWorkField(this.inputA);
+    this.attachKeepFocusOnWorkField(this.inputB);
+    this.attachInputEquivalence(this.inputA);
+    this.attachInputEquivalence(this.inputB);
+    this.attachTipRefreshOnInput(this.inputA);
+    this.attachTipRefreshOnInput(this.inputB);
+    this.configureTipUi();
+    this.configureShuffleAndShowUi();
+    this.rootPanel.add(this.makeSelectPanel(), CARD_SELECT);
+    this.rootPanel.add(this.makeWorkPanel(), CARD_WORK);
+    this.showCard(CARD_SELECT);
   }
 
   private static void syncViewportBackground(final JTextArea area) {
@@ -354,7 +354,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
 
   @Override
   public void onCharClick(final char symbol) {
-    final JTextArea target = focusedInput();
+    final JTextArea target = this.focusedInput();
     target.replaceSelection(String.valueOf(symbol));
     target.requestFocusInWindow();
   }
@@ -502,10 +502,10 @@ public final class DialogModule extends AbstractLangTrainerModule {
 
   @Override
   public void onActivation() {
-    dismissCompletionBanner();
-    dismissPhraseLearningBanner();
-    setTipControlsWorkMode(false);
-    showCard(CARD_SELECT);
+    this.dismissCompletionBanner();
+    this.dismissPhraseLearningBanner();
+    this.setTipControlsWorkMode(false);
+    this.showCard(CARD_SELECT);
     SwingUtilities.invokeLater(() -> {
       if (this.dialogSelectionList != null) {
         this.dialogSelectionList.requestFocusInWindow();
@@ -534,7 +534,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     eastButtons.add(this.shuffleToggle);
     eastButtons.add(this.showPhraseButton);
     eastButtons.add(this.tipToggle);
-    syncWorkHeaderActionButtonSizes();
+    this.syncWorkHeaderActionButtonSizes();
     headerRow.add(eastButtons, BorderLayout.EAST);
 
     final JPanel northStack = new JPanel(new BorderLayout(0, 6));
@@ -553,8 +553,8 @@ public final class DialogModule extends AbstractLangTrainerModule {
     panel.add(shows, BorderLayout.CENTER);
 
     final JPanel enterPanel = new JPanel(new GridLayout(1, 2, 8, 8));
-    enterPanel.add(wrapInputScroll(this.inputA));
-    enterPanel.add(wrapInputScroll(this.inputB));
+    enterPanel.add(this.wrapInputScroll(this.inputA));
+    enterPanel.add(this.wrapInputScroll(this.inputB));
     panel.add(enterPanel, BorderLayout.SOUTH);
     return panel;
   }
@@ -594,8 +594,8 @@ public final class DialogModule extends AbstractLangTrainerModule {
    * {@code maximumSize} caps so BorderLayout does not clip labels to "Tip O…".
    */
   private void syncWorkHeaderActionButtonSizes() {
-    applyShuffleToggleLook();
-    applyTipToggleLook();
+    this.applyShuffleToggleLook();
+    this.applyTipToggleLook();
 
     final int wShuffle =
         Math.max(
@@ -638,11 +638,11 @@ public final class DialogModule extends AbstractLangTrainerModule {
     this.tipToggle.setToolTipText(
         "Show the next character hint under the line counter while typing");
     this.tipToggle.addActionListener(event -> {
-      applyTipToggleLook();
-      refreshTipZone();
-      syncWorkHeaderActionButtonSizes();
+      this.applyTipToggleLook();
+      this.refreshTipZone();
+      this.syncWorkHeaderActionButtonSizes();
     });
-    applyTipToggleLook();
+    this.applyTipToggleLook();
 
     this.tipZone.setOpaque(true);
     this.tipZone.setBackground(TIP_ZONE_BG);
@@ -664,10 +664,10 @@ public final class DialogModule extends AbstractLangTrainerModule {
     this.shuffleToggle.setToolTipText(
         "Off: remaining lines follow dialog order. On: each next line is picked at random among lines you have not completed yet.");
     this.shuffleToggle.addActionListener(event -> {
-      applyShuffleToggleLook();
-      syncWorkHeaderActionButtonSizes();
+      this.applyShuffleToggleLook();
+      this.syncWorkHeaderActionButtonSizes();
     });
-    applyShuffleToggleLook();
+    this.applyShuffleToggleLook();
 
     this.showPhraseButton.setFont(this.showPhraseButton.getFont().deriveFont(Font.BOLD, 16f));
     this.showPhraseButton.setOpaque(true);
@@ -686,16 +686,16 @@ public final class DialogModule extends AbstractLangTrainerModule {
     this.showPhraseButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     this.showPhraseButton.setToolTipText(
         "Flash the answer and translation for 5s (alternating each second)");
-    this.showPhraseButton.addActionListener(event -> showPhraseLearningBanner());
+    this.showPhraseButton.addActionListener(event -> this.showPhraseLearningBanner());
   }
 
   /**
    * Keeps toggle visuals in sync when the work round ends (buttons may be disabled).
    */
   private void refreshHeaderToggleAppearance() {
-    applyTipToggleLook();
-    applyShuffleToggleLook();
-    syncWorkHeaderActionButtonSizes();
+    this.applyTipToggleLook();
+    this.applyShuffleToggleLook();
+    this.syncWorkHeaderActionButtonSizes();
   }
 
   /**
@@ -786,7 +786,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     if (this.remainingLineIndices.isEmpty()) {
       return;
     }
-    dismissPhraseLearningBanner();
+    this.dismissPhraseLearningBanner();
     final Window owner = SwingUtilities.getWindowAncestor(this.rootPanel);
     if (owner == null) {
       return;
@@ -894,10 +894,10 @@ public final class DialogModule extends AbstractLangTrainerModule {
     this.phraseLearningFlipTimer.start();
 
     final Runnable closeAndRestoreFocus = () -> {
-      dismissPhraseLearningBanner();
+      this.dismissPhraseLearningBanner();
       SwingUtilities.invokeLater(() -> {
         if (this.workRoundActive && this.activeDialog != null) {
-          final JTextArea work = focusedInput();
+          final JTextArea work = this.focusedInput();
           if (work.isEditable() && work.isShowing()) {
             work.requestFocusInWindow();
           }
@@ -932,12 +932,12 @@ public final class DialogModule extends AbstractLangTrainerModule {
         SwingUtilities.invokeLater(() -> {
           try {
             DialogModule.this.applyingInputEquivalence = true;
-            applyInputEquivalence(area, start, insertLen);
+            DialogModule.this.applyInputEquivalence(area, start, insertLen);
           } finally {
             DialogModule.this.applyingInputEquivalence = false;
           }
         });
-        scheduleTipRefreshAfterInputMutation();
+        DialogModule.this.scheduleTipRefreshAfterInputMutation();
       }
 
       @Override
@@ -953,7 +953,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   }
 
   private void applyInputEquivalence(final JTextArea area, final int start, final int insertLen) {
-    if (!this.workRoundActive || this.activeDialog == null || area != focusedInput()) {
+    if (!this.workRoundActive || this.activeDialog == null || area != this.focusedInput()) {
       return;
     }
     final List<InputEquivalenceRow> rules = this.activeDialog.inputEqu();
@@ -976,38 +976,40 @@ public final class DialogModule extends AbstractLangTrainerModule {
       return;
     }
     SwingUtilities.invokeLater(
-        () -> refreshTipZone(extractDocumentText(focusedInput().getDocument())));
+        () ->
+            this.refreshTipZone(
+                DialogModule.extractDocumentText(this.focusedInput().getDocument())));
   }
 
   private void attachTipRefreshOnInput(final JTextArea area) {
     area.getDocument().addDocumentListener(new DocumentListener() {
       @Override
       public void insertUpdate(final DocumentEvent event) {
-        refreshTipZoneFromDocument(area, event.getDocument());
+        DialogModule.this.refreshTipZoneFromDocument(area, event.getDocument());
       }
 
       @Override
       public void removeUpdate(final DocumentEvent event) {
-        refreshTipZoneFromDocument(area, event.getDocument());
+        DialogModule.this.refreshTipZoneFromDocument(area, event.getDocument());
       }
 
       @Override
       public void changedUpdate(final DocumentEvent event) {
-        refreshTipZoneFromDocument(area, event.getDocument());
+        DialogModule.this.refreshTipZoneFromDocument(area, event.getDocument());
       }
     });
   }
 
   private void refreshTipZoneFromDocument(final JTextArea area, final Document doc) {
-    if (area == focusedInput()) {
-      refreshTipZone(extractDocumentText(doc));
+    if (area == this.focusedInput()) {
+      this.refreshTipZone(DialogModule.extractDocumentText(doc));
     } else {
-      refreshTipZone(null);
+      this.refreshTipZone(null);
     }
   }
 
   private void refreshTipZone() {
-    refreshTipZone(null);
+    this.refreshTipZone(null);
   }
 
   private void refreshTipZone(final String enteredOverride) {
@@ -1024,7 +1026,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     final String entered =
         enteredOverride != null
             ? enteredOverride
-            : extractDocumentText(focusedInput().getDocument());
+            : DialogModule.extractDocumentText(this.focusedInput().getDocument());
     final String snippet = computeTypingTip(entered, expected);
     if (snippet.isEmpty()) {
       this.tipZone.setText("—");
@@ -1043,7 +1045,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
       this.tipToggle.setSelected(false);
       this.tipZone.setVisible(false);
     }
-    refreshHeaderToggleAppearance();
+    this.refreshHeaderToggleAppearance();
   }
 
   private void attachKeepFocusOnWorkField(final JTextArea area) {
@@ -1064,7 +1066,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
           if (!DialogModule.this.workRoundActive || DialogModule.this.activeDialog == null) {
             return;
           }
-          final JTextArea work = focusedInput();
+          final JTextArea work = DialogModule.this.focusedInput();
           if (work.isEditable() && work.isShowing()) {
             work.requestFocusInWindow();
           }
@@ -1080,20 +1082,20 @@ public final class DialogModule extends AbstractLangTrainerModule {
         if (event.getKeyCode() != KeyEvent.VK_ENTER || event.isShiftDown()) {
           return;
         }
-        if (!area.isEditable() || area != focusedInput()) {
+        if (!area.isEditable() || area != DialogModule.this.focusedInput()) {
           return;
         }
         event.consume();
-        processEnter();
+        DialogModule.this.processEnter();
       }
     });
   }
 
   private void applyWorkbenchStyles(final boolean sessionFinished) {
-    styleShowZone(this.showA, this.userWritesToA, sessionFinished);
-    styleShowZone(this.showB, !this.userWritesToA, sessionFinished);
-    styleWorkTarget(this.inputA, this.userWritesToA, sessionFinished);
-    styleWorkTarget(this.inputB, !this.userWritesToA, sessionFinished);
+    this.styleShowZone(this.showA, this.userWritesToA, sessionFinished);
+    this.styleShowZone(this.showB, !this.userWritesToA, sessionFinished);
+    this.styleWorkTarget(this.inputA, this.userWritesToA, sessionFinished);
+    this.styleWorkTarget(this.inputB, !this.userWritesToA, sessionFinished);
   }
 
   private void styleShowZone(
@@ -1167,7 +1169,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     if (option == JOptionPane.OK_OPTION) {
       final String selected = (String) chooser.getSelectedItem();
       this.userWritesToA = definition.langA().equals(selected);
-      startDialog(definition);
+      this.startDialog(definition);
     }
   }
 
@@ -1178,23 +1180,23 @@ public final class DialogModule extends AbstractLangTrainerModule {
     for (int i = 0; i < lineCount; i++) {
       this.remainingLineIndices.add(i);
     }
-    pickCurrentLineFromRemaining();
+    this.pickCurrentLineFromRemaining();
     this.workRoundActive = true;
     this.tipToggle.setSelected(false);
-    setTipControlsWorkMode(true);
+    this.setTipControlsWorkMode(true);
     this.historyA.clear();
     this.historyB.clear();
     this.showA.setText("");
     this.showB.setText("");
     this.inputA.setText("");
     this.inputB.setText("");
-    applyWorkbenchStyles(false);
-    updateTargetTextForCurrentLine();
-    refreshTipZone();
-    showCard(CARD_WORK);
+    this.applyWorkbenchStyles(false);
+    this.updateTargetTextForCurrentLine();
+    this.refreshTipZone();
+    this.showCard(CARD_WORK);
     this.rootPanel.revalidate();
     SwingUtilities.invokeLater(() -> {
-      final JTextArea work = focusedInput();
+      final JTextArea work = this.focusedInput();
       if (work.isEditable() && work.isShowing()) {
         work.requestFocusInWindow();
       }
@@ -1209,10 +1211,10 @@ public final class DialogModule extends AbstractLangTrainerModule {
       } else {
         this.inputA.setText(line.a());
       }
-      focusedInput().setText("");
+      this.focusedInput().setText("");
     }
-    refreshProgressHeader();
-    refreshTipZone();
+    this.refreshProgressHeader();
+    this.refreshTipZone();
   }
 
   private void refreshProgressHeader() {
@@ -1238,19 +1240,19 @@ public final class DialogModule extends AbstractLangTrainerModule {
     if (this.activeDialog != null && !this.remainingLineIndices.isEmpty()) {
       final DialogLine line = this.activeDialog.lines().get(this.currentLineOrdinal);
       final String expected = this.userWritesToA ? line.a() : line.b();
-      final String entered = focusedInput().getText();
-      if (isCloseEnough(entered, expected)) {
+      final String entered = this.focusedInput().getText();
+      if (this.isCloseEnough(entered, expected)) {
         this.historyA.add(line.a());
         this.historyB.add(line.b());
         this.showA.setText(String.join("\n", this.historyA));
         this.showB.setText(String.join("\n", this.historyB));
-        scrollHistoryPanesToBottom();
+        this.scrollHistoryPanesToBottom();
         this.remainingLineIndices.remove(Integer.valueOf(this.currentLineOrdinal));
         if (this.remainingLineIndices.isEmpty()) {
-          finishDialog();
+          this.finishDialog();
         } else {
-          pickCurrentLineFromRemaining();
-          updateTargetTextForCurrentLine();
+          this.pickCurrentLineFromRemaining();
+          this.updateTargetTextForCurrentLine();
         }
       } else {
         java.awt.Toolkit.getDefaultToolkit().beep();
@@ -1259,11 +1261,11 @@ public final class DialogModule extends AbstractLangTrainerModule {
   }
 
   private void finishDialog() {
-    dismissPhraseLearningBanner();
+    this.dismissPhraseLearningBanner();
     this.workRoundActive = false;
-    setTipControlsWorkMode(false);
-    applyWorkbenchStyles(true);
-    showCompletionBannerOverlay();
+    this.setTipControlsWorkMode(false);
+    this.applyWorkbenchStyles(true);
+    this.showCompletionBannerOverlay();
   }
 
   private void dismissCompletionBanner() {
@@ -1280,10 +1282,10 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private void showCompletionBannerOverlay() {
     final Window owner = SwingUtilities.getWindowAncestor(this.rootPanel);
     if (owner == null) {
-      showCard(CARD_SELECT);
+      this.showCard(CARD_SELECT);
       return;
     }
-    dismissCompletionBanner();
+    this.dismissCompletionBanner();
     final JDialog overlay = new JDialog(owner, java.awt.Dialog.ModalityType.APPLICATION_MODAL);
     this.completionOverlay = overlay;
     overlay.setUndecorated(true);
@@ -1296,8 +1298,8 @@ public final class DialogModule extends AbstractLangTrainerModule {
     overlay.setContentPane(pane);
 
     final Runnable closeAndReturn = () -> {
-      dismissCompletionBanner();
-      showCard(CARD_SELECT);
+      this.dismissCompletionBanner();
+      this.showCard(CARD_SELECT);
       SwingUtilities.invokeLater(() -> {
         if (this.dialogSelectionList != null) {
           this.dialogSelectionList.requestFocusInWindow();

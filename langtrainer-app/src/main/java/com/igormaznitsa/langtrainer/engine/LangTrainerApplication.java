@@ -49,7 +49,7 @@ public final class LangTrainerApplication {
   }
 
   public void start() {
-    initMainFrame();
+    this.initMainFrame();
     this.mainFrame.setEnabled(false);
     final SplashWindow splashWindow = new SplashWindow(this.mainFrame);
     splashWindow.showForMillis(
@@ -72,17 +72,17 @@ public final class LangTrainerApplication {
   }
 
   private void activateModule(final AbstractLangTrainerModule module) {
-    closeVirtualKeyboard();
+    this.closeVirtualKeyboard();
     this.activeModule = module;
     this.activeModule.onActivation();
-    attachRealKeyboardDispatcher();
+    this.attachRealKeyboardDispatcher();
 
     final JPanel container = new JPanel(new BorderLayout());
     container.putClientProperty(CLOSE_MODULE_CLIENT_PROPERTY, (Runnable) this::closeActiveModule);
     container.putClientProperty(
         SET_TOOLBAR_VISIBLE_CLIENT_PROPERTY, (Consumer<Boolean>) this::setModuleTopToolbarVisible);
     container.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-    container.add(makeTopPanel(), BorderLayout.NORTH);
+    container.add(this.makeTopPanel(), BorderLayout.NORTH);
     container.add(module.createControlForm(), BorderLayout.CENTER);
     this.mainFrame.setContentPane(container);
     this.mainFrame.revalidate();
@@ -100,7 +100,7 @@ public final class LangTrainerApplication {
     this.keyboardButton.setFont(this.keyboardButton.getFont().deriveFont(Font.BOLD, 24.0f));
     this.keyboardButton.setFocusPainted(false);
     this.keyboardButton.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
-    this.keyboardButton.addActionListener(event -> showVirtualKeyboard());
+    this.keyboardButton.addActionListener(event -> this.showVirtualKeyboard());
     final JButton closeButton = new JButton("X");
     closeButton.setHorizontalAlignment(SwingConstants.CENTER);
     closeButton.setForeground(Color.WHITE);
@@ -108,7 +108,7 @@ public final class LangTrainerApplication {
     closeButton.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
     closeButton.setFocusPainted(false);
     closeButton.setFont(closeButton.getFont().deriveFont(Font.BOLD, 24.0f));
-    closeButton.addActionListener(event -> closeActiveModule());
+    closeButton.addActionListener(event -> this.closeActiveModule());
     rightButtons.add(this.keyboardButton);
     if (this.activeModule != null) {
       this.activeModule.populateMainToolbar(rightButtons);
@@ -123,7 +123,7 @@ public final class LangTrainerApplication {
       this.moduleToolbarPanel.setVisible(visible);
     }
     if (!visible) {
-      closeVirtualKeyboard();
+      this.closeVirtualKeyboard();
     }
     this.mainFrame.revalidate();
     this.mainFrame.repaint();
@@ -136,7 +136,7 @@ public final class LangTrainerApplication {
     }
     KeyboardFocusManager.getCurrentKeyboardFocusManager()
         .removeKeyEventDispatcher(this.realKeyboardDispatcher);
-    closeVirtualKeyboard();
+    this.closeVirtualKeyboard();
     this.moduleToolbarPanel = null;
     this.mainFrame.setContentPane(this.mainMenuPanel);
     this.mainFrame.revalidate();
@@ -203,7 +203,7 @@ public final class LangTrainerApplication {
     if (symbol == KeyEvent.CHAR_UNDEFINED || Character.isISOControl(symbol)) {
       return false;
     }
-    onCharInput(symbol);
+    this.onCharInput(symbol);
     return true;
   }
 }

@@ -94,9 +94,9 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     ClasspathLangResourceIndex.loadShared(
             FlyGameModule.class, this, "Can't load fly game word lists")
         .forEach(d -> this.listModel.addElement(new DialogListEntry(d, false)));
-    this.rootPanel.add(makeSelectPanel(), CARD_SELECT);
+    this.rootPanel.add(this.makeSelectPanel(), CARD_SELECT);
     this.rootPanel.add(this.gameBoard, CARD_GAME);
-    showCard(CARD_SELECT);
+    this.showCard(CARD_SELECT);
   }
 
   @Override
@@ -138,7 +138,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   @Override
   public void onActivation() {
     this.gameBoard.shutdownSession();
-    showCard(CARD_SELECT);
+    this.showCard(CARD_SELECT);
     SwingUtilities.invokeLater(() -> {
       if (this.selectionList != null) {
         this.selectionList.requestFocusInWindow();
@@ -154,7 +154,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   private void showCard(final String name) {
     ((java.awt.CardLayout) this.rootPanel.getLayout()).show(this.rootPanel, name);
     final boolean showToolbar = CARD_SELECT.equals(name);
-    final Runnable syncHostToolbar = () -> syncMainFrameToolbarVisibility(showToolbar);
+    final Runnable syncHostToolbar = () -> this.syncMainFrameToolbarVisibility(showToolbar);
     if (this.rootPanel.getParent() != null) {
       syncHostToolbar.run();
     } else {
@@ -176,8 +176,9 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   }
 
   void enterGame(final DialogDefinition definition, final boolean userTypesA) {
-    if (this.gameBoard.startSession(definition, userTypesA, () -> showCard(CARD_SELECT))) {
-      showCard(CARD_GAME);
+    if (this.gameBoard.startSession(
+        definition, userTypesA, () -> FlyGameModule.this.showCard(CARD_SELECT))) {
+      this.showCard(CARD_GAME);
     }
   }
 
@@ -238,7 +239,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     if (opt == JOptionPane.OK_OPTION) {
       final String pick = (String) combo.getSelectedItem();
       final boolean userTypesA = definition.langA().equals(pick);
-      enterGame(definition, userTypesA);
+      this.enterGame(definition, userTypesA);
     }
   }
 
@@ -309,9 +310,9 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
 
     GameBoard(final FlyGameModule host) {
       this.host = host;
-      setLayout(new BorderLayout(0, 0));
-      setOpaque(true);
-      setBackground(SKY);
+      this.setLayout(new BorderLayout(0, 0));
+      this.setOpaque(true);
+      this.setBackground(SKY);
 
       final JPanel northBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
       northBar.setOpaque(false);
@@ -321,15 +322,15 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       configureSvgToggleSound(this.btnSound);
       this.btnClose.addActionListener(e -> this.host.requestCloseToMainMenu());
       this.btnPause.addActionListener(e -> {
-        togglePause();
-        refocusInputIfPlaying();
+        this.togglePause();
+        this.refocusInputIfPlaying();
       });
       this.btnSound.addActionListener(e -> {
         this.soundEffectsEnabled = this.btnSound.isSelected();
-        refreshSoundToggleIcon();
-        refocusInputIfPlaying();
+        this.refreshSoundToggleIcon();
+        this.refocusInputIfPlaying();
       });
-      refreshSoundToggleIcon();
+      this.refreshSoundToggleIcon();
       northBar.add(this.btnSound);
       northBar.add(this.btnPause);
       northBar.add(this.btnClose);
@@ -344,7 +345,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       this.input.setBorder(BorderFactory.createEmptyBorder());
       this.input.setPreferredSize(new Dimension(1, 1));
       this.input.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
-      this.input.addActionListener(e -> trySubmit());
+      this.input.addActionListener(e -> this.trySubmit());
       disableFlyInputCursorKeys(this.input);
       this.input.addKeyListener(new KeyAdapter() {
         @Override
@@ -354,8 +355,8 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
           }
         }
       });
-      this.input.addCaretListener(e -> repaintSkyFrame());
-      attachFlyInputEquivalence();
+      this.input.addCaretListener(e -> this.repaintSkyFrame());
+      this.attachFlyInputEquivalence();
 
       final JLabel hint = new JLabel("Press Enter to fire", SwingConstants.CENTER);
       hint.setForeground(new Color(240, 248, 255));
@@ -381,13 +382,13 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       this.sky.addMouseListener(new MouseAdapter() {
         @Override
         public void mousePressed(final MouseEvent e) {
-          refocusInputIfPlaying();
+          GameBoard.this.refocusInputIfPlaying();
         }
       });
 
-      add(northBar, BorderLayout.NORTH);
-      add(centerCol, BorderLayout.CENTER);
-      add(southArea, BorderLayout.SOUTH);
+      this.add(northBar, BorderLayout.NORTH);
+      this.add(centerCol, BorderLayout.CENTER);
+      this.add(southArea, BorderLayout.SOUTH);
     }
 
     private static void configureSvgButton(final JButton button, final Icon icon,
@@ -461,7 +462,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
           SwingUtilities.invokeLater(() -> {
             try {
               GameBoard.this.applyingInputEquivalence = true;
-              applyFlyInputEquivalence(start, insertLen);
+              GameBoard.this.applyFlyInputEquivalence(start, insertLen);
             } finally {
               GameBoard.this.applyingInputEquivalence = false;
             }
@@ -498,7 +499,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         final DialogDefinition definition,
         final boolean userTypesAFlag,
         final Runnable returnToSelect) {
-      shutdownSession();
+      this.shutdownSession();
       this.dialog = definition;
       this.userTypesA = userTypesAFlag;
       this.onVictoryReturnToSelect = returnToSelect;
@@ -518,17 +519,17 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       this.answerBannerText = "";
       this.input.setText("");
       this.sky.initClouds();
-      refreshStatus();
-      this.animator = makeFrameAnimatorTimer();
+      this.refreshStatus();
+      this.animator = this.makeFrameAnimatorTimer();
       this.animator.start();
-      refreshPauseIcon();
+      this.refreshPauseIcon();
       this.sfx.play(FlyGameSfx.AIR_START);
       SwingUtilities.invokeLater(this.input::requestFocusInWindow);
       return true;
     }
 
     void shutdownSession() {
-      dismissVictoryBanner();
+      this.dismissVictoryBanner();
       if (this.animator != null) {
         this.animator.stop();
         this.animator = null;
@@ -560,7 +561,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         }
         return;
       }
-      dismissVictoryBanner();
+      this.dismissVictoryBanner();
       final JDialog overlay = new JDialog(owner, Dialog.ModalityType.MODELESS);
       this.victoryOverlay = overlay;
       overlay.setUndecorated(true);
@@ -573,7 +574,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       overlay.setContentPane(pane);
 
       final Runnable closeAndReturn = () -> {
-        dismissVictoryBanner();
+        GameBoard.this.dismissVictoryBanner();
         if (this.onVictoryReturnToSelect != null) {
           this.onVictoryReturnToSelect.run();
         }
@@ -614,7 +615,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         return;
       }
       this.paused = !this.paused;
-      refreshPauseIcon();
+      this.refreshPauseIcon();
       this.repaintSkyFrame();
     }
 
@@ -650,7 +651,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       if (this.explodeFramesLeft > 0) {
         this.explodeFramesLeft--;
         if (this.explodeFramesLeft == 0) {
-          advanceAfterHit();
+          this.advanceAfterHit();
         }
         this.repaintSkyFrame();
         return;
@@ -662,7 +663,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       this.heliProgress += delta;
       this.sky.advanceClouds();
       if (this.heliProgress >= 1f) {
-        onMissedDeadline();
+        this.onMissedDeadline();
       }
       this.repaintSkyFrame();
     }
@@ -682,7 +683,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       this.showingAnswer = true;
       this.input.setText("");
       this.repaintSkyFrame();
-      this.answerDismissTimer = new Timer(ANSWER_SHOW_MS, ev -> resumeSameWord());
+      this.answerDismissTimer = new Timer(ANSWER_SHOW_MS, ev -> this.resumeSameWord());
       this.answerDismissTimer.setRepeats(false);
       this.answerDismissTimer.start();
     }
@@ -699,11 +700,11 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         return;
       }
       if (this.animator == null) {
-        this.animator = makeFrameAnimatorTimer();
+        this.animator = this.makeFrameAnimatorTimer();
       }
       this.animator.start();
       SwingUtilities.invokeLater(this.input::requestFocusInWindow);
-      refreshPauseIcon();
+      this.refreshPauseIcon();
       this.repaintSkyFrame();
     }
 
@@ -732,13 +733,13 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
           this.leitner == null || this.leitner.registerCorrect(this.currentLineOrdinal);
       if (allDone) {
         this.sfx.play(FlyGameSfx.ENDGAME);
-        shutdownSession();
-        showVictoryBannerOverlay();
+        this.shutdownSession();
+        this.showVictoryBannerOverlay();
         return;
       }
       this.currentLineOrdinal = this.leitner.nextOrdinalToFly();
       this.heliProgress = 0f;
-      refreshStatus();
+      this.refreshStatus();
       this.sfx.play(FlyGameSfx.AIR_START);
       SwingUtilities.invokeLater(this.input::requestFocusInWindow);
     }
@@ -831,7 +832,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       private int cachedAimPx;
 
       SkyCanvas() {
-        setOpaque(false);
+        this.setOpaque(false);
       }
 
       private static int aimRasterPixels(final int panelH) {
@@ -932,7 +933,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       }
 
       private void ensureRasterSize() {
-        final int w = Math.max(1, getWidth());
+        final int w = Math.max(1, this.getWidth());
         final int target = Math.max(56, w / 10);
         if (this.heliImage == null || Math.abs(this.cachedImgScale - target) > 16) {
           this.cachedImgScale = target;
@@ -946,7 +947,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       }
 
       private void ensureAimRasterSize(final int panelH) {
-        final int target = aimRasterPixels(panelH);
+        final int target = SkyCanvas.aimRasterPixels(panelH);
         if (this.aimImage == null || Math.abs(this.cachedAimPx - target) > 8) {
           this.cachedAimPx = target;
           this.aimImage = ImageResourceLoader.loadImage("/fly_game/images/aim.svg", target, target);
@@ -959,15 +960,15 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         final Graphics2D g2 = (Graphics2D) g.create();
         try {
           ImageResourceLoader.applyHighQualityDrawingHints(g2);
-          final int w = getWidth();
-          final int h = getHeight();
+          final int w = this.getWidth();
+          final int h = this.getHeight();
           if (w <= 0 || h <= 0) {
             return;
           }
           g2.setColor(SKY);
           g2.fillRect(0, 0, w, h);
 
-          ensureRasterSize();
+          this.ensureRasterSize();
           final int cw = this.cloudImage.getWidth(null);
           final int ch = this.cloudImage.getHeight(null);
           for (final Cloud c : this.clouds) {
@@ -987,7 +988,9 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
 
           final String prompt = GameBoard.this.currentPrompt();
           if (!prompt.isEmpty()) {
-            g2.setFont(g2.getFont().deriveFont(Font.BOLD, scaleFont(w, 14f, 28f)));
+            g2.setFont(
+                g2.getFont()
+                    .deriveFont(Font.BOLD, SkyCanvas.scaleFont(w, 14f, 28f)));
             final FontMetrics fm = g2.getFontMetrics();
             final int pw = fm.stringWidth(prompt);
             final int px = Math.max(8, Math.min(w - pw - 8, hx - pw / 2));
@@ -999,20 +1002,20 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
           }
 
           if (!GameBoard.this.showingAnswer()) {
-            drawTypedAnswerOverlay(g2, w, h);
+            this.drawTypedAnswerOverlay(g2, w, h);
           }
 
-          drawAim(g2, w, h, hx, hy);
+          this.drawAim(g2, w, h, hx, hy);
 
           if (GameBoard.this.explodeFramesLeft() > 0) {
-            drawExplosion(g2, hx, hy, hw, hh);
+            this.drawExplosion(g2, hx, hy, hw, hh);
           }
 
           if (GameBoard.this.showingAnswer()) {
-            drawAnswerOverlay(g2, w, h);
+            this.drawAnswerOverlay(g2, w, h);
           }
           if (GameBoard.this.isPaused()) {
-            drawPausedVeil(g2, w, h);
+            this.drawPausedVeil(g2, w, h);
           }
         } finally {
           g2.dispose();
@@ -1028,11 +1031,11 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         final int safeCaret =
             Math.min(Math.max(0, GameBoard.this.input.getCaretPosition()), raw.length());
         final String beforeCaretU = raw.substring(0, safeCaret).toUpperCase(Locale.ROOT);
-        final float fontPt = scaleFont(w, 26f, FLY_INPUT_OVERLAY_FONT_PT);
+        final float fontPt = SkyCanvas.scaleFont(w, 26f, FLY_INPUT_OVERLAY_FONT_PT);
         g2.setFont(g2.getFont().deriveFont(Font.BOLD, fontPt));
         final FontMetrics fm = g2.getFontMetrics();
         final int maxLineW = Math.max(40, w - 32);
-        final String visiblePrefix = flyVisibleTypingPrefix(fm, typedU, maxLineW);
+        final String visiblePrefix = SkyCanvas.flyVisibleTypingPrefix(fm, typedU, maxLineW);
         final boolean truncated = visiblePrefix.length() < typedU.length();
         final String draw = truncated ? visiblePrefix + "…" : typedU;
         String beforeForBar = beforeCaretU;
@@ -1088,7 +1091,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
           aimX = heliCx + (int) Math.round(signX * radiusPx * Math.cos(theta));
           aimY = heliCy + (int) Math.round(signY * radiusPx * Math.sin(theta));
         }
-        ensureAimRasterSize(h);
+        this.ensureAimRasterSize(h);
         final int aw = this.aimImage.getWidth(null);
         final int ah = this.aimImage.getHeight(null);
         final int halfW = aw / 2;
@@ -1118,16 +1121,20 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         g2.fillRect(0, 0, w, h);
         g2.setComposite(AlphaComposite.SrcOver);
         g2.setColor(Color.WHITE);
-        g2.setFont(g2.getFont().deriveFont(Font.BOLD, scaleFont(w, 18f, 36f)));
+        g2.setFont(
+            g2.getFont()
+                .deriveFont(Font.BOLD, SkyCanvas.scaleFont(w, 18f, 36f)));
         final String msg = "Answer: " + GameBoard.this.answerBannerText();
         final FontMetrics fm = g2.getFontMetrics();
         final int maxLineW = Math.max(120, w - 80);
         int y = h / 2 - fm.getHeight();
-        for (final String line : wrapText(fm, msg, maxLineW)) {
+        for (final String line : SkyCanvas.wrapText(fm, msg, maxLineW)) {
           g2.drawString(line, (w - fm.stringWidth(line)) / 2, y);
           y += fm.getHeight() + 4;
         }
-        g2.setFont(g2.getFont().deriveFont(Font.PLAIN, scaleFont(w, 14f, 22f)));
+        g2.setFont(
+            g2.getFont()
+                .deriveFont(Font.PLAIN, SkyCanvas.scaleFont(w, 14f, 22f)));
         final FontMetrics fm2 = g2.getFontMetrics();
         final String sub = "Next flight in a moment…";
         g2.drawString(sub, (w - fm2.stringWidth(sub)) / 2, y + fm2.getHeight());

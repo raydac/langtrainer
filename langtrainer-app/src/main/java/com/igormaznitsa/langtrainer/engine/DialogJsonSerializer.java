@@ -9,13 +9,24 @@ public final class DialogJsonSerializer {
 
   public static String toPrettyJson(final DialogDefinition definition) {
     final StringBuilder sb = new StringBuilder();
+    appendDocumentHeader(definition, sb);
+    appendLinesArray(definition.lines(), sb);
+    appendInputEquIfNonEmpty(definition.inputEqu(), sb);
+    sb.append("}\n");
+    return sb.toString();
+  }
+
+  private static void appendDocumentHeader(final DialogDefinition definition,
+                                           final StringBuilder sb) {
     sb.append("{\n");
     sb.append("  \"menuName\": ").append(quote(definition.menuName())).append(",\n");
     sb.append("  \"description\": ").append(quote(definition.description())).append(",\n");
     sb.append("  \"langA\": ").append(quote(definition.langA())).append(",\n");
     sb.append("  \"langB\": ").append(quote(definition.langB())).append(",\n");
+  }
+
+  private static void appendLinesArray(final List<DialogLine> lines, final StringBuilder sb) {
     sb.append("  \"lines\": [\n");
-    final List<DialogLine> lines = definition.lines();
     for (int i = 0; i < lines.size(); i++) {
       final DialogLine line = lines.get(i);
       sb.append("    {\n");
@@ -28,26 +39,27 @@ public final class DialogJsonSerializer {
       sb.append('\n');
     }
     sb.append("  ]");
-    final List<InputEquivalenceRow> equ = definition.inputEqu();
-    if (!equ.isEmpty()) {
-      sb.append(",\n  \"inputEqu\": [\n");
-      for (int i = 0; i < equ.size(); i++) {
-        final InputEquivalenceRow row = equ.get(i);
-        sb.append("    {\n");
-        sb.append("      \"key\": ").append(stringArrayJson(row.key())).append(",\n");
-        sb.append("      \"value\": ").append(stringArrayJson(row.value())).append("\n");
-        sb.append("    }");
-        if (i < equ.size() - 1) {
-          sb.append(',');
-        }
-        sb.append('\n');
+  }
+
+  private static void appendInputEquIfNonEmpty(
+      final List<InputEquivalenceRow> equ, final StringBuilder sb) {
+    if (equ.isEmpty()) {
+      sb.append('\n');
+      return;
+    }
+    sb.append(",\n  \"inputEqu\": [\n");
+    for (int i = 0; i < equ.size(); i++) {
+      final InputEquivalenceRow row = equ.get(i);
+      sb.append("    {\n");
+      sb.append("      \"key\": ").append(stringArrayJson(row.key())).append(",\n");
+      sb.append("      \"value\": ").append(stringArrayJson(row.value())).append("\n");
+      sb.append("    }");
+      if (i < equ.size() - 1) {
+        sb.append(',');
       }
-      sb.append("  ]\n");
-    } else {
       sb.append('\n');
     }
-    sb.append("}\n");
-    return sb.toString();
+    sb.append("  ]\n");
   }
 
   private static String stringArrayJson(final List<String> items) {
