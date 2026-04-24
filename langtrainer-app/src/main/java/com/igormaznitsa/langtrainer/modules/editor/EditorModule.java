@@ -3,7 +3,6 @@ package com.igormaznitsa.langtrainer.modules.editor;
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
 import com.igormaznitsa.langtrainer.engine.DialogDefinition;
-import com.igormaznitsa.langtrainer.engine.DialogJsonSerializer;
 import com.igormaznitsa.langtrainer.engine.DialogLine;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
@@ -808,7 +807,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     final DialogDefinition def;
     try {
       def = this.readDefinitionFromUi();
-      LangResourceJson.parse(DialogJsonSerializer.toPrettyJson(def));
+      LangResourceJson.parse(LangResourceJson.toPrettyJson(def));
     } catch (final Exception ex) {
       JOptionPane.showMessageDialog(
           this.rootPanel,
@@ -838,7 +837,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     }
     rememberWorkDir(out);
     try {
-      Files.writeString(out.toPath(), DialogJsonSerializer.toPrettyJson(def),
+      Files.writeString(out.toPath(), LangResourceJson.toPrettyJson(def),
           StandardCharsets.UTF_8);
       this.currentFilePath = out.toPath();
     } catch (final IOException ex) {
