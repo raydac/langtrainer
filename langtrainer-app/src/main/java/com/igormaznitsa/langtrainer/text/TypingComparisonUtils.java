@@ -1,5 +1,6 @@
 package com.igormaznitsa.langtrainer.text;
 
+import java.util.Optional;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 
@@ -43,8 +44,7 @@ public final class TypingComparisonUtils {
     if (maxLen == 0) {
       return 1.0;
     }
-    final Integer distance = LEVENSHTEIN.apply(left, right);
-    final int d = distance == null ? maxLen : distance;
+    final int d = levenshteinOrFallbackMax(left, right, maxLen);
     return 1.0d - (double) d / (double) maxLen;
   }
 
@@ -54,9 +54,12 @@ public final class TypingComparisonUtils {
   public static int editDistance(final String typed, final String expected) {
     final String left = normalizeForTypingMatch(typed);
     final String right = normalizeForTypingMatch(expected);
-    final Integer distance = LEVENSHTEIN.apply(left, right);
-    final int maxLen = Math.max(left.length(), right.length());
-    return distance == null ? maxLen : distance;
+    return levenshteinOrFallbackMax(left, right, Math.max(left.length(), right.length()));
+  }
+
+  private static int levenshteinOrFallbackMax(
+      final String left, final String right, final int maxLen) {
+    return Optional.ofNullable(LEVENSHTEIN.apply(left, right)).orElse(maxLen);
   }
 
   public static boolean isCloseEnough(final String actual, final String expected) {
@@ -70,6 +73,7 @@ public final class TypingComparisonUtils {
     if (text == null || text.isEmpty()) {
       return "";
     }
-    return StringEscapeUtils.escapeHtml4(text).replace("\n", "<br/>");
+    final String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
+    return StringEscapeUtils.escapeHtml4(normalized).replace("\n", "<br/>");
   }
 }

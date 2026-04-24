@@ -1,12 +1,18 @@
 package com.igormaznitsa.langtrainer.modules.dialog;
 
+import com.google.gson.JsonObject;
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
+import com.igormaznitsa.langtrainer.api.LangTrainerModuleId;
+import com.igormaznitsa.langtrainer.engine.ClasspathLangResourceIndex;
 import com.igormaznitsa.langtrainer.engine.DialogDefinition;
 import com.igormaznitsa.langtrainer.engine.DialogLine;
 import com.igormaznitsa.langtrainer.engine.DialogListEntry;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
+import com.igormaznitsa.langtrainer.engine.LangResourceJson;
+import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
+import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
 import com.igormaznitsa.langtrainer.text.TypingComparisonUtils;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
@@ -15,9 +21,10 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.FontMetrics;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.Window;
@@ -47,6 +54,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.JTextPane;
 import javax.swing.JToggleButton;
 import javax.swing.JViewport;
 import javax.swing.SwingConstants;
@@ -57,6 +65,9 @@ import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledDocument;
 
 public final class DialogModule extends AbstractLangTrainerModule {
 
@@ -149,7 +160,8 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private boolean applyingInputEquivalence;
 
   public DialogModule() {
-    DialogDataLoader.loadAll()
+    ClasspathLangResourceIndex.loadShared(
+            DialogModule.class, this, "Can't load dialog definitions")
         .forEach(d -> this.dialogListModel.addElement(new DialogListEntry(d, false)));
     bindEnterToSubmit(this.inputA);
     bindEnterToSubmit(this.inputB);
@@ -278,6 +290,16 @@ public final class DialogModule extends AbstractLangTrainerModule {
     }
   }
 
+  /**
+   * Normalizes line breaks for display in {@link JTextArea} (JSON / OS may use {@code \\r\\n}).
+   */
+  private static String dialogLineTextForDisplay(final String text) {
+    if (text == null || text.isEmpty()) {
+      return "";
+    }
+    return text.replace("\r\n", "\n").replace('\r', '\n');
+  }
+
   @Override
   public String getName() {
     return "Dialogs";
@@ -293,11 +315,35 @@ public final class DialogModule extends AbstractLangTrainerModule {
     return this.rootPanel;
   }
 
-  @Override
-  public List<KeyboardLanguage> getSupportedLanguages() {
-    List<KeyboardLanguage> result;
-    result = List.of(KeyboardLanguage.ENG, KeyboardLanguage.RUS, KeyboardLanguage.EST);
-    return result;
+  /**
+   * {@link JTextPane} keeps default (often black) character color in the styled document; component
+   * {@code setForeground} alone does not update existing text. Apply attributes after
+   * {@code setText} so light and dark flashcard faces both render correctly.
+   */
+  private static void applyShowPhraseFaceStyles(
+      final JTextPane face, final Color fg, final Color bg) {
+    face.setBackground(bg);
+    face.setForeground(fg);
+    face.setCaretColor(fg);
+    final StyledDocument doc = face.getStyledDocument();
+    final int len = doc.getLength();
+    if (len <= 0) {
+      return;
+    }
+    final Font f = face.getFont();
+    final SimpleAttributeSet chars = new SimpleAttributeSet();
+    StyleConstants.setForeground(chars, fg);
+    StyleConstants.setBackground(chars, bg);
+    StyleConstants.setBold(chars, true);
+    StyleConstants.setFontFamily(chars, f.getFamily());
+    StyleConstants.setFontSize(chars, f.getSize());
+    final SimpleAttributeSet para = new SimpleAttributeSet();
+    StyleConstants.setAlignment(para, StyleConstants.ALIGN_CENTER);
+    try {
+      doc.setCharacterAttributes(0, len, chars, true);
+      doc.setParagraphAttributes(0, len, para, true);
+    } catch (final Exception ignored) {
+    }
   }
 
   private static void configureHistoryScrollPane(final JScrollPane scroll) {
@@ -313,137 +359,15 @@ public final class DialogModule extends AbstractLangTrainerModule {
     target.requestFocusInWindow();
   }
 
-  private JPanel makeSelectPanel() {
-    final Color panelBg = new Color(236, 242, 249);
-    final Color listBorder = new Color(100, 130, 170);
-    final Color rowDivider = new Color(215, 224, 238);
-    final Color selectedBg = new Color(21, 101, 192);
-    final Color unselectedBg = Color.WHITE;
-    final Color unselectedFg = new Color(38, 50, 56);
-
-    final JPanel panel = new JPanel(new BorderLayout(12, 14));
-    panel.setBackground(panelBg);
-    panel.setBorder(BorderFactory.createEmptyBorder(16, 18, 18, 18));
-
-    final JLabel title = new JLabel("Select dialog", SwingConstants.CENTER);
-    title.setFont(title.getFont().deriveFont(Font.BOLD, 28.0f));
-    title.setForeground(new Color(25, 45, 85));
-    title.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
-    panel.add(title, BorderLayout.NORTH);
-
-    final JList<DialogListEntry> list = new JList<>(this.dialogListModel);
-    this.dialogSelectionList = list;
-    list.setBackground(unselectedBg);
-    list.setSelectionBackground(selectedBg);
-    list.setSelectionForeground(Color.WHITE);
-    list.setFont(list.getFont().deriveFont(Font.PLAIN, 19f));
-    list.setFixedCellHeight(52);
-    list.setSelectedIndex(0);
-    list.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
-    list.setCellRenderer((jList, value, index, isSelected, cellHasFocus) -> {
-      final String rowTitle =
-          (value.fromExternalFile() ? "* " : "") + value.definition().menuName();
-      final JLabel label = new JLabel(rowTitle);
-      label.setOpaque(true);
-      label.setFont(label.getFont().deriveFont(Font.BOLD, 19f));
-      label.setBorder(BorderFactory.createCompoundBorder(
-          BorderFactory.createMatteBorder(0, 0, 1, 0, rowDivider),
-          BorderFactory.createEmptyBorder(12, 18, 12, 18)));
-      label.setToolTipText(
-          "<html><body style='width:280px;'>%s</body></html>"
-              .formatted(value.definition().description()));
-      if (isSelected) {
-        label.setBackground(selectedBg);
-        label.setForeground(Color.WHITE);
-      } else {
-        label.setBackground(unselectedBg);
-        label.setForeground(unselectedFg);
-      }
-      return label;
-    });
-
-    final JScrollPane scroll = new JScrollPane(list);
-    scroll.setBorder(BorderFactory.createCompoundBorder(
-        BorderFactory.createLineBorder(listBorder, 2, true),
-        BorderFactory.createEmptyBorder(2, 2, 2, 2)));
-    scroll.getViewport().setBackground(unselectedBg);
-    scroll.setPreferredSize(new Dimension(480, 280));
-    panel.add(scroll, BorderLayout.CENTER);
-
-    final JButton start = new JButton("Choose and Start");
-    start.setFont(start.getFont().deriveFont(Font.BOLD, 18f));
-    start.setForeground(Color.WHITE);
-    start.setBackground(new Color(46, 125, 50));
-    start.setOpaque(true);
-    start.setContentAreaFilled(true);
-    start.setFocusPainted(false);
-    start.setBorder(BorderFactory.createCompoundBorder(
-        BorderFactory.createLineBorder(new Color(27, 94, 32), 2, true),
-        BorderFactory.createEmptyBorder(14, 32, 14, 32)));
-    start.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    start.addActionListener(event -> {
-      final DialogListEntry selected = list.getSelectedValue();
-      if (selected != null) {
-        chooseUserLanguageAndStart(selected.definition());
-      }
-    });
-
-    final JPanel southWrap = new JPanel(new BorderLayout());
-    southWrap.setBackground(panelBg);
-    southWrap.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
-    final JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 16, 8));
-    buttonRow.setOpaque(false);
-
-    final JButton openFile = new JButton("Open from file");
-    openFile.setFont(openFile.getFont().deriveFont(Font.BOLD, 18f));
-    openFile.setForeground(Color.WHITE);
-    openFile.setBackground(new Color(25, 118, 210));
-    openFile.setOpaque(true);
-    openFile.setContentAreaFilled(true);
-    openFile.setFocusPainted(false);
-    openFile.setBorder(BorderFactory.createCompoundBorder(
-        BorderFactory.createLineBorder(new Color(13, 71, 161), 2, true),
-        BorderFactory.createEmptyBorder(14, 28, 14, 28)));
-    openFile.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    openFile.addActionListener(event -> openDialogFromFile(list));
-
-    buttonRow.add(openFile);
-    buttonRow.add(start);
-    southWrap.add(buttonRow, BorderLayout.CENTER);
-    panel.add(southWrap, BorderLayout.SOUTH);
-    return panel;
+  @Override
+  public boolean isResourceAllowed(final JsonObject resourceDescription) {
+    return LangTrainerResourceAccess.visibleToModule(
+        resourceDescription, LangTrainerModuleId.DIALOG);
   }
 
-  private void openDialogFromFile(final JList<DialogListEntry> list) {
-    final JFileChooser chooser = new JFileChooser();
-    chooser.setFileFilter(new FileNameExtensionFilter("Dialog JSON (*.json)", "json"));
-    chooser.setAcceptAllFileFilterUsed(false);
-    if (this.lastDialogOpenDirectory != null) {
-      chooser.setCurrentDirectory(this.lastDialogOpenDirectory);
-    }
-    final int option = chooser.showOpenDialog(this.rootPanel);
-    if (option != JFileChooser.APPROVE_OPTION) {
-      return;
-    }
-    final File file = chooser.getSelectedFile();
-    if (file == null) {
-      return;
-    }
-    try {
-      final DialogDefinition loaded = DialogDataLoader.loadFromFile(file.toPath());
-      this.dialogListModel.addElement(new DialogListEntry(loaded, true));
-      list.setSelectedIndex(this.dialogListModel.getSize() - 1);
-      final File parent = file.getParentFile();
-      if (parent != null) {
-        this.lastDialogOpenDirectory = parent;
-      }
-    } catch (final Exception ex) {
-      JOptionPane.showMessageDialog(
-          this.rootPanel,
-          ex.getMessage(),
-          "Can't open dialog file",
-          JOptionPane.ERROR_MESSAGE);
-    }
+  @Override
+  public List<KeyboardLanguage> getSupportedLanguages() {
+    return KeyboardLanguage.VIRTUAL_BOARD_ALL;
   }
 
   private static String extractDocumentText(final Document doc) {
@@ -790,6 +714,52 @@ public final class DialogModule extends AbstractLangTrainerModule {
     }
   }
 
+  private JPanel makeSelectPanel() {
+    final ResourceListSelectPanel.Result view = ResourceListSelectPanel.build(
+        this.dialogListModel,
+        ResourceListSelectPanel.Appearance.DIALOG,
+        "Select dialog",
+        "Choose and Start",
+        "Open from file",
+        this::chooseUserLanguageAndStart,
+        this::openDialogFromFile);
+    this.dialogSelectionList = view.list();
+    return view.panel();
+  }
+
+  private void openDialogFromFile(final JList<DialogListEntry> list) {
+    final JFileChooser chooser = new JFileChooser();
+    chooser.setFileFilter(new FileNameExtensionFilter("Dialog JSON (*.json)", "json"));
+    chooser.setAcceptAllFileFilterUsed(false);
+    if (this.lastDialogOpenDirectory != null) {
+      chooser.setCurrentDirectory(this.lastDialogOpenDirectory);
+    }
+    final int option = chooser.showOpenDialog(this.rootPanel);
+    if (option != JFileChooser.APPROVE_OPTION) {
+      return;
+    }
+    final File file = chooser.getSelectedFile();
+    if (file == null) {
+      return;
+    }
+    try {
+      final DialogDefinition loaded = LangResourceJson.parseFromPath(file.toPath());
+      final int index = DialogListEntry.addOrReplaceByMenuTitle(
+          this.dialogListModel, new DialogListEntry(loaded, true));
+      list.setSelectedIndex(index);
+      final File parent = file.getParentFile();
+      if (parent != null) {
+        this.lastDialogOpenDirectory = parent;
+      }
+    } catch (final Exception ex) {
+      JOptionPane.showMessageDialog(
+          this.rootPanel,
+          ex.getMessage(),
+          "Can't open dialog file",
+          JOptionPane.ERROR_MESSAGE);
+    }
+  }
+
   private void dismissPhraseLearningBanner() {
     if (this.phraseLearningFlipTimer != null) {
       this.phraseLearningFlipTimer.stop();
@@ -822,8 +792,10 @@ public final class DialogModule extends AbstractLangTrainerModule {
       return;
     }
     final DialogLine line = this.activeDialog.lines().get(this.currentLineOrdinal);
-    final String expected = this.userWritesToA ? line.a() : line.b();
-    final String partner = this.userWritesToA ? line.b() : line.a();
+    final String expected = dialogLineTextForDisplay(
+        this.userWritesToA ? line.a() : line.b());
+    final String partner = dialogLineTextForDisplay(
+        this.userWritesToA ? line.b() : line.a());
 
     final JDialog overlay = new JDialog(owner, java.awt.Dialog.ModalityType.APPLICATION_MODAL);
     this.phraseLearningOverlay = overlay;
@@ -837,42 +809,84 @@ public final class DialogModule extends AbstractLangTrainerModule {
         BorderFactory.createEmptyBorder(28, 36, 28, 36)));
     overlay.setContentPane(pane);
 
-    final JLabel label = new JLabel("", SwingConstants.CENTER);
-    label.setOpaque(false);
     final float phraseFontSize = Math.min(BANNER_FONT_SIZE, 44f);
-    label.setFont(label.getFont().deriveFont(Font.BOLD, phraseFontSize));
+    final JTextPane face = new JTextPane();
+    face.setEditable(false);
+    face.setFocusable(false);
+    face.setOpaque(true);
+    face.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+    face.setFont(face.getFont().deriveFont(Font.BOLD, phraseFontSize));
+    final int viewW = 520;
+    final int viewH = (int) Math.max(180, Math.min(400, owner.getHeight() * 0.5));
+    final JPanel phraseWrap = new JPanel(new GridBagLayout()) {
+      @Override
+      public Dimension getPreferredSize() {
+        final Container p = getParent();
+        if (!(p instanceof JViewport)) {
+          return new Dimension(viewW, viewH);
+        }
+        final JViewport vp = (JViewport) p;
+        final int w = Math.max(1, vp.getWidth() > 0 ? vp.getWidth() : viewW);
+        final int vph = Math.max(1, vp.getHeight() > 0 ? vp.getHeight() : viewH);
+        face.setSize(new Dimension(w, 10_000));
+        final int textH = face.getPreferredSize().height;
+        return new Dimension(w, Math.max(vph, textH));
+      }
+
+      @Override
+      public Dimension getMinimumSize() {
+        return getPreferredSize();
+      }
+    };
+    phraseWrap.setOpaque(true);
+    phraseWrap.setBackground(PHRASE_FLASH_LIGHT_BG);
+    final GridBagConstraints wrapG = new GridBagConstraints();
+    wrapG.gridx = 0;
+    wrapG.gridy = 0;
+    wrapG.weightx = 1.0;
+    wrapG.weighty = 1.0;
+    wrapG.fill = GridBagConstraints.HORIZONTAL;
+    wrapG.anchor = GridBagConstraints.CENTER;
+    wrapG.insets = new Insets(0, 0, 0, 0);
+    phraseWrap.add(face, wrapG);
+    final JScrollPane faceScroll = new JScrollPane(phraseWrap);
+    faceScroll.setOpaque(false);
+    faceScroll.getViewport().setOpaque(true);
+    faceScroll.setBorder(BorderFactory.createEmptyBorder());
+    faceScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+    faceScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+    faceScroll.setPreferredSize(new Dimension(viewW, viewH));
 
     pane.setBackground(PHRASE_FLASH_LIGHT_BG);
-    label.setForeground(PHRASE_FLASH_LIGHT_FG);
-    label.setText(
-        "<html><body style='width:520px;text-align:center;color:#000000;'>"
-            + TypingComparisonUtils.escapeHtmlForBanner(expected)
-            + "</body></html>");
+    faceScroll.getViewport().setBackground(PHRASE_FLASH_LIGHT_BG);
+    face.setText(expected);
+    applyShowPhraseFaceStyles(face, PHRASE_FLASH_LIGHT_FG, PHRASE_FLASH_LIGHT_BG);
 
-    pane.add(label, BorderLayout.CENTER);
+    pane.add(faceScroll, BorderLayout.CENTER);
 
     final boolean[] showExpectedRef = {true};
     final Runnable updateFace = () -> {
       if (showExpectedRef[0]) {
         pane.setBackground(PHRASE_FLASH_LIGHT_BG);
-        label.setForeground(PHRASE_FLASH_LIGHT_FG);
-        label.setText(
-            "<html><body style='width:520px;text-align:center;color:#000000;'>"
-                + TypingComparisonUtils.escapeHtmlForBanner(expected)
-                + "</body></html>");
+        phraseWrap.setBackground(PHRASE_FLASH_LIGHT_BG);
+        faceScroll.getViewport().setBackground(PHRASE_FLASH_LIGHT_BG);
+        face.setText(expected);
+        applyShowPhraseFaceStyles(face, PHRASE_FLASH_LIGHT_FG, PHRASE_FLASH_LIGHT_BG);
       } else {
         pane.setBackground(PHRASE_FLASH_DARK_BG);
-        label.setForeground(PHRASE_FLASH_DARK_FG);
-        label.setText(
-            "<html><body style='width:520px;text-align:center;color:#FFFFFF;'>"
-                + TypingComparisonUtils.escapeHtmlForBanner(partner)
-                + "</body></html>");
+        phraseWrap.setBackground(PHRASE_FLASH_DARK_BG);
+        faceScroll.getViewport().setBackground(PHRASE_FLASH_DARK_BG);
+        face.setText(partner);
+        applyShowPhraseFaceStyles(face, PHRASE_FLASH_DARK_FG, PHRASE_FLASH_DARK_BG);
       }
+      face.setCaretPosition(0);
+      phraseWrap.revalidate();
     };
 
     this.phraseLearningFlipTimer = new Timer(1_000, event -> {
       showExpectedRef[0] = !showExpectedRef[0];
       updateFace.run();
+      faceScroll.getVerticalScrollBar().setValue(0);
       pane.revalidate();
       pane.repaint();
     });
@@ -1322,9 +1336,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   }
 
   private JTextArea focusedInput() {
-    JTextArea result;
-    result = this.userWritesToA ? this.inputA : this.inputB;
-    return result;
+    return this.userWritesToA ? this.inputA : this.inputB;
   }
 
   private boolean isCloseEnough(final String actual, final String expected) {

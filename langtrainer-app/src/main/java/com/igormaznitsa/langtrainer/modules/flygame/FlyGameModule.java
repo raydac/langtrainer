@@ -1,13 +1,19 @@
 package com.igormaznitsa.langtrainer.modules.flygame;
 
+import com.google.gson.JsonObject;
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
+import com.igormaznitsa.langtrainer.api.LangTrainerModuleId;
+import com.igormaznitsa.langtrainer.engine.ClasspathLangResourceIndex;
 import com.igormaznitsa.langtrainer.engine.DialogDefinition;
 import com.igormaznitsa.langtrainer.engine.DialogLine;
 import com.igormaznitsa.langtrainer.engine.DialogListEntry;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
+import com.igormaznitsa.langtrainer.engine.LangResourceJson;
 import com.igormaznitsa.langtrainer.engine.LangTrainerApplication;
+import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
+import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
 import com.igormaznitsa.langtrainer.modules.dialog.InputEquivalenceSupport;
 import com.igormaznitsa.langtrainer.text.TypingComparisonUtils;
 import java.awt.AlphaComposite;
@@ -48,7 +54,6 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.KeyStroke;
@@ -86,20 +91,18 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   private File lastOpenDir;
 
   public FlyGameModule() {
-    FlyGameDataLoader.loadAll()
+    ClasspathLangResourceIndex.loadShared(
+            FlyGameModule.class, this, "Can't load fly game word lists")
         .forEach(d -> this.listModel.addElement(new DialogListEntry(d, false)));
     this.rootPanel.add(makeSelectPanel(), CARD_SELECT);
     this.rootPanel.add(this.gameBoard, CARD_GAME);
     showCard(CARD_SELECT);
   }
 
-  private static void stylePrimaryButton(final JButton button, final Color bg) {
-    button.setFont(button.getFont().deriveFont(Font.BOLD, 16f));
-    button.setForeground(Color.WHITE);
-    button.setBackground(bg);
-    button.setOpaque(true);
-    button.setFocusPainted(false);
-    button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+  @Override
+  public boolean isResourceAllowed(final JsonObject resourceDescription) {
+    return LangTrainerResourceAccess.visibleToModule(
+        resourceDescription, LangTrainerModuleId.FLY_GAME);
   }
 
   @Override
@@ -124,7 +127,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
 
   @Override
   public List<KeyboardLanguage> getSupportedLanguages() {
-    return List.of(KeyboardLanguage.ENG, KeyboardLanguage.RUS, KeyboardLanguage.EST);
+    return KeyboardLanguage.VIRTUAL_BOARD_ALL;
   }
 
   @Override
@@ -179,61 +182,16 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   }
 
   private JPanel makeSelectPanel() {
-    final Color panelBg = new Color(230, 240, 255);
-    final JPanel panel = new JPanel(new BorderLayout(12, 14));
-    panel.setBackground(panelBg);
-    panel.setBorder(BorderFactory.createEmptyBorder(16, 18, 18, 18));
-
-    final JLabel title = new JLabel("Select word list", SwingConstants.CENTER);
-    title.setFont(title.getFont().deriveFont(Font.BOLD, 26f));
-    title.setForeground(new Color(25, 55, 120));
-    panel.add(title, BorderLayout.NORTH);
-
-    final JList<DialogListEntry> list = new JList<>(this.listModel);
-    this.selectionList = list;
-    list.setFont(list.getFont().deriveFont(18f));
-    list.setFixedCellHeight(48);
-    if (this.listModel.getSize() > 0) {
-      list.setSelectedIndex(0);
-    }
-    list.setCellRenderer((jList, value, index, isSelected, cellHasFocus) -> {
-      final String rowTitle =
-          (value.fromExternalFile() ? "* " : "") + value.definition().menuName();
-      final JLabel cell = new JLabel(rowTitle);
-      cell.setOpaque(true);
-      cell.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
-      cell.setFont(cell.getFont().deriveFont(Font.BOLD, 17f));
-      if (isSelected) {
-        cell.setBackground(new Color(25, 118, 210));
-        cell.setForeground(Color.WHITE);
-      } else {
-        cell.setBackground(Color.WHITE);
-        cell.setForeground(new Color(40, 50, 70));
-      }
-      cell.setToolTipText(value.definition().description());
-      return cell;
-    });
-    final JScrollPane scroll = new JScrollPane(list);
-    scroll.setPreferredSize(new Dimension(460, 260));
-    panel.add(scroll, BorderLayout.CENTER);
-
-    final JPanel south = new JPanel();
-    south.setOpaque(false);
-    final JButton open = new JButton("Open from file");
-    stylePrimaryButton(open, new Color(25, 118, 210));
-    open.addActionListener(e -> openFromFile(list));
-    final JButton start = new JButton("Choose language and play");
-    stylePrimaryButton(start, new Color(46, 125, 50));
-    start.addActionListener(e -> {
-      final DialogListEntry entry = list.getSelectedValue();
-      if (entry != null) {
-        chooseLanguage(entry.definition());
-      }
-    });
-    south.add(open);
-    south.add(start);
-    panel.add(south, BorderLayout.SOUTH);
-    return panel;
+    final ResourceListSelectPanel.Result view = ResourceListSelectPanel.build(
+        this.listModel,
+        ResourceListSelectPanel.Appearance.FLY_GAME,
+        "Select word list",
+        "Choose language and play",
+        "Open from file",
+        this::chooseLanguage,
+        this::openFromFile);
+    this.selectionList = view.list();
+    return view.panel();
   }
 
   private void openFromFile(final JList<DialogListEntry> list) {
@@ -251,9 +209,10 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       return;
     }
     try {
-      final DialogDefinition loaded = FlyGameDataLoader.loadFromFile(file.toPath());
-      this.listModel.addElement(new DialogListEntry(loaded, true));
-      list.setSelectedIndex(this.listModel.getSize() - 1);
+      final DialogDefinition loaded = LangResourceJson.parseFromPath(file.toPath());
+      final int index = DialogListEntry.addOrReplaceByMenuTitle(
+          this.listModel, new DialogListEntry(loaded, true));
+      list.setSelectedIndex(index);
       final File parent = file.getParentFile();
       if (parent != null) {
         this.lastOpenDir = parent;

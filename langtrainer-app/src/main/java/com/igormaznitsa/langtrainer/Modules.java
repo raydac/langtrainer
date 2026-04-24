@@ -7,7 +7,6 @@ import com.igormaznitsa.langtrainer.modules.flygame.FlyGameModule;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 public enum Modules {
   DIALOG(DialogModule::new),
@@ -21,16 +20,12 @@ public enum Modules {
   }
 
   public static List<AbstractLangTrainerModule> createAll() {
-    List<AbstractLangTrainerModule> result;
-    result = Arrays.stream(values())
+    return Arrays.stream(values())
         .map(Modules::createModule)
-        .collect(Collectors.toList());
-    return result;
+        .toList();
   }
 
   public AbstractLangTrainerModule createModule() {
-    AbstractLangTrainerModule result;
-    result = this.moduleFactory.get();
-    return result;
+    return this.moduleFactory.get();
   }
 }

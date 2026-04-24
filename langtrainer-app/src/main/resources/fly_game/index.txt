@@ -1,2 +1,0 @@
-# Fly game word lists (same JSON format as dialogs — see docs/JSON_format.txt)
-fly_game/est-ru-words-1.json

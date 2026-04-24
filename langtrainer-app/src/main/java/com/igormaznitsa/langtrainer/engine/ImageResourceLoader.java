@@ -71,7 +71,6 @@ public final class ImageResourceLoader {
       final String resourcePath,
       final int width,
       final int height) {
-    final BufferedImage result;
     final URL resource = ImageResourceLoader.class.getResource(resourcePath);
     if (resource == null) {
       throw new IllegalArgumentException("Resource is not found: " + resourcePath);
@@ -98,10 +97,9 @@ public final class ImageResourceLoader {
       final TranscoderOutput output = new TranscoderOutput(outputStream);
       transcoder.transcode(input, output);
       outputStream.flush();
-      result = ImageIO.read(new ByteArrayInputStream(outputStream.toByteArray()));
+      return ImageIO.read(new ByteArrayInputStream(outputStream.toByteArray()));
     } catch (Exception ex) {
       throw new IllegalStateException("Can't load SVG image: " + resourcePath, ex);
     }
-    return result;
   }
 }

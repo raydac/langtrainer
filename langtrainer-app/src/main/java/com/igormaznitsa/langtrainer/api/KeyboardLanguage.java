@@ -28,6 +28,11 @@ public enum KeyboardLanguage {
           "zxcvbnmšžõ",
           " ,.-()"));
 
+  /**
+   * Languages for modules that show the full on-screen virtual keyboard (ENG / RUS / EST rows).
+   */
+  public static final List<KeyboardLanguage> VIRTUAL_BOARD_ALL = List.of(ENG, RUS, EST);
+
   private final String abbreviation;
   private final List<String> rows;
 
@@ -37,30 +42,23 @@ public enum KeyboardLanguage {
   }
 
   public static List<KeyboardLanguage> normalize(final List<KeyboardLanguage> languages) {
-    List<KeyboardLanguage> result;
-    result = (languages == null || languages.isEmpty())
-        ? List.of(ENG)
-        : languages.stream().distinct().toList();
-    return result;
+    if (languages == null || languages.isEmpty()) {
+      return List.of(ENG);
+    }
+    return languages.stream().distinct().toList();
   }
 
   public String getAbbreviation() {
-    String result;
-    result = this.abbreviation;
-    return result;
+    return this.abbreviation;
   }
 
   public List<String> getRows() {
-    List<String> result;
-    result = this.rows;
-    return result;
+    return this.rows;
   }
 
   public KeyboardLanguage nextIn(final List<KeyboardLanguage> enabledLanguages) {
     final int index = enabledLanguages.indexOf(this);
     final int safeIndex = Math.max(index, 0);
-    KeyboardLanguage result;
-    result = enabledLanguages.get((safeIndex + 1) % enabledLanguages.size());
-    return result;
+    return enabledLanguages.get((safeIndex + 1) % enabledLanguages.size());
   }
 }

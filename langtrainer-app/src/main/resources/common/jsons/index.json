@@ -1,0 +1,70 @@
+{
+  "resources": [
+    {
+      "resource": "/common/jsons/en-ru-small.json",
+      "modules": [
+        "DIALOG"
+      ]
+    },
+    {
+      "resource": "/common/jsons/en-ru-100-literature-1.json",
+      "modules": [
+        "DIALOG"
+      ]
+    },
+    {
+      "resource": "/common/jsons/en-ru-50-agatha-christie-1.json",
+      "modules": [
+        "DIALOG"
+      ]
+    },
+    {
+      "resource": "/common/jsons/en-ru-50-nyt-1.json",
+      "modules": [
+        "DIALOG"
+      ]
+    },
+    {
+      "resource": "/common/jsons/en-ru-50-stock-1.json",
+      "modules": [
+        "DIALOG"
+      ]
+    },
+    {
+      "resource": "/common/jsons/en-ru-50-idioms-1.json",
+      "modules": [
+        "DIALOG"
+      ]
+    },
+    {
+      "resource": "/common/jsons/est-ru-b1-dialog-1.json",
+      "modules": [
+        "DIALOG"
+      ]
+    },
+    {
+      "resource": "/common/jsons/en-ru-100-words-c1-1.json",
+      "modules": [
+        "DIALOG"
+      ]
+    },
+    {
+      "resource": "/common/jsons/est-ru-400-freq.json",
+      "modules": [
+        "DIALOG"
+      ]
+    },
+    {
+      "resource": "/common/jsons/est-ru-100-a2-1.json",
+      "modules": [
+        "DIALOG"
+      ]
+    },
+    {
+      "resource": "/common/jsons/est-ru-words-1.json",
+      "modules": [
+        "FLY_GAME"
+      ]
+    }
+  ]
+}

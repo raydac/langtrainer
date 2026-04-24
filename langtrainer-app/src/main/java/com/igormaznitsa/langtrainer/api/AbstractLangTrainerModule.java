@@ -1,5 +1,6 @@
 package com.igormaznitsa.langtrainer.api;
 
+import com.google.gson.JsonObject;
 import java.util.List;
 import javax.swing.Icon;
 import javax.swing.JComponent;
@@ -33,5 +34,14 @@ public abstract class AbstractLangTrainerModule {
    * before the close (exit module) control.
    */
   public void populateMainToolbar(final JPanel eastToolbar) {
+  }
+
+  /**
+   * Whether a shared classpath JSON entry (from {@code /common/jsons/index.json}) may appear in
+   * this module’s resource list. The {@link JsonObject} is one element of the {@code resources}
+   * array; it at least includes {@code "resource": "/path/…"}.
+   */
+  public boolean isResourceAllowed(final JsonObject resourceDescription) {
+    return true;
   }
 }

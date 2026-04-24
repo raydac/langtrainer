@@ -891,7 +891,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
   @Override
   public List<KeyboardLanguage> getSupportedLanguages() {
-    return List.of(KeyboardLanguage.ENG, KeyboardLanguage.RUS, KeyboardLanguage.EST);
+    return KeyboardLanguage.VIRTUAL_BOARD_ALL;
   }
 
   @Override
