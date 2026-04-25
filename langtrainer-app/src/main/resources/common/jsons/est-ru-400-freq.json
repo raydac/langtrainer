@@ -3,11 +3,6 @@
   "description": "Based on common Estonian frequency vocabulary",
   "langA": "Estonian",
   "langB": "Russian",
-{
-  "menuName": "Eesti sagedussõnad 400 / Эстонские 400 высокочастотных слов",
-  "description": "Bbased on common Estonian frequency vocabulary",
-  "langA": "Estonian",
-  "langB": "Russian",
   "inputEqu": [
     {
       "key": [
