@@ -14,6 +14,9 @@
     <name>langtrainer</name>
 
     <properties>
+        <embedded.jdk.provider>BELLSOFT</embedded.jdk.provider>
+        <embedded.jdk.type>jdk</embedded.jdk.type>
+        <embedded.jdk.version>25.0.2+12</embedded.jdk.version>
         <batik.version>1.19</batik.version>
         <app.version.raw>1.0.0</app.version.raw>
         <app.name>langtrainer</app.name>
