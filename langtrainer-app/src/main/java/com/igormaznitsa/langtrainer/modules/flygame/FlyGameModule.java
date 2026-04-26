@@ -333,7 +333,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       GameBoard.configureSvgButton(
           this.btnShowPhrase,
           ICON_FLY_HINT,
-          "Flash the answer and translation for 5s (alternating each second); then restart this word");
+          "Flash the answer and translation");
       this.btnShowPhrase.addActionListener(e -> this.showCurrentWordPhraseBanner());
       this.btnClose.addActionListener(e -> this.host.requestCloseToMainMenu());
       this.btnPause.addActionListener(e -> {

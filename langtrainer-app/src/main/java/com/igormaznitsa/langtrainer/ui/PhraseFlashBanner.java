@@ -1,5 +1,12 @@
 package com.igormaznitsa.langtrainer.ui;
 
+import static javax.swing.text.StyleConstants.setAlignment;
+import static javax.swing.text.StyleConstants.setBackground;
+import static javax.swing.text.StyleConstants.setBold;
+import static javax.swing.text.StyleConstants.setFontFamily;
+import static javax.swing.text.StyleConstants.setFontSize;
+import static javax.swing.text.StyleConstants.setForeground;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Container;
@@ -227,13 +234,13 @@ public final class PhraseFlashBanner {
     }
     final Font f = face.getFont();
     final SimpleAttributeSet chars = new SimpleAttributeSet();
-    StyleConstants.setForeground(chars, fg);
-    StyleConstants.setBackground(chars, bg);
-    StyleConstants.setBold(chars, true);
-    StyleConstants.setFontFamily(chars, f.getFamily());
-    StyleConstants.setFontSize(chars, f.getSize());
+    setForeground(chars, fg);
+    setBackground(chars, bg);
+    setBold(chars, true);
+    setFontFamily(chars, f.getFamily());
+    setFontSize(chars, f.getSize());
     final SimpleAttributeSet para = new SimpleAttributeSet();
-    StyleConstants.setAlignment(para, StyleConstants.ALIGN_CENTER);
+    setAlignment(para, StyleConstants.ALIGN_CENTER);
     try {
       doc.setCharacterAttributes(0, len, chars, true);
       doc.setParagraphAttributes(0, len, para, true);
