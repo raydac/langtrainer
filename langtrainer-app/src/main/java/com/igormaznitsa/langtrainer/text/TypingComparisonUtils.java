@@ -1,6 +1,7 @@
 package com.igormaznitsa.langtrainer.text;
 
-import java.util.Optional;
+import static java.util.Optional.ofNullable;
+
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 
@@ -59,7 +60,7 @@ public final class TypingComparisonUtils {
 
   private static int levenshteinOrFallbackMax(
       final String left, final String right, final int maxLen) {
-    return Optional.ofNullable(LEVENSHTEIN.apply(left, right)).orElse(maxLen);
+    return ofNullable(LEVENSHTEIN.apply(left, right)).orElse(maxLen);
   }
 
   public static boolean isCloseEnough(final String actual, final String expected) {

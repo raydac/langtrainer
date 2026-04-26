@@ -1,5 +1,8 @@
 package com.igormaznitsa.langtrainer.modules.flygame;
 
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
+
 import com.igormaznitsa.langtrainer.engine.SoundClip;
 import java.util.HashMap;
 import java.util.List;
@@ -31,10 +34,10 @@ final class FlyGameSfx {
 
   private static Optional<SoundClip> tryLoad(final String path) {
     try {
-      return Optional.of(new SoundClip(path));
+      return of(new SoundClip(path));
     } catch (RuntimeException ex) {
       LOG.log(Level.FINE, "Fly game SFX preload failed: " + path, ex);
-      return Optional.empty();
+      return empty();
     }
   }
 
@@ -42,7 +45,7 @@ final class FlyGameSfx {
     if (!this.soundEnabled.getAsBoolean()) {
       return;
     }
-    this.clips.getOrDefault(resourcePath, Optional.empty()).ifPresentOrElse(
+    this.clips.getOrDefault(resourcePath, empty()).ifPresentOrElse(
         SoundClip::play,
         () -> LOG.log(Level.FINE, "Fly game SFX not loaded for path: " + resourcePath));
   }

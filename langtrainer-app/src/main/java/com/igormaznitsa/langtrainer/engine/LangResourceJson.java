@@ -26,7 +26,8 @@ public final class LangResourceJson {
 
   public static DialogDefinition parse(final String jsonText) {
     try {
-      final DialogDefinition def = GSON.fromJson(jsonText, DialogDefinition.class);
+      final DialogDefinition def =
+          GSON.fromJson(jsonText, DialogDefinition.class);
       if (def == null) {
         throw new JsonParseException("Empty or invalid JSON");
       }

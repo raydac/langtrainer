@@ -1,5 +1,6 @@
 package com.igormaznitsa.langtrainer.engine;
 
+import java.util.Objects;
 import javax.swing.DefaultListModel;
 
 /**
@@ -17,7 +18,7 @@ public record DialogListEntry(DialogDefinition definition, boolean fromExternalF
       final DefaultListModel<DialogListEntry> model, final DialogListEntry newEntry) {
     final String title = newEntry.definition().menuName();
     for (int i = 0; i < model.getSize(); i++) {
-      if (java.util.Objects.equals(model.getElementAt(i).definition().menuName(), title)) {
+      if (Objects.equals(model.getElementAt(i).definition().menuName(), title)) {
         model.set(i, newEntry);
         return i;
       }

@@ -1,5 +1,8 @@
 package com.igormaznitsa.langtrainer.modules.editor;
 
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
+
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
 import com.igormaznitsa.langtrainer.engine.DialogDefinition;
@@ -53,7 +56,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
   private final JPanel rootPanel = new JPanel(new BorderLayout(0, 10));
   private final JTextField fieldTitle = new JTextField();
-  private final JTextArea fieldDescription = makeGrowingTextArea();
+  private final JTextArea fieldDescription = EditorModule.makeGrowingTextArea();
   private final JTextField fieldLangA = new JTextField();
   private final JTextField fieldLangB = new JTextField();
   private final JCheckBox checkShuffled = new JCheckBox("Shuffled");
@@ -162,7 +165,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private static void rememberWorkDir(final File file) {
     final File parent = file.getParentFile();
     if (parent != null) {
-      workDirectory = parent;
+      EditorModule.workDirectory = parent;
     }
   }
 
@@ -197,20 +200,20 @@ public final class EditorModule extends AbstractLangTrainerModule {
    */
   private static Optional<String> validateEquivTokenListSyntax(final String raw) {
     if (raw == null || raw.isBlank()) {
-      return Optional.of("must not be empty or blank");
+      return of("must not be empty or blank");
     }
     for (final String part : raw.split(",", -1)) {
       if (part.strip().isEmpty()) {
-        return Optional.of(
+        return of(
             "invalid comma-separated list (empty segment); examples: \"A\", \"A,B\", \"a, b, c\"");
       }
     }
-    return Optional.empty();
+    return empty();
   }
 
   private static void requireValidEquivTokens(final int rowId, final String column,
                                               final String raw) {
-    validateEquivTokenListSyntax(raw)
+    EditorModule.validateEquivTokenListSyntax(raw)
         .ifPresent(
             msg -> {
               throw new IllegalStateException(
@@ -221,8 +224,8 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private void validateLinesForSave() {
     for (int i = 0; i < this.linesModel.getRowCount(); i++) {
       final int id = i + 1;
-      final String a = cellString(this.linesModel.getValueAt(i, 1));
-      final String b = cellString(this.linesModel.getValueAt(i, 2));
+      final String a = EditorModule.cellString(this.linesModel.getValueAt(i, 1));
+      final String b = EditorModule.cellString(this.linesModel.getValueAt(i, 2));
       if (a.isEmpty()) {
         throw new IllegalStateException(
             "Lines: row Id " + id + ": column A must not be empty or blank.");
@@ -237,8 +240,8 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private void validateEquivPairsForSave() {
     for (int i = 0; i < this.equivPairModel.getRowCount(); i++) {
       final int id = i + 1;
-      final String keyStr = cellString(this.equivPairModel.getValueAt(i, 1));
-      final String valStr = cellString(this.equivPairModel.getValueAt(i, 2));
+      final String keyStr = EditorModule.cellString(this.equivPairModel.getValueAt(i, 1));
+      final String valStr = EditorModule.cellString(this.equivPairModel.getValueAt(i, 2));
       if (keyStr.isEmpty() && valStr.isEmpty()) {
         continue;
       }
@@ -248,8 +251,8 @@ public final class EditorModule extends AbstractLangTrainerModule {
                 + id
                 + ": Key and Value must both be filled, or both left empty.");
       }
-      requireValidEquivTokens(id, "Key", keyStr);
-      requireValidEquivTokens(id, "Value", valStr);
+      EditorModule.requireValidEquivTokens(id, "Key", keyStr);
+      EditorModule.requireValidEquivTokens(id, "Value", valStr);
     }
   }
 
@@ -264,22 +267,24 @@ public final class EditorModule extends AbstractLangTrainerModule {
   }
 
   private void stopEquivTableEditing() {
-    stopTableCellEditingIfActive(this.equivPairTable);
+    EditorModule.stopTableCellEditingIfActive(this.equivPairTable);
   }
 
   private void stopLinesTableEditing() {
-    stopTableCellEditingIfActive(this.linesTable);
+    EditorModule.stopTableCellEditingIfActive(this.linesTable);
   }
 
   private List<InputEquivalenceRow> inputEquivalenceRowsFromTable() {
     final List<InputEquivalenceRow> out = new ArrayList<>();
     for (int i = 0; i < this.equivPairModel.getRowCount(); i++) {
-      final String keyStr = cellString(this.equivPairModel.getValueAt(i, 1));
-      final String valStr = cellString(this.equivPairModel.getValueAt(i, 2));
+      final String keyStr = EditorModule.cellString(this.equivPairModel.getValueAt(i, 1));
+      final String valStr = EditorModule.cellString(this.equivPairModel.getValueAt(i, 2));
       if (keyStr.isEmpty() && valStr.isEmpty()) {
         continue;
       }
-      out.add(new InputEquivalenceRow(splitCommaSeparated(keyStr), splitCommaSeparated(valStr)));
+      out.add(
+          new InputEquivalenceRow(
+              EditorModule.splitCommaSeparated(keyStr), EditorModule.splitCommaSeparated(valStr)));
     }
     return out;
   }
@@ -291,7 +296,11 @@ public final class EditorModule extends AbstractLangTrainerModule {
     } else {
       for (final InputEquivalenceRow row : rules) {
         this.equivPairModel.addRow(
-            new Object[] {0, joinCommaSeparated(row.key()), joinCommaSeparated(row.value())});
+            new Object[] {
+                0,
+                EditorModule.joinCommaSeparated(row.key()),
+                EditorModule.joinCommaSeparated(row.value())
+            });
       }
     }
     this.refreshEquivPairIds();
@@ -341,12 +350,12 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
     final JPanel generalBlock = new JPanel(new GridBagLayout());
     generalBlock.setOpaque(false);
-    shrinkWrap(generalBlock);
+    EditorModule.shrinkWrap(generalBlock);
     generalBlock.setBorder(BorderFactory.createTitledBorder("General"));
     generalBlock.setPreferredSize(new Dimension(300, 0));
 
     final JScrollPane descScroll = new JScrollPane(this.fieldDescription);
-    shrinkWrap(descScroll);
+    EditorModule.shrinkWrap(descScroll);
     descScroll.setPreferredSize(new Dimension(200, 96));
 
     final Insets cellPad = new Insets(4, 4, 4, 4);
@@ -362,7 +371,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     gbc.weightx = 1.0;
     gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
-    generalBlock.add(label("Title (menuName)"), gbc);
+    generalBlock.add(EditorModule.label("Title (menuName)"), gbc);
 
     gbc.gridy = 1;
     gbc.weightx = 1.0;
@@ -374,7 +383,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     gbc.weightx = 1.0;
     gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
-    generalBlock.add(label("Description"), gbc);
+    generalBlock.add(EditorModule.label("Description"), gbc);
 
     gbc.gridy = 3;
     gbc.weightx = 1.0;
@@ -386,7 +395,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     gbc.weightx = 1.0;
     gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
-    generalBlock.add(label("Language A"), gbc);
+    generalBlock.add(EditorModule.label("Language A"), gbc);
 
     gbc.gridy = 5;
     gbc.weightx = 1.0;
@@ -398,7 +407,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     gbc.weightx = 1.0;
     gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
-    generalBlock.add(label("Language B"), gbc);
+    generalBlock.add(EditorModule.label("Language B"), gbc);
 
     gbc.gridy = 7;
     gbc.weightx = 1.0;
@@ -414,10 +423,10 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
     final JPanel linesWrap = new JPanel(new BorderLayout(8, 8));
     linesWrap.setOpaque(false);
-    shrinkWrap(linesWrap);
+    EditorModule.shrinkWrap(linesWrap);
     linesWrap.setBorder(BorderFactory.createTitledBorder("Lines (phrases)"));
     final JScrollPane linesScroll = new JScrollPane(this.linesTable);
-    shrinkWrap(linesScroll);
+    EditorModule.shrinkWrap(linesScroll);
     linesWrap.add(linesScroll, BorderLayout.CENTER);
     linesWrap.add(this.lineButtons(), BorderLayout.SOUTH);
 
@@ -427,17 +436,17 @@ public final class EditorModule extends AbstractLangTrainerModule {
             SwingConstants.LEADING);
     pairHint.setBorder(BorderFactory.createEmptyBorder(0, 0, 6, 0));
     final JScrollPane pairScroll = new JScrollPane(this.equivPairTable);
-    shrinkWrap(pairScroll);
+    EditorModule.shrinkWrap(pairScroll);
     final JPanel equivTableWrap = new JPanel(new BorderLayout(0, 6));
     equivTableWrap.setOpaque(false);
     equivTableWrap.setBorder(BorderFactory.createEmptyBorder(4, 8, 8, 8));
-    shrinkWrap(equivTableWrap);
+    EditorModule.shrinkWrap(equivTableWrap);
     equivTableWrap.add(pairHint, BorderLayout.NORTH);
     equivTableWrap.add(pairScroll, BorderLayout.CENTER);
 
     final JPanel equivBlock = new JPanel(new BorderLayout());
     equivBlock.setOpaque(false);
-    shrinkWrap(equivBlock);
+    EditorModule.shrinkWrap(equivBlock);
     equivBlock.setBorder(BorderFactory.createTitledBorder("Input equivalence rules"));
     equivBlock.add(equivTableWrap, BorderLayout.CENTER);
     equivBlock.add(this.equivButtons(), BorderLayout.SOUTH);
@@ -449,7 +458,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     linesEquivSplit.setOneTouchExpandable(true);
     linesEquivSplit.setBorder(BorderFactory.createEmptyBorder());
     linesEquivSplit.setOpaque(false);
-    shrinkWrap(linesEquivSplit);
+    EditorModule.shrinkWrap(linesEquivSplit);
 
     final JSplitPane mainSplit =
         new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, generalBlock, linesEquivSplit);
@@ -461,14 +470,14 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
     final JPanel center = new JPanel(new BorderLayout());
     center.setOpaque(false);
-    shrinkWrap(center);
+    EditorModule.shrinkWrap(center);
     center.add(heading, BorderLayout.NORTH);
     center.add(mainSplit, BorderLayout.CENTER);
 
     final JPanel newDocRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
     newDocRow.setOpaque(false);
     final JButton newDoc = new JButton("New document");
-    stylePrimary(newDoc, new Color(93, 64, 55));
+    EditorModule.stylePrimary(newDoc, new Color(93, 64, 55));
     newDoc.addActionListener(e -> {
       if (this.confirmLoseChanges()) {
         this.newDocument();
@@ -497,10 +506,10 @@ public final class EditorModule extends AbstractLangTrainerModule {
     final JButton remove = new JButton("Remove");
     final JButton up = new JButton("Move up");
     final JButton down = new JButton("Move down");
-    stylePrimary(add, new Color(46, 125, 50));
-    stylePrimary(remove, new Color(198, 40, 40));
-    stylePrimary(up, new Color(25, 118, 210));
-    stylePrimary(down, new Color(25, 118, 210));
+    EditorModule.stylePrimary(add, new Color(46, 125, 50));
+    EditorModule.stylePrimary(remove, new Color(198, 40, 40));
+    EditorModule.stylePrimary(up, new Color(25, 118, 210));
+    EditorModule.stylePrimary(down, new Color(25, 118, 210));
     add.addActionListener(e -> {
       this.linesModel.addRow(new Object[] {0, "", ""});
       this.refreshLineIds();
@@ -524,10 +533,10 @@ public final class EditorModule extends AbstractLangTrainerModule {
     final JButton remove = new JButton("Remove rule");
     final JButton up = new JButton("Move rule up");
     final JButton down = new JButton("Move rule down");
-    stylePrimary(add, new Color(106, 27, 154));
-    stylePrimary(remove, new Color(198, 40, 40));
-    stylePrimary(up, new Color(123, 31, 162));
-    stylePrimary(down, new Color(123, 31, 162));
+    EditorModule.stylePrimary(add, new Color(106, 27, 154));
+    EditorModule.stylePrimary(remove, new Color(198, 40, 40));
+    EditorModule.stylePrimary(up, new Color(123, 31, 162));
+    EditorModule.stylePrimary(down, new Color(123, 31, 162));
     add.addActionListener(e -> {
       this.equivPairModel.addRow(new Object[] {0, "", ""});
       this.refreshEquivPairIds();
@@ -575,7 +584,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     }
     this.refreshLineIds();
     this.linesTable.setRowSelectionInterval(to, to);
-    ensureTableRowVisible(this.linesTable, to);
+    EditorModule.ensureTableRowVisible(this.linesTable, to);
   }
 
   private void removeSelectedEquiv() {
@@ -628,7 +637,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     }
     this.refreshEquivPairIds();
     this.equivPairTable.setRowSelectionInterval(to, to);
-    ensureTableRowVisible(this.equivPairTable, to);
+    EditorModule.ensureTableRowVisible(this.equivPairTable, to);
   }
 
   private void newDocument() {
@@ -701,8 +710,8 @@ public final class EditorModule extends AbstractLangTrainerModule {
     final JFileChooser chooser = new JFileChooser();
     chooser.setFileFilter(new FileNameExtensionFilter("JSON (*.json)", "json"));
     chooser.setAcceptAllFileFilterUsed(false);
-    if (workDirectory != null) {
-      chooser.setCurrentDirectory(workDirectory);
+    if (EditorModule.workDirectory != null) {
+      chooser.setCurrentDirectory(EditorModule.workDirectory);
     }
     if (chooser.showOpenDialog(this.rootPanel) != JFileChooser.APPROVE_OPTION) {
       return;
@@ -711,7 +720,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     if (f == null) {
       return;
     }
-    rememberWorkDir(f);
+    EditorModule.rememberWorkDir(f);
     try {
       final String text = Files.readString(f.toPath(), StandardCharsets.UTF_8);
       final DialogDefinition def = LangResourceJson.parse(text);
@@ -742,8 +751,8 @@ public final class EditorModule extends AbstractLangTrainerModule {
     final JFileChooser chooser = new JFileChooser();
     chooser.setFileFilter(new FileNameExtensionFilter("JSON (*.json)", "json"));
     chooser.setAcceptAllFileFilterUsed(false);
-    if (workDirectory != null) {
-      chooser.setCurrentDirectory(workDirectory);
+    if (EditorModule.workDirectory != null) {
+      chooser.setCurrentDirectory(EditorModule.workDirectory);
     }
     if (this.currentFilePath != null) {
       chooser.setSelectedFile(this.currentFilePath.toFile());
@@ -758,7 +767,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     if (!out.getName().toLowerCase().endsWith(".json")) {
       out = new File(out.getParentFile(), out.getName() + ".json");
     }
-    rememberWorkDir(out);
+    EditorModule.rememberWorkDir(out);
     try {
       Files.writeString(out.toPath(), LangResourceJson.toPrettyJson(def),
           StandardCharsets.UTF_8);

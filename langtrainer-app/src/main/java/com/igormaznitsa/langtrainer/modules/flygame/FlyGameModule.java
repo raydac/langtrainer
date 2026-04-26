@@ -317,9 +317,9 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       final JPanel northBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
       northBar.setOpaque(false);
       northBar.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
-      configureSvgButton(this.btnClose, ICON_FLY_CLOSE, "Close game");
-      configureSvgButton(this.btnPause, ICON_FLY_PAUSE, "Pause / resume");
-      configureSvgToggleSound(this.btnSound);
+      GameBoard.configureSvgButton(this.btnClose, ICON_FLY_CLOSE, "Close game");
+      GameBoard.configureSvgButton(this.btnPause, ICON_FLY_PAUSE, "Pause / resume");
+      GameBoard.configureSvgToggleSound(this.btnSound);
       this.btnClose.addActionListener(e -> this.host.requestCloseToMainMenu());
       this.btnPause.addActionListener(e -> {
         this.togglePause();
@@ -346,7 +346,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       this.input.setPreferredSize(new Dimension(1, 1));
       this.input.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
       this.input.addActionListener(e -> this.trySubmit());
-      disableFlyInputCursorKeys(this.input);
+      GameBoard.disableFlyInputCursorKeys(this.input);
       this.input.addKeyListener(new KeyAdapter() {
         @Override
         public void keyPressed(final KeyEvent e) {
@@ -868,7 +868,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
               lines.add(row.toString());
               row = new StringBuilder();
             }
-            lines.addAll(breakLongWord(fm, word, maxWidth));
+            lines.addAll(SkyCanvas.breakLongWord(fm, word, maxWidth));
             continue;
           }
           final String trial = row.isEmpty() ? word : row + " " + word;

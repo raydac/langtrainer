@@ -31,7 +31,8 @@ public final class ClasspathLangResourceIndex {
       final AbstractLangTrainerModule module,
       final String indexResourcePath,
       final String failureMessage) {
-    try (InputStream indexStream = openClasspathStreamOrThrow(anchor, indexResourcePath)) {
+    try (InputStream indexStream =
+             openClasspathStreamOrThrow(anchor, indexResourcePath)) {
       return sortedDialogDefinitionsFromIndex(
           anchor,
           module,
@@ -50,14 +51,18 @@ public final class ClasspathLangResourceIndex {
       final String indexResourcePath,
       final String perEntryFailureContext) {
     final JsonObject root =
-        requireIndexWithResourcesArray(GSON.fromJson(indexText, JsonObject.class),
+        requireIndexWithResourcesArray(
+            GSON.fromJson(indexText, JsonObject.class),
             indexResourcePath);
     return root.get("resources")
         .getAsJsonArray()
         .asList()
         .stream()
         .map(JsonElement::getAsJsonObject)
-        .filter(entry -> isIndexEntryOnClasspath(entry) && module.isResourceAllowed(entry))
+        .filter(
+            entry ->
+                isIndexEntryOnClasspath(entry)
+                    && module.isResourceAllowed(entry))
         .map(
             entry ->
                 loadDialogFromResourcePath(
@@ -104,10 +109,13 @@ public final class ClasspathLangResourceIndex {
       throw new IllegalStateException("Missing resource path (" + loadFailureContext + ")");
     }
     final String normalized = resourcePath.startsWith("/") ? resourcePath : "/" + resourcePath;
-    try (InputStream stream = openClasspathStreamOrThrow(anchor, normalized)) {
-      return LangResourceJson.parse(new String(stream.readAllBytes(), StandardCharsets.UTF_8));
+    try (InputStream stream =
+             openClasspathStreamOrThrow(anchor, normalized)) {
+      return LangResourceJson.parse(
+          new String(stream.readAllBytes(), StandardCharsets.UTF_8));
     } catch (final Exception ex) {
-      throw wrapUnlessAlreadyIllegalState(ex, "Can't load " + normalized);
+      throw wrapUnlessAlreadyIllegalState(
+          ex, "Can't load " + normalized);
     }
   }
 

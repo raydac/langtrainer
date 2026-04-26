@@ -134,7 +134,8 @@ public final class InputEquivalenceSupport {
       final String expectedChar,
       final List<String> keys,
       final List<String> vals) {
-    if (!keys.stream().anyMatch(k -> sameSlotOrLetterCaseInsensitive(typed, k))) {
+    if (!keys.stream()
+        .anyMatch(k -> sameSlotOrLetterCaseInsensitive(typed, k))) {
       return null;
     }
     for (final String v : vals) {

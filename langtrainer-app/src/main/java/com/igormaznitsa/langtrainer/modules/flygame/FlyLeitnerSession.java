@@ -1,7 +1,8 @@
 package com.igormaznitsa.langtrainer.modules.flygame;
 
+import static java.util.Collections.shuffle;
+
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
@@ -28,11 +29,11 @@ final class FlyLeitnerSession {
 
   FlyLeitnerSession(final int lineCount, final Random random) {
     this.random = random;
-    this.buckets = buildBuckets(lineCount);
+    this.buckets = this.buildBuckets(lineCount);
     this.bucketIndex = 0;
     this.finished = lineCount == 0;
     if (!this.finished) {
-      loadBucket(0);
+      this.loadBucket(0);
     }
   }
 
@@ -41,7 +42,7 @@ final class FlyLeitnerSession {
     for (int i = 0; i < lineCount; i++) {
       ordinals.add(i);
     }
-    Collections.shuffle(ordinals, this.random);
+    shuffle(ordinals, this.random);
     final List<List<Integer>> result = new ArrayList<>();
     for (int i = 0; i < ordinals.size(); i += BUCKET_CAPACITY) {
       final int end = Math.min(i + BUCKET_CAPACITY, ordinals.size());
@@ -81,7 +82,7 @@ final class FlyLeitnerSession {
     if (this.finished) {
       return true;
     }
-    final Card card = findCard(ordinal);
+    final Card card = this.findCard(ordinal);
     if (card == null) {
       return this.finished;
     }
@@ -95,7 +96,7 @@ final class FlyLeitnerSession {
       if (this.bucketIndex >= this.buckets.size()) {
         this.finished = true;
       } else {
-        loadBucket(this.bucketIndex);
+        this.loadBucket(this.bucketIndex);
       }
     }
     return this.finished;
@@ -105,7 +106,7 @@ final class FlyLeitnerSession {
     if (this.finished) {
       return;
     }
-    final Card card = findCard(ordinal);
+    final Card card = this.findCard(ordinal);
     if (card != null) {
       card.box = 0;
     }

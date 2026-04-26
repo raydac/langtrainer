@@ -1,5 +1,7 @@
 package com.igormaznitsa.langtrainer.modules.dialog;
 
+import static java.util.Collections.min;
+
 import com.google.gson.JsonObject;
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
@@ -36,7 +38,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import javax.swing.BorderFactory;
@@ -125,8 +126,8 @@ public final class DialogModule extends AbstractLangTrainerModule {
 
   private final DefaultListModel<DialogListEntry> dialogListModel = new DefaultListModel<>();
   private final JPanel rootPanel = new JPanel(new CardLayout());
-  private final JTextArea showA = DialogModule.makeShowArea();
-  private final JTextArea showB = DialogModule.makeShowArea();
+  private final JTextArea showA = makeShowArea();
+  private final JTextArea showB = makeShowArea();
   private final JToggleButton shuffleToggle = new JToggleButton("Shuffle OFF");
   private final JButton showPhraseButton = new JButton("Show");
   private final JToggleButton tipToggle = new JToggleButton("Tip OFF");
@@ -600,7 +601,8 @@ public final class DialogModule extends AbstractLangTrainerModule {
     final int wShuffle =
         Math.max(
             this.shuffleToggle.getPreferredSize().width,
-            minToggleWidthForLabels(this.shuffleToggle, "Shuffle OFF", "Shuffle ON"));
+            minToggleWidthForLabels(
+                this.shuffleToggle, "Shuffle OFF", "Shuffle ON"));
     final int wTip =
         Math.max(
             this.tipToggle.getPreferredSize().width,
@@ -713,7 +715,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
       this.currentLineOrdinal =
           this.remainingLineIndices.get(new Random().nextInt(this.remainingLineIndices.size()));
     } else {
-      this.currentLineOrdinal = Collections.min(this.remainingLineIndices);
+      this.currentLineOrdinal = min(this.remainingLineIndices);
     }
   }
 
@@ -824,7 +826,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     final JPanel phraseWrap = new JPanel(new GridBagLayout()) {
       @Override
       public Dimension getPreferredSize() {
-        final Container p = getParent();
+        final Container p = this.getParent();
         if (!(p instanceof JViewport)) {
           return new Dimension(viewW, viewH);
         }
@@ -838,7 +840,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
 
       @Override
       public Dimension getMinimumSize() {
-        return getPreferredSize();
+        return this.getPreferredSize();
       }
     };
     phraseWrap.setOpaque(true);
@@ -874,7 +876,8 @@ public final class DialogModule extends AbstractLangTrainerModule {
         phraseWrap.setBackground(PHRASE_FLASH_LIGHT_BG);
         faceScroll.getViewport().setBackground(PHRASE_FLASH_LIGHT_BG);
         face.setText(expected);
-        applyShowPhraseFaceStyles(face, PHRASE_FLASH_LIGHT_FG, PHRASE_FLASH_LIGHT_BG);
+        applyShowPhraseFaceStyles(
+            face, PHRASE_FLASH_LIGHT_FG, PHRASE_FLASH_LIGHT_BG);
       } else {
         pane.setBackground(PHRASE_FLASH_DARK_BG);
         phraseWrap.setBackground(PHRASE_FLASH_DARK_BG);
@@ -981,7 +984,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     SwingUtilities.invokeLater(
         () ->
             this.refreshTipZone(
-                DialogModule.extractDocumentText(this.focusedInput().getDocument())));
+                extractDocumentText(this.focusedInput().getDocument())));
   }
 
   private void attachTipRefreshOnInput(final JTextArea area) {
@@ -1005,7 +1008,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
 
   private void refreshTipZoneFromDocument(final JTextArea area, final Document doc) {
     if (area == this.focusedInput()) {
-      this.refreshTipZone(DialogModule.extractDocumentText(doc));
+      this.refreshTipZone(extractDocumentText(doc));
     } else {
       this.refreshTipZone(null);
     }
@@ -1029,7 +1032,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     final String entered =
         enteredOverride != null
             ? enteredOverride
-            : DialogModule.extractDocumentText(this.focusedInput().getDocument());
+            : extractDocumentText(this.focusedInput().getDocument());
     final String snippet = computeTypingTip(entered, expected);
     if (snippet.isEmpty()) {
       this.tipZone.setText("—");
