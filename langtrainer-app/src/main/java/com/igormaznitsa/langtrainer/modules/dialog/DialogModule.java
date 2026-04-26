@@ -662,7 +662,10 @@ public final class DialogModule extends AbstractLangTrainerModule {
     this.shuffleToggle.setHorizontalAlignment(SwingConstants.CENTER);
     this.shuffleToggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     this.shuffleToggle.setToolTipText(
-        "Off: remaining lines follow dialog order. On: each next line is picked at random among lines you have not completed yet.");
+        "<html>Off: remaining lines follow dialog order.<br>"
+            + "On: each next line is picked at random among lines you have not completed yet.<br>"
+            +
+            "JSON <code>shuffled</code> sets the default when a dialog starts; you can change it here anytime.</html>");
     this.shuffleToggle.addActionListener(event -> {
       this.applyShuffleToggleLook();
       this.syncWorkHeaderActionButtonSizes();
@@ -1175,6 +1178,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
 
   private void startDialog(final DialogDefinition definition) {
     this.activeDialog = definition;
+    this.shuffleToggle.setSelected(definition.shuffled());
     final int lineCount = definition.lines().size();
     this.remainingLineIndices.clear();
     for (int i = 0; i < lineCount; i++) {

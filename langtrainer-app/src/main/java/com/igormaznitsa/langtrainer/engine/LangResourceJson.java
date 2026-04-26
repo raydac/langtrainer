@@ -56,7 +56,8 @@ public final class LangResourceJson {
         nullToEmpty(def.langA()),
         nullToEmpty(def.langB()),
         lines,
-        def.inputEqu());
+        def.inputEqu(),
+        def.shuffled());
   }
 
   private static String nullToEmpty(final String s) {

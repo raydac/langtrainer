@@ -26,10 +26,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import javax.swing.BorderFactory;
-import javax.swing.Box;
 import javax.swing.DefaultCellEditor;
 import javax.swing.Icon;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
@@ -44,27 +44,20 @@ import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellEditor;
 
 public final class EditorModule extends AbstractLangTrainerModule {
 
-  private static final Color PANEL_BG = new Color(236, 242, 249);
-  private static final Color ACCENT = new Color(25, 45, 85);
-  /**
-   * Matches the visual weight of other modules’ work areas (e.g. dialog input zones).
-   */
-  private static final float CONTENT_FONT_PT = 19f;
   private static volatile File workDirectory;
-  private final Font contentFont;
 
   private final JPanel rootPanel = new JPanel(new BorderLayout(0, 10));
   private final JTextField fieldTitle = new JTextField();
   private final JTextArea fieldDescription = makeGrowingTextArea();
   private final JTextField fieldLangA = new JTextField();
   private final JTextField fieldLangB = new JTextField();
+  private final JCheckBox checkShuffled = new JCheckBox("Shuffled");
+
   private final DefaultTableModel linesModel =
       new DefaultTableModel(new Object[] {"Id", "A", "B"}, 0) {
         @Override
@@ -98,14 +91,14 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private Path currentFilePath;
 
   public EditorModule() {
-    this.contentFont = this.rootPanel.getFont().deriveFont(Font.PLAIN, CONTENT_FONT_PT);
     this.fieldDescription.setRows(2);
     this.fieldDescription.setColumns(40);
     this.fieldDescription.setLineWrap(true);
     this.fieldDescription.setWrapStyleWord(true);
-    this.styleTextFields();
     this.configureLinesTable();
     this.configureEquivPairTable();
+    this.checkShuffled.setToolTipText(
+        "JSON root field \"shuffled\": when true, a module starts with line order randomization on if allowed.");
     this.buildUi();
     this.newDocument();
   }
@@ -163,10 +156,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
   }
 
   private static JLabel label(final String text) {
-    final JLabel l = new JLabel(text);
-    l.setFont(l.getFont().deriveFont(Font.BOLD, 15f));
-    l.setForeground(ACCENT);
-    return l;
+    return new JLabel(text);
   }
 
   private static void rememberWorkDir(final File file) {
@@ -310,26 +300,9 @@ public final class EditorModule extends AbstractLangTrainerModule {
   }
 
   private void configureEquivPairTable() {
-    final Font f = this.contentFont;
-    this.equivPairTable.setFont(f);
     this.equivPairTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-    this.equivPairTable.setRowHeight(Math.max(32, (int) (f.getSize2D() + 14f)));
-    final JTableHeader header = this.equivPairTable.getTableHeader();
-    header.setFont(f.deriveFont(Font.BOLD));
-    header.setReorderingAllowed(false);
-    ((DefaultTableCellRenderer) header.getDefaultRenderer()).setHorizontalAlignment(JLabel.CENTER);
-
-    final DefaultTableCellRenderer strRenderer = new DefaultTableCellRenderer();
-    strRenderer.setFont(f);
-    this.equivPairTable.setDefaultRenderer(String.class, strRenderer);
-    final DefaultTableCellRenderer idRenderer = new DefaultTableCellRenderer();
-    idRenderer.setHorizontalAlignment(SwingConstants.CENTER);
-    idRenderer.setFont(f);
-    this.equivPairTable.getColumnModel().getColumn(0).setCellRenderer(idRenderer);
-    final JTextField cellField = new JTextField();
-    cellField.setFont(f);
-    cellField.setMargin(new Insets(4, 8, 4, 8));
-    this.equivPairTable.setDefaultEditor(String.class, new DefaultCellEditor(cellField));
+    this.equivPairTable.getTableHeader().setReorderingAllowed(false);
+    this.equivPairTable.setDefaultEditor(String.class, new DefaultCellEditor(new JTextField()));
     this.equivPairTable.setFillsViewportHeight(true);
     this.equivPairTable.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
     this.equivPairTable.getColumnModel().getColumn(0).setPreferredWidth(44);
@@ -343,40 +316,10 @@ public final class EditorModule extends AbstractLangTrainerModule {
     }
   }
 
-  private void styleTextFields() {
-    final Font f = this.contentFont;
-    this.fieldTitle.setFont(f);
-    this.fieldDescription.setFont(f);
-    this.fieldLangA.setFont(f);
-    this.fieldLangB.setFont(f);
-    this.fieldTitle.setMargin(new Insets(6, 10, 6, 10));
-    this.fieldLangA.setMargin(new Insets(6, 10, 6, 10));
-    this.fieldLangB.setMargin(new Insets(6, 10, 6, 10));
-    this.fieldDescription.setMargin(new Insets(8, 10, 8, 10));
-  }
-
   private void configureLinesTable() {
-    final Font f = this.contentFont;
-    this.linesTable.setFont(f);
     this.linesTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-    this.linesTable.setRowHeight(Math.max(36, (int) (f.getSize2D() + 18f)));
-    final JTableHeader header = this.linesTable.getTableHeader();
-    header.setFont(f.deriveFont(Font.BOLD));
-    header.setReorderingAllowed(false);
-    ((DefaultTableCellRenderer) header.getDefaultRenderer()).setHorizontalAlignment(JLabel.CENTER);
-
-    final DefaultTableCellRenderer renderer = new DefaultTableCellRenderer();
-    renderer.setFont(f);
-    this.linesTable.setDefaultRenderer(Object.class, renderer);
-    this.linesTable.setDefaultRenderer(String.class, renderer);
-    final DefaultTableCellRenderer idRenderer = new DefaultTableCellRenderer();
-    idRenderer.setHorizontalAlignment(SwingConstants.CENTER);
-    idRenderer.setFont(f);
-    this.linesTable.getColumnModel().getColumn(0).setCellRenderer(idRenderer);
-    final JTextField cellField = new JTextField();
-    cellField.setFont(f);
-    cellField.setMargin(new Insets(4, 8, 4, 8));
-    this.linesTable.setDefaultEditor(String.class, new DefaultCellEditor(cellField));
+    this.linesTable.getTableHeader().setReorderingAllowed(false);
+    this.linesTable.setDefaultEditor(String.class, new DefaultCellEditor(new JTextField()));
     this.linesTable.setFillsViewportHeight(true);
     this.linesTable.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
     this.linesTable.getColumnModel().getColumn(0).setPreferredWidth(44);
@@ -392,23 +335,14 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
   private void buildUi() {
     this.rootPanel.setBorder(BorderFactory.createEmptyBorder(12, 14, 14, 14));
-    this.rootPanel.setBackground(PANEL_BG);
 
     final JLabel heading = new JLabel("Editor — dialog JSON", SwingConstants.CENTER);
-    heading.setFont(heading.getFont().deriveFont(Font.BOLD, 26f));
-    heading.setForeground(ACCENT);
     heading.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
 
     final JPanel generalBlock = new JPanel(new GridBagLayout());
     generalBlock.setOpaque(false);
     shrinkWrap(generalBlock);
-    generalBlock.setBorder(BorderFactory.createTitledBorder(
-        BorderFactory.createLineBorder(new Color(90, 120, 160), 2, true),
-        "General",
-        0,
-        0,
-        this.fieldTitle.getFont().deriveFont(Font.BOLD, 16f),
-        ACCENT));
+    generalBlock.setBorder(BorderFactory.createTitledBorder("General"));
     generalBlock.setPreferredSize(new Dimension(300, 0));
 
     final JScrollPane descScroll = new JScrollPane(this.fieldDescription);
@@ -420,72 +354,68 @@ public final class EditorModule extends AbstractLangTrainerModule {
     gbc.insets = cellPad;
 
     gbc.gridx = 0;
-    gbc.gridy = 0;
     gbc.gridwidth = 1;
     gbc.gridheight = 1;
+    gbc.anchor = GridBagConstraints.FIRST_LINE_START;
+
+    gbc.gridy = 0;
     gbc.weightx = 1.0;
-    gbc.weighty = 1.0;
+    gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
-    gbc.anchor = GridBagConstraints.WEST;
     generalBlock.add(label("Title (menuName)"), gbc);
 
     gbc.gridy = 1;
-    gbc.weightx = 100.0;
+    gbc.weightx = 1.0;
+    gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
     generalBlock.add(this.fieldTitle, gbc);
 
     gbc.gridy = 2;
     gbc.weightx = 1.0;
+    gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
-    gbc.anchor = GridBagConstraints.NORTHWEST;
     generalBlock.add(label("Description"), gbc);
 
     gbc.gridy = 3;
     gbc.weightx = 1.0;
-    gbc.weighty = 100.0;
+    gbc.weighty = 1.0;
     gbc.fill = GridBagConstraints.BOTH;
-    gbc.anchor = GridBagConstraints.CENTER;
     generalBlock.add(descScroll, gbc);
 
     gbc.gridy = 4;
     gbc.weightx = 1.0;
-    gbc.weighty = 1.0;
+    gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
-    gbc.anchor = GridBagConstraints.WEST;
     generalBlock.add(label("Language A"), gbc);
 
     gbc.gridy = 5;
-    gbc.weightx = 100.0;
+    gbc.weightx = 1.0;
+    gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
     generalBlock.add(this.fieldLangA, gbc);
 
     gbc.gridy = 6;
     gbc.weightx = 1.0;
-    gbc.weighty = 1.0;
+    gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
     generalBlock.add(label("Language B"), gbc);
 
     gbc.gridy = 7;
     gbc.weightx = 1.0;
-    gbc.weighty = 100.0;
+    gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
     generalBlock.add(this.fieldLangB, gbc);
 
     gbc.gridy = 8;
-    gbc.weighty = 1000.0;
-    gbc.fill = GridBagConstraints.VERTICAL;
-    generalBlock.add(Box.createVerticalGlue(), gbc);
+    gbc.weightx = 1.0;
+    gbc.weighty = 0.0;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    generalBlock.add(this.checkShuffled, gbc);
 
     final JPanel linesWrap = new JPanel(new BorderLayout(8, 8));
     linesWrap.setOpaque(false);
     shrinkWrap(linesWrap);
-    linesWrap.setBorder(BorderFactory.createTitledBorder(
-        BorderFactory.createLineBorder(new Color(100, 130, 170), 2, true),
-        "Lines (phrases)",
-        0,
-        0,
-        this.fieldTitle.getFont().deriveFont(Font.BOLD, 16f),
-        ACCENT));
+    linesWrap.setBorder(BorderFactory.createTitledBorder("Lines (phrases)"));
     final JScrollPane linesScroll = new JScrollPane(this.linesTable);
     shrinkWrap(linesScroll);
     linesWrap.add(linesScroll, BorderLayout.CENTER);
@@ -495,15 +425,11 @@ public final class EditorModule extends AbstractLangTrainerModule {
         new JLabel(
             "Each row is one equivalence rule. Key and Value are comma-separated tokens (e.g. e,E and e,E,ё,Ё).",
             SwingConstants.LEADING);
-    pairHint.setFont(pairHint.getFont().deriveFont(Font.PLAIN, 14f));
-    pairHint.setForeground(new Color(55, 71, 79));
     pairHint.setBorder(BorderFactory.createEmptyBorder(0, 0, 6, 0));
     final JScrollPane pairScroll = new JScrollPane(this.equivPairTable);
     shrinkWrap(pairScroll);
-    pairScroll.getViewport().setBackground(Color.WHITE);
     final JPanel equivTableWrap = new JPanel(new BorderLayout(0, 6));
-    equivTableWrap.setOpaque(true);
-    equivTableWrap.setBackground(Color.WHITE);
+    equivTableWrap.setOpaque(false);
     equivTableWrap.setBorder(BorderFactory.createEmptyBorder(4, 8, 8, 8));
     shrinkWrap(equivTableWrap);
     equivTableWrap.add(pairHint, BorderLayout.NORTH);
@@ -512,13 +438,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     final JPanel equivBlock = new JPanel(new BorderLayout());
     equivBlock.setOpaque(false);
     shrinkWrap(equivBlock);
-    equivBlock.setBorder(BorderFactory.createTitledBorder(
-        BorderFactory.createLineBorder(new Color(120, 100, 160), 2, true),
-        "Input equivalence rules",
-        0,
-        0,
-        this.fieldTitle.getFont().deriveFont(Font.BOLD, 16f),
-        new Color(74, 20, 140)));
+    equivBlock.setBorder(BorderFactory.createTitledBorder("Input equivalence rules"));
     equivBlock.add(equivTableWrap, BorderLayout.CENTER);
     equivBlock.add(this.equivButtons(), BorderLayout.SOUTH);
 
@@ -717,6 +637,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     this.fieldDescription.setText("");
     this.fieldLangA.setText("");
     this.fieldLangB.setText("");
+    this.checkShuffled.setSelected(false);
     this.linesModel.setRowCount(0);
     this.linesModel.addRow(new Object[] {0, "", ""});
     this.refreshLineIds();
@@ -735,6 +656,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     this.fieldDescription.setText(def.description());
     this.fieldLangA.setText(def.langA());
     this.fieldLangB.setText(def.langB());
+    this.checkShuffled.setSelected(def.shuffled());
     this.linesModel.setRowCount(0);
     for (final DialogLine line : def.lines()) {
       this.linesModel.addRow(new Object[] {0, line.a(), line.b()});
@@ -771,7 +693,8 @@ public final class EditorModule extends AbstractLangTrainerModule {
         this.fieldLangA.getText().strip(),
         this.fieldLangB.getText().strip(),
         lines,
-        this.inputEquivalenceRowsFromTable());
+        this.inputEquivalenceRowsFromTable(),
+        this.checkShuffled.isSelected());
   }
 
   private void loadFromUser() {
@@ -896,6 +819,6 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
   @Override
   public void onActivation() {
-    SwingUtilities.invokeLater(() -> this.fieldTitle.requestFocusInWindow());
+    SwingUtilities.invokeLater(this.fieldTitle::requestFocusInWindow);
   }
 }

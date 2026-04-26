@@ -8,7 +8,8 @@ public record DialogDefinition(
     String langA,
     String langB,
     List<DialogLine> lines,
-    List<InputEquivalenceRow> inputEqu
+    List<InputEquivalenceRow> inputEqu,
+    boolean shuffled
 ) {
   public DialogDefinition {
     inputEqu = inputEqu == null ? List.of() : List.copyOf(inputEqu);

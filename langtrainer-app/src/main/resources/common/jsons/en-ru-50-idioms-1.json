@@ -3,6 +3,7 @@
   "description": "50 common English idioms with Russian translations",
   "langA": "English",
   "langB": "Russian",
+  "shuffled": true,
   "lines": [
     {
       "A": "break the ice",
