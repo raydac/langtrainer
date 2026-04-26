@@ -16,6 +16,7 @@ import com.igormaznitsa.langtrainer.engine.LangResourceJson;
 import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
 import com.igormaznitsa.langtrainer.text.TypingComparisonUtils;
+import com.igormaznitsa.langtrainer.ui.PhraseFlashBanner;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
@@ -25,8 +26,6 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.Window;
@@ -55,7 +54,6 @@ import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
-import javax.swing.JTextPane;
 import javax.swing.JToggleButton;
 import javax.swing.JViewport;
 import javax.swing.SwingConstants;
@@ -66,9 +64,6 @@ import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
-import javax.swing.text.SimpleAttributeSet;
-import javax.swing.text.StyleConstants;
-import javax.swing.text.StyledDocument;
 
 public final class DialogModule extends AbstractLangTrainerModule {
 
@@ -105,24 +100,11 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private static final Color SHUFFLE_TOGGLE_ON_FG = Color.WHITE;
   private static final Color SHUFFLE_TOGGLE_ON_BORDER = new Color(255, 214, 0);
 
-  private static final Color SHOW_PHRASE_BG = new Color(0, 121, 107);
-  private static final Color SHOW_PHRASE_FG = Color.WHITE;
-  private static final Color SHOW_PHRASE_BORDER = new Color(0, 77, 64);
-
   /**
    * Same border thickness and padding for Shuffle / Show / Tip so heights align and layout is stable.
    */
   private static final int HEADER_ACTION_BORDER_W = 3;
   private static final Insets HEADER_ACTION_INSETS = new Insets(8, 16, 8, 16);
-
-  /**
-   * Black-and-white flashcard faces for the Show-phrase modal only.
-   */
-  private static final Color PHRASE_FLASH_LIGHT_BG = Color.WHITE;
-  private static final Color PHRASE_FLASH_LIGHT_FG = Color.BLACK;
-  private static final Color PHRASE_FLASH_DARK_BG = Color.BLACK;
-  private static final Color PHRASE_FLASH_DARK_FG = Color.WHITE;
-  private static final Color PHRASE_FLASH_BORDER = new Color(48, 48, 48);
 
   private final DefaultListModel<DialogListEntry> dialogListModel = new DefaultListModel<>();
   private final JPanel rootPanel = new JPanel(new CardLayout());
@@ -155,9 +137,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private boolean workRoundActive;
   private JDialog completionOverlay;
   private Timer completionDismissTimer;
-  private JDialog phraseLearningOverlay;
-  private Timer phraseLearningFlipTimer;
-  private Timer phraseLearningDismissTimer;
+  private final PhraseFlashBanner phraseFlashBanner = new PhraseFlashBanner();
   private boolean applyingInputEquivalence;
 
   public DialogModule() {
@@ -291,16 +271,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
     }
   }
 
-  /**
-   * Normalizes line breaks for display in {@link JTextArea} (JSON / OS may use {@code \\r\\n}).
-   */
-  private static String dialogLineTextForDisplay(final String text) {
-    if (text == null || text.isEmpty()) {
-      return "";
-    }
-    return text.replace("\r\n", "\n").replace('\r', '\n');
-  }
-
   @Override
   public String getName() {
     return "Dialogs";
@@ -314,37 +284,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
   @Override
   public JComponent createControlForm() {
     return this.rootPanel;
-  }
-
-  /**
-   * {@link JTextPane} keeps default (often black) character color in the styled document; component
-   * {@code setForeground} alone does not update existing text. Apply attributes after
-   * {@code setText} so light and dark flashcard faces both render correctly.
-   */
-  private static void applyShowPhraseFaceStyles(
-      final JTextPane face, final Color fg, final Color bg) {
-    face.setBackground(bg);
-    face.setForeground(fg);
-    face.setCaretColor(fg);
-    final StyledDocument doc = face.getStyledDocument();
-    final int len = doc.getLength();
-    if (len <= 0) {
-      return;
-    }
-    final Font f = face.getFont();
-    final SimpleAttributeSet chars = new SimpleAttributeSet();
-    StyleConstants.setForeground(chars, fg);
-    StyleConstants.setBackground(chars, bg);
-    StyleConstants.setBold(chars, true);
-    StyleConstants.setFontFamily(chars, f.getFamily());
-    StyleConstants.setFontSize(chars, f.getSize());
-    final SimpleAttributeSet para = new SimpleAttributeSet();
-    StyleConstants.setAlignment(para, StyleConstants.ALIGN_CENTER);
-    try {
-      doc.setCharacterAttributes(0, len, chars, true);
-      doc.setParagraphAttributes(0, len, para, true);
-    } catch (final Exception ignored) {
-    }
   }
 
   private static void configureHistoryScrollPane(final JScrollPane scroll) {
@@ -504,7 +443,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   @Override
   public void onActivation() {
     this.dismissCompletionBanner();
-    this.dismissPhraseLearningBanner();
+    this.phraseFlashBanner.dismiss();
     this.setTipControlsWorkMode(false);
     this.showCard(CARD_SELECT);
     SwingUtilities.invokeLater(() -> {
@@ -677,12 +616,13 @@ public final class DialogModule extends AbstractLangTrainerModule {
     this.showPhraseButton.setFont(this.showPhraseButton.getFont().deriveFont(Font.BOLD, 16f));
     this.showPhraseButton.setOpaque(true);
     this.showPhraseButton.setContentAreaFilled(true);
-    this.showPhraseButton.setBackground(SHOW_PHRASE_BG);
-    this.showPhraseButton.setForeground(SHOW_PHRASE_FG);
+    this.showPhraseButton.setBackground(PhraseFlashBanner.SHOW_ACTION_BUTTON_BG);
+    this.showPhraseButton.setForeground(PhraseFlashBanner.SHOW_ACTION_BUTTON_FG);
     this.showPhraseButton.setFocusPainted(false);
     this.showPhraseButton.setHorizontalAlignment(SwingConstants.CENTER);
     this.showPhraseButton.setBorder(BorderFactory.createCompoundBorder(
-        BorderFactory.createLineBorder(SHOW_PHRASE_BORDER, HEADER_ACTION_BORDER_W, true),
+        BorderFactory.createLineBorder(PhraseFlashBanner.SHOW_ACTION_BUTTON_BORDER,
+            HEADER_ACTION_BORDER_W, true),
         BorderFactory.createEmptyBorder(
             HEADER_ACTION_INSETS.top,
             HEADER_ACTION_INSETS.left,
@@ -765,25 +705,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
     }
   }
 
-  private void dismissPhraseLearningBanner() {
-    if (this.phraseLearningFlipTimer != null) {
-      this.phraseLearningFlipTimer.stop();
-      this.phraseLearningFlipTimer = null;
-    }
-    if (this.phraseLearningDismissTimer != null) {
-      this.phraseLearningDismissTimer.stop();
-      this.phraseLearningDismissTimer = null;
-    }
-    if (this.phraseLearningOverlay != null) {
-      this.phraseLearningOverlay.dispose();
-      this.phraseLearningOverlay = null;
-    }
-  }
-
-  /**
-   * Centered modal: alternates expected line and partner translation every second for 5 seconds,
-   * with inverted colors on each face (flashcard-style).
-   */
   private void showPhraseLearningBanner() {
     if (!this.workRoundActive || this.activeDialog == null) {
       return;
@@ -791,139 +712,27 @@ public final class DialogModule extends AbstractLangTrainerModule {
     if (this.remainingLineIndices.isEmpty()) {
       return;
     }
-    this.dismissPhraseLearningBanner();
     final Window owner = SwingUtilities.getWindowAncestor(this.rootPanel);
     if (owner == null) {
       return;
     }
     final DialogLine line = this.activeDialog.lines().get(this.currentLineOrdinal);
-    final String expected = dialogLineTextForDisplay(
+    final String expected = PhraseFlashBanner.normalizeLineBreaksForDisplay(
         this.userWritesToA ? line.a() : line.b());
-    final String partner = dialogLineTextForDisplay(
+    final String partner = PhraseFlashBanner.normalizeLineBreaksForDisplay(
         this.userWritesToA ? line.b() : line.a());
-
-    final JDialog overlay = new JDialog(owner, java.awt.Dialog.ModalityType.APPLICATION_MODAL);
-    this.phraseLearningOverlay = overlay;
-    overlay.setUndecorated(true);
-    overlay.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-
-    final JPanel pane = new JPanel(new BorderLayout());
-    pane.setOpaque(true);
-    pane.setBorder(BorderFactory.createCompoundBorder(
-        BorderFactory.createLineBorder(PHRASE_FLASH_BORDER, 3, true),
-        BorderFactory.createEmptyBorder(28, 36, 28, 36)));
-    overlay.setContentPane(pane);
-
-    final float phraseFontSize = Math.min(BANNER_FONT_SIZE, 44f);
-    final JTextPane face = new JTextPane();
-    face.setEditable(false);
-    face.setFocusable(false);
-    face.setOpaque(true);
-    face.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
-    face.setFont(face.getFont().deriveFont(Font.BOLD, phraseFontSize));
-    final int viewW = 520;
-    final int viewH = (int) Math.max(180, Math.min(400, owner.getHeight() * 0.5));
-    final JPanel phraseWrap = new JPanel(new GridBagLayout()) {
-      @Override
-      public Dimension getPreferredSize() {
-        final Container p = this.getParent();
-        if (!(p instanceof JViewport)) {
-          return new Dimension(viewW, viewH);
-        }
-        final JViewport vp = (JViewport) p;
-        final int w = Math.max(1, vp.getWidth() > 0 ? vp.getWidth() : viewW);
-        final int vph = Math.max(1, vp.getHeight() > 0 ? vp.getHeight() : viewH);
-        face.setSize(new Dimension(w, 10_000));
-        final int textH = face.getPreferredSize().height;
-        return new Dimension(w, Math.max(vph, textH));
-      }
-
-      @Override
-      public Dimension getMinimumSize() {
-        return this.getPreferredSize();
-      }
-    };
-    phraseWrap.setOpaque(true);
-    phraseWrap.setBackground(PHRASE_FLASH_LIGHT_BG);
-    final GridBagConstraints wrapG = new GridBagConstraints();
-    wrapG.gridx = 0;
-    wrapG.gridy = 0;
-    wrapG.weightx = 1.0;
-    wrapG.weighty = 1.0;
-    wrapG.fill = GridBagConstraints.HORIZONTAL;
-    wrapG.anchor = GridBagConstraints.CENTER;
-    wrapG.insets = new Insets(0, 0, 0, 0);
-    phraseWrap.add(face, wrapG);
-    final JScrollPane faceScroll = new JScrollPane(phraseWrap);
-    faceScroll.setOpaque(false);
-    faceScroll.getViewport().setOpaque(true);
-    faceScroll.setBorder(BorderFactory.createEmptyBorder());
-    faceScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-    faceScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-    faceScroll.setPreferredSize(new Dimension(viewW, viewH));
-
-    pane.setBackground(PHRASE_FLASH_LIGHT_BG);
-    faceScroll.getViewport().setBackground(PHRASE_FLASH_LIGHT_BG);
-    face.setText(expected);
-    applyShowPhraseFaceStyles(face, PHRASE_FLASH_LIGHT_FG, PHRASE_FLASH_LIGHT_BG);
-
-    pane.add(faceScroll, BorderLayout.CENTER);
-
-    final boolean[] showExpectedRef = {true};
-    final Runnable updateFace = () -> {
-      if (showExpectedRef[0]) {
-        pane.setBackground(PHRASE_FLASH_LIGHT_BG);
-        phraseWrap.setBackground(PHRASE_FLASH_LIGHT_BG);
-        faceScroll.getViewport().setBackground(PHRASE_FLASH_LIGHT_BG);
-        face.setText(expected);
-        applyShowPhraseFaceStyles(
-            face, PHRASE_FLASH_LIGHT_FG, PHRASE_FLASH_LIGHT_BG);
-      } else {
-        pane.setBackground(PHRASE_FLASH_DARK_BG);
-        phraseWrap.setBackground(PHRASE_FLASH_DARK_BG);
-        faceScroll.getViewport().setBackground(PHRASE_FLASH_DARK_BG);
-        face.setText(partner);
-        applyShowPhraseFaceStyles(face, PHRASE_FLASH_DARK_FG, PHRASE_FLASH_DARK_BG);
-      }
-      face.setCaretPosition(0);
-      phraseWrap.revalidate();
-    };
-
-    this.phraseLearningFlipTimer = new Timer(1_000, event -> {
-      showExpectedRef[0] = !showExpectedRef[0];
-      updateFace.run();
-      faceScroll.getVerticalScrollBar().setValue(0);
-      pane.revalidate();
-      pane.repaint();
-    });
-    this.phraseLearningFlipTimer.setInitialDelay(1_000);
-    this.phraseLearningFlipTimer.start();
-
-    final Runnable closeAndRestoreFocus = () -> {
-      this.dismissPhraseLearningBanner();
-      SwingUtilities.invokeLater(() -> {
-        if (this.workRoundActive && this.activeDialog != null) {
-          final JTextArea work = this.focusedInput();
-          if (work.isEditable() && work.isShowing()) {
-            work.requestFocusInWindow();
+    this.phraseFlashBanner.show(
+        owner,
+        expected,
+        partner,
+        () -> {
+          if (this.workRoundActive && this.activeDialog != null) {
+            final JTextArea work = this.focusedInput();
+            if (work.isEditable() && work.isShowing()) {
+              work.requestFocusInWindow();
+            }
           }
-        }
-      });
-    };
-
-    this.phraseLearningDismissTimer = new Timer(5_000, event -> closeAndRestoreFocus.run());
-    this.phraseLearningDismissTimer.setRepeats(false);
-    this.phraseLearningDismissTimer.start();
-
-    overlay.pack();
-    overlay.setMinimumSize(overlay.getPreferredSize());
-    final java.awt.Point ownerLoc = owner.getLocationOnScreen();
-    final Dimension ownerSize = owner.getSize();
-    overlay.setLocation(
-        ownerLoc.x + Math.max(0, (ownerSize.width - overlay.getWidth()) / 2),
-        ownerLoc.y + Math.max(0, (ownerSize.height - overlay.getHeight()) / 2));
-
-    SwingUtilities.invokeLater(() -> overlay.setVisible(true));
+        });
   }
 
   private void attachInputEquivalence(final JTextArea area) {
@@ -1268,7 +1077,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   }
 
   private void finishDialog() {
-    this.dismissPhraseLearningBanner();
+    this.phraseFlashBanner.dismiss();
     this.workRoundActive = false;
     this.setTipControlsWorkMode(false);
     this.applyWorkbenchStyles(true);

@@ -16,6 +16,7 @@ import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
 import com.igormaznitsa.langtrainer.modules.dialog.InputEquivalenceSupport;
 import com.igormaznitsa.langtrainer.text.TypingComparisonUtils;
+import com.igormaznitsa.langtrainer.ui.PhraseFlashBanner;
 import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -281,6 +282,8 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         ImageResourceLoader.loadIcon("/fly_game/images/fly-game-sound-on.svg", 40, 40);
     private static final Icon ICON_FLY_SOUND_OFF =
         ImageResourceLoader.loadIcon("/fly_game/images/fly-game-sound-off.svg", 40, 40);
+    private static final Icon ICON_FLY_HINT =
+        ImageResourceLoader.loadIcon("/fly_game/images/fly-game-hint.svg", 40, 40);
 
     private final FlyGameModule host;
     private final SkyCanvas sky = new SkyCanvas();
@@ -288,7 +291,9 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     private final JLabel status = new JLabel(" ", SwingConstants.CENTER);
     private final JButton btnClose = new JButton();
     private final JButton btnPause = new JButton();
+    private final JButton btnShowPhrase = new JButton();
     private final JToggleButton btnSound = new JToggleButton();
+    private final PhraseFlashBanner phraseFlashBanner = new PhraseFlashBanner();
     private final Random queueRandom = new Random();
     private FlyLeitnerSession leitner;
     private boolean soundEffectsEnabled = true;
@@ -307,6 +312,11 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     private JDialog victoryOverlay;
     private Timer victoryDismissTimer;
     private boolean applyingInputEquivalence;
+    /**
+     * While the phrase flash banner is open, freeze flight, explosions, and cloud drift (same as
+     * gameplay paused; separate from {@link #paused} so the pause control icon stays unchanged).
+     */
+    private boolean gameFrozenForPhraseBanner;
 
     GameBoard(final FlyGameModule host) {
       this.host = host;
@@ -320,6 +330,11 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       GameBoard.configureSvgButton(this.btnClose, ICON_FLY_CLOSE, "Close game");
       GameBoard.configureSvgButton(this.btnPause, ICON_FLY_PAUSE, "Pause / resume");
       GameBoard.configureSvgToggleSound(this.btnSound);
+      GameBoard.configureSvgButton(
+          this.btnShowPhrase,
+          ICON_FLY_HINT,
+          "Flash the answer and translation for 5s (alternating each second); then restart this word");
+      this.btnShowPhrase.addActionListener(e -> this.showCurrentWordPhraseBanner());
       this.btnClose.addActionListener(e -> this.host.requestCloseToMainMenu());
       this.btnPause.addActionListener(e -> {
         this.togglePause();
@@ -332,6 +347,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       });
       this.refreshSoundToggleIcon();
       northBar.add(this.btnSound);
+      northBar.add(this.btnShowPhrase);
       northBar.add(this.btnPause);
       northBar.add(this.btnClose);
       this.status.setForeground(Color.WHITE);
@@ -410,6 +426,53 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       toggle.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
       toggle.setFocusPainted(false);
       toggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    private void showCurrentWordPhraseBanner() {
+      if (this.dialog == null) {
+        return;
+      }
+      final Window owner = SwingUtilities.getWindowAncestor(this);
+      if (owner == null) {
+        return;
+      }
+      final DialogLine line = this.dialog.lines().get(this.currentLineOrdinal);
+      final String expected = PhraseFlashBanner.normalizeLineBreaksForDisplay(
+          this.userTypesA ? line.a() : line.b());
+      final String partner = PhraseFlashBanner.normalizeLineBreaksForDisplay(
+          this.userTypesA ? line.b() : line.a());
+      this.gameFrozenForPhraseBanner = true;
+      this.repaintSkyFrame();
+      this.phraseFlashBanner.show(
+          owner,
+          expected,
+          partner,
+          () -> {
+            this.gameFrozenForPhraseBanner = false;
+            this.restartCurrentWordLearnCycle();
+          });
+    }
+
+    private void restartCurrentWordLearnCycle() {
+      if (this.answerDismissTimer != null) {
+        this.answerDismissTimer.stop();
+        this.answerDismissTimer = null;
+      }
+      this.showingAnswer = false;
+      this.answerBannerText = "";
+      this.explodeFramesLeft = 0;
+      this.heliProgress = 0f;
+      this.input.setText("");
+      if (this.dialog == null || this.leitner == null || !this.leitner.hasWorkLeft()) {
+        return;
+      }
+      if (this.animator == null) {
+        this.animator = this.makeFrameAnimatorTimer();
+      }
+      this.animator.start();
+      SwingUtilities.invokeLater(this.input::requestFocusInWindow);
+      this.refreshPauseIcon();
+      this.repaintSkyFrame();
     }
 
     private static void disableFlyInputCursorKeys(final JTextField field) {
@@ -530,6 +593,8 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
 
     void shutdownSession() {
       this.dismissVictoryBanner();
+      this.phraseFlashBanner.dismiss();
+      this.gameFrozenForPhraseBanner = false;
       if (this.animator != null) {
         this.animator.stop();
         this.animator = null;
@@ -645,7 +710,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     }
 
     private void tick(final ActionEvent e) {
-      if (this.paused || this.dialog == null) {
+      if (this.paused || this.dialog == null || this.gameFrozenForPhraseBanner) {
         return;
       }
       if (this.explodeFramesLeft > 0) {
@@ -689,23 +754,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     }
 
     private void resumeSameWord() {
-      if (this.answerDismissTimer != null) {
-        this.answerDismissTimer.stop();
-        this.answerDismissTimer = null;
-      }
-      this.showingAnswer = false;
-      this.answerBannerText = "";
-      this.heliProgress = 0f;
-      if (this.dialog == null || this.leitner == null || !this.leitner.hasWorkLeft()) {
-        return;
-      }
-      if (this.animator == null) {
-        this.animator = this.makeFrameAnimatorTimer();
-      }
-      this.animator.start();
-      SwingUtilities.invokeLater(this.input::requestFocusInWindow);
-      this.refreshPauseIcon();
-      this.repaintSkyFrame();
+      this.restartCurrentWordLearnCycle();
     }
 
     private void trySubmit() {
