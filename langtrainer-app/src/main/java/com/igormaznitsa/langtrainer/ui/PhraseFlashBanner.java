@@ -46,8 +46,12 @@ public final class PhraseFlashBanner {
   private static final Color PHRASE_FLASH_DARK_BG = Color.BLACK;
   private static final Color PHRASE_FLASH_DARK_FG = Color.WHITE;
   private static final Color PHRASE_FLASH_BORDER = new Color(48, 48, 48);
-  private static final float PHRASE_FONT_CAP_PT = 44f;
-  private static final float BANNER_FONT_REFERENCE_PT = 72f;
+  /**
+   * Minimum / maximum phrase size in the flash banner (pt); scales with parent window height.
+   */
+  private static final float PHRASE_FONT_MIN_PT = 52f;
+  private static final float PHRASE_FONT_MAX_PT = 102f;
+  private static final float PHRASE_FONT_HEIGHT_FRACTION = 0.072f;
 
   private JDialog overlay;
   private Timer flipTimer;
@@ -58,6 +62,11 @@ public final class PhraseFlashBanner {
       return "";
     }
     return text.replace("\r\n", "\n").replace('\r', '\n');
+  }
+
+  private static float phraseFontPointsForWindow(final int ownerHeightPx) {
+    final float scaled = Math.max(1, ownerHeightPx) * PHRASE_FONT_HEIGHT_FRACTION;
+    return Math.max(PHRASE_FONT_MIN_PT, Math.min(PHRASE_FONT_MAX_PT, scaled));
   }
 
   public void dismiss() {
@@ -117,7 +126,8 @@ public final class PhraseFlashBanner {
         BorderFactory.createEmptyBorder(28, 36, 28, 36)));
     dialog.setContentPane(pane);
 
-    final float phraseFontSize = Math.min(BANNER_FONT_REFERENCE_PT, PHRASE_FONT_CAP_PT);
+    final float phraseFontSize =
+        PhraseFlashBanner.phraseFontPointsForWindow(owner.getHeight());
     final JTextPane face = new JTextPane();
     face.setEditable(false);
     face.setFocusable(false);

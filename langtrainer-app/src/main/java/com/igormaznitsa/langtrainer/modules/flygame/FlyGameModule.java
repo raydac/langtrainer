@@ -64,6 +64,10 @@ import javax.swing.Timer;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
 
 public final class FlyGameModule extends AbstractLangTrainerModule {
 
@@ -263,6 +267,11 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
      * Typed answer drawn on {@link SkyCanvas}; field itself is invisible but keeps focus.
      */
     private static final float FLY_INPUT_OVERLAY_FONT_PT = 40f;
+    /**
+     * Fixed horizontal gap (px) between each drawn character on the sky overlay so replacing
+     * placeholders with typed letters does not shift the line (uniform tracking).
+     */
+    private static final int FLY_OVERLAY_INTER_CHAR_GAP_PX = 4;
     private static final float FLY_INPUT_HINT_FONT_PT = 17f;
 
     /**
@@ -312,6 +321,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     private JDialog victoryOverlay;
     private Timer victoryDismissTimer;
     private boolean applyingInputEquivalence;
+    private boolean applyingFlyNormalization;
     /**
      * While the phrase flash banner is open, freeze flight, explosions, and cloud drift (same as
      * gameplay paused; separate from {@link #paused} so the pause control icon stays unchanged).
@@ -363,16 +373,27 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       this.input.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
       this.input.addActionListener(e -> this.trySubmit());
       GameBoard.disableFlyInputCursorKeys(this.input);
+      GameBoard.attachFlyAlphanumericDocumentFilter(this.input);
       this.input.addKeyListener(new KeyAdapter() {
         @Override
         public void keyPressed(final KeyEvent e) {
           if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
             GameBoard.this.host.requestCloseToMainMenu();
+            return;
+          }
+          if (GameBoard.this.shouldConsumeDisallowedFlyInputKeyPressed(e)) {
+            e.consume();
+          }
+        }
+
+        @Override
+        public void keyTyped(final KeyEvent e) {
+          if (GameBoard.this.shouldConsumeDisallowedFlyInputKeyTyped(e)) {
+            e.consume();
           }
         }
       });
-      this.input.addCaretListener(e -> this.repaintSkyFrame());
-      this.attachFlyInputEquivalence();
+      this.attachFlyInputNormalizationAndEquivalence();
 
       final JLabel hint = new JLabel("Press Enter to fire", SwingConstants.CENTER);
       hint.setForeground(new Color(240, 248, 255));
@@ -475,6 +496,13 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       this.repaintSkyFrame();
     }
 
+    private static void attachFlyAlphanumericDocumentFilter(final JTextField field) {
+      final javax.swing.text.Document doc = field.getDocument();
+      if (doc instanceof AbstractDocument ad) {
+        ad.setDocumentFilter(new FlyAlphanumericDocumentFilter());
+      }
+    }
+
     private static void disableFlyInputCursorKeys(final JTextField field) {
       final InputMap im = field.getInputMap(JComponent.WHEN_FOCUSED);
       final Object none = "none";
@@ -488,6 +516,56 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       im.put(KeyStroke.getKeyStroke(KeyEvent.VK_KP_DOWN, 0), none);
       im.put(KeyStroke.getKeyStroke(KeyEvent.VK_HOME, 0), none);
       im.put(KeyStroke.getKeyStroke(KeyEvent.VK_END, 0), none);
+      im.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), none);
+      im.put(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, 0), none);
+      im.put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_UP, 0), none);
+      im.put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_DOWN, 0), none);
+      im.put(KeyStroke.getKeyStroke(KeyEvent.VK_INSERT, 0), none);
+    }
+
+    private boolean shouldConsumeDisallowedFlyInputKeyPressed(final KeyEvent e) {
+      if (e.isControlDown() || e.isMetaDown()) {
+        return true;
+      }
+      if (e.isAltDown()
+          && e.getKeyCode() != KeyEvent.VK_ALT
+          && e.getKeyCode() != KeyEvent.VK_ALT_GRAPH) {
+        return true;
+      }
+      final int code = e.getKeyCode();
+      if (code == KeyEvent.VK_BACK_SPACE || code == KeyEvent.VK_ENTER) {
+        return false;
+      }
+      if (code == KeyEvent.VK_DELETE || code == KeyEvent.VK_TAB) {
+        return true;
+      }
+      if (code == KeyEvent.VK_PAGE_UP || code == KeyEvent.VK_PAGE_DOWN ||
+          code == KeyEvent.VK_INSERT) {
+        return true;
+      }
+      return code >= KeyEvent.VK_F1 && code <= KeyEvent.VK_F24;
+    }
+
+    private boolean shouldConsumeDisallowedFlyInputKeyTyped(final KeyEvent e) {
+      final char ch = e.getKeyChar();
+      if (ch == KeyEvent.CHAR_UNDEFINED) {
+        return false;
+      }
+      if (ch == '\b') {
+        return false;
+      }
+      if (Character.isISOControl(ch)) {
+        return ch != '\n' && ch != '\r';
+      }
+      return !Character.isLetterOrDigit(ch);
+    }
+
+    void appendChar(final char symbol) {
+      if (!Character.isLetterOrDigit(symbol)) {
+        return;
+      }
+      this.input.replaceSelection(String.valueOf(symbol));
+      this.input.requestFocusInWindow();
     }
 
     private void refocusInputIfPlaying() {
@@ -508,32 +586,16 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
           this.btnSound.isSelected() ? "Mute sound effects" : "Turn sound effects on");
     }
 
-    void appendChar(final char symbol) {
-      this.input.replaceSelection(String.valueOf(symbol));
-      this.input.requestFocusInWindow();
-    }
-
-    private void attachFlyInputEquivalence() {
+    private void attachFlyInputNormalizationAndEquivalence() {
       this.input.getDocument().addDocumentListener(new DocumentListener() {
         @Override
         public void insertUpdate(final DocumentEvent event) {
-          if (GameBoard.this.applyingInputEquivalence) {
-            return;
-          }
-          final int start = event.getOffset();
-          final int insertLen = event.getLength();
-          SwingUtilities.invokeLater(() -> {
-            try {
-              GameBoard.this.applyingInputEquivalence = true;
-              GameBoard.this.applyFlyInputEquivalence(start, insertLen);
-            } finally {
-              GameBoard.this.applyingInputEquivalence = false;
-            }
-          });
+          GameBoard.this.scheduleFlyDocumentProcessing();
         }
 
         @Override
         public void removeUpdate(final DocumentEvent event) {
+          GameBoard.this.scheduleFlyDocumentProcessing();
         }
 
         @Override
@@ -542,11 +604,63 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       });
     }
 
-    private void applyFlyInputEquivalence(final int start, final int insertLen) {
-      if (this.dialog == null
-          || this.showingAnswer
-          || this.explodeFramesLeft > 0
-          || insertLen <= 0) {
+    private void scheduleFlyDocumentProcessing() {
+      if (this.applyingFlyNormalization || this.applyingInputEquivalence) {
+        return;
+      }
+      SwingUtilities.invokeLater(() -> {
+        if (this.dialog == null || this.showingAnswer || this.explodeFramesLeft > 0) {
+          return;
+        }
+        this.normalizeFlyDocument();
+        try {
+          this.applyingInputEquivalence = true;
+          this.reapplyFlyInputEquivalenceWholeDocument();
+        } finally {
+          this.applyingInputEquivalence = false;
+        }
+        this.repaintSkyFrame();
+      });
+    }
+
+    private void normalizeFlyDocument() {
+      if (this.dialog == null || this.showingAnswer || this.explodeFramesLeft > 0) {
+        return;
+      }
+      final DialogLine line = this.dialog.lines().get(this.currentLineOrdinal);
+      final String expected = this.userTypesA ? line.a() : line.b();
+      final String raw = this.input.getText();
+      final int caret = Math.min(this.input.getCaretPosition(), raw.length());
+      final int lettersBefore = FlyTypingSlotFormatter.countLetterDigitsBefore(raw, caret);
+      final String merged = FlyTypingSlotFormatter.mergeLettersIntoExpected(expected, raw);
+      if (merged.equals(raw)) {
+        return;
+      }
+      this.applyingFlyNormalization = true;
+      final javax.swing.text.Document doc = this.input.getDocument();
+      DocumentFilter savedFilter = null;
+      final AbstractDocument abstractDoc = doc instanceof AbstractDocument d ? d : null;
+      if (abstractDoc != null) {
+        savedFilter = abstractDoc.getDocumentFilter();
+        abstractDoc.setDocumentFilter(null);
+      }
+      try {
+        this.input.setText(merged);
+        int newCaret =
+            FlyTypingSlotFormatter.caretAfterNthLetterSlot(merged, lettersBefore);
+        final int docLen = this.input.getText().length();
+        newCaret = Math.max(0, Math.min(newCaret, docLen));
+        this.input.setCaretPosition(newCaret);
+      } finally {
+        if (abstractDoc != null) {
+          abstractDoc.setDocumentFilter(savedFilter);
+        }
+        this.applyingFlyNormalization = false;
+      }
+    }
+
+    private void reapplyFlyInputEquivalenceWholeDocument() {
+      if (this.dialog == null) {
         return;
       }
       final List<InputEquivalenceRow> rules = this.dialog.inputEqu();
@@ -555,7 +669,47 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       }
       final DialogLine line = this.dialog.lines().get(this.currentLineOrdinal);
       final String expectedFull = this.userTypesA ? line.a() : line.b();
-      InputEquivalenceSupport.applyAfterInsert(this.input, expectedFull, rules, start, insertLen);
+      final String doc = this.input.getText();
+      if (doc.isEmpty()) {
+        return;
+      }
+      InputEquivalenceSupport.applyAfterInsert(this.input, expectedFull, rules, 0, doc.length());
+    }
+
+    private static final class FlyAlphanumericDocumentFilter extends DocumentFilter {
+
+      private static String filterLetterDigits(final String s) {
+        final StringBuilder builder = new StringBuilder(s.length());
+        s.codePoints().filter(Character::isLetterOrDigit).forEach(builder::appendCodePoint);
+        return builder.toString();
+      }
+
+      @Override
+      public void insertString(
+          final FilterBypass fb,
+          final int offset,
+          final String string,
+          final AttributeSet attr) throws BadLocationException {
+        if (string == null || string.isEmpty()) {
+          return;
+        }
+        final String filtered = FlyAlphanumericDocumentFilter.filterLetterDigits(string);
+        if (!filtered.isEmpty()) {
+          super.insertString(fb, offset, filtered, attr);
+        }
+      }
+
+      @Override
+      public void replace(
+          final FilterBypass fb,
+          final int offset,
+          final int length,
+          final String text,
+          final AttributeSet attrs) throws BadLocationException {
+        final String insert =
+            text == null ? "" : FlyAlphanumericDocumentFilter.filterLetterDigits(text);
+        super.replace(fb, offset, length, insert, attrs);
+      }
     }
 
     boolean startSession(
@@ -894,16 +1048,65 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       }
 
       private static String flyVisibleTypingPrefix(
-          final FontMetrics fm, final String typedUpper, final int maxLineW) {
-        if (typedUpper.isEmpty() || fm.stringWidth(typedUpper) <= maxLineW) {
-          return typedUpper;
+          final FontMetrics fm, final String line, final int maxLineW, final int interCharGapPx) {
+        if (line.isEmpty()
+            || SkyCanvas.overlayLineWidthWithInterCharGaps(fm, line, interCharGapPx) <= maxLineW) {
+          return line;
         }
         final String ell = "…";
-        String prefix = typedUpper;
-        while (prefix.length() > 1 && fm.stringWidth(prefix + ell) > maxLineW) {
+        String prefix = line;
+        while (prefix.length() > 1
+            && SkyCanvas.overlayLineWidthWithInterCharGaps(fm, prefix + ell, interCharGapPx)
+            > maxLineW) {
           prefix = prefix.substring(0, prefix.length() - 1);
         }
         return prefix;
+      }
+
+      private static int overlayLineWidthWithInterCharGaps(
+          final FontMetrics fm, final String s, final int interCharGapPx) {
+        if (s == null || s.isEmpty()) {
+          return 0;
+        }
+        int px = 0;
+        int i = 0;
+        boolean first = true;
+        while (i < s.length()) {
+          final int len = Character.charCount(s.codePointAt(i));
+          if (!first) {
+            px += interCharGapPx;
+          }
+          first = false;
+          px += fm.stringWidth(s.substring(i, i + len));
+          i += len;
+        }
+        return px;
+      }
+
+      private static void drawOverlayLineWithInterCharGaps(
+          final Graphics2D g2,
+          final String s,
+          final int x,
+          final int y,
+          final FontMetrics fm,
+          final int interCharGapPx) {
+        if (s == null || s.isEmpty()) {
+          return;
+        }
+        int cx = x;
+        int i = 0;
+        boolean first = true;
+        while (i < s.length()) {
+          final int len = Character.charCount(s.codePointAt(i));
+          if (!first) {
+            cx += interCharGapPx;
+          }
+          first = false;
+          final String piece = s.substring(i, i + len);
+          g2.drawString(piece, cx, y);
+          cx += fm.stringWidth(piece);
+          i += len;
+        }
       }
 
       private static List<String> wrapText(final FontMetrics fm, final String text,
@@ -1075,40 +1278,32 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         if (GameBoard.this.dialog == null) {
           return;
         }
-        final String typedU = GameBoard.this.typedForAim();
-        final String raw = GameBoard.this.input.getText();
-        final int safeCaret =
-            Math.min(Math.max(0, GameBoard.this.input.getCaretPosition()), raw.length());
-        final String beforeCaretU = raw.substring(0, safeCaret).toUpperCase(Locale.ROOT);
+        final DialogLine line =
+            GameBoard.this.dialog.lines().get(GameBoard.this.currentLineOrdinal);
+        final String expected = GameBoard.this.userTypesA ? line.a() : line.b();
+        final String merged = GameBoard.this.input.getText();
+        final String displayFull = FlyTypingSlotFormatter.overlayDisplayUpper(expected, merged);
         final float fontPt = SkyCanvas.scaleFont(w, 26f, FLY_INPUT_OVERLAY_FONT_PT);
-        g2.setFont(g2.getFont().deriveFont(Font.BOLD, fontPt));
+        g2.setFont(new Font(Font.MONOSPACED, Font.BOLD, 1).deriveFont(fontPt));
         final FontMetrics fm = g2.getFontMetrics();
         final int maxLineW = Math.max(40, w - 32);
-        final String visiblePrefix = SkyCanvas.flyVisibleTypingPrefix(fm, typedU, maxLineW);
-        final boolean truncated = visiblePrefix.length() < typedU.length();
-        final String draw = truncated ? visiblePrefix + "…" : typedU;
-        String beforeForBar = beforeCaretU;
-        if (truncated && beforeCaretU.length() >= visiblePrefix.length()) {
-          beforeForBar = visiblePrefix;
-        }
-        final int tw = fm.stringWidth(draw);
+        final String visiblePrefix =
+            SkyCanvas.flyVisibleTypingPrefix(
+                fm, displayFull, maxLineW, FLY_OVERLAY_INTER_CHAR_GAP_PX);
+        final boolean truncated = visiblePrefix.length() < displayFull.length();
+        final String draw = truncated ? visiblePrefix + "…" : displayFull;
+        final int tw =
+            SkyCanvas.overlayLineWidthWithInterCharGaps(fm, draw, FLY_OVERLAY_INTER_CHAR_GAP_PX);
         final int tx = (w - tw) / 2;
         final int ty = (int) (h * 0.11);
         if (!draw.isEmpty()) {
           g2.setColor(INPUT_TEXT_COLOR_SHADOW);
-          g2.drawString(draw, tx + 2, ty + 2);
+          SkyCanvas.drawOverlayLineWithInterCharGaps(
+              g2, draw, tx + 2, ty + 2, fm, FLY_OVERLAY_INTER_CHAR_GAP_PX);
           g2.setColor(INPUT_TEXT_COLOR);
-          g2.drawString(draw, tx, ty);
+          SkyCanvas.drawOverlayLineWithInterCharGaps(
+              g2, draw, tx, ty, fm, FLY_OVERLAY_INTER_CHAR_GAP_PX);
         }
-        final int prefixBeforeCaretW = fm.stringWidth(beforeForBar);
-        final int barW = Math.max(4, fm.stringWidth("_"));
-        final int barH = Math.max(2, fm.getDescent() / 2 + 1);
-        final int barX = tx + prefixBeforeCaretW;
-        final int barY = ty + 1;
-        g2.setColor(INPUT_TEXT_COLOR_SHADOW);
-        g2.fillRect(barX + 2, barY + 2, barW, barH);
-        g2.setColor(INPUT_TEXT_COLOR);
-        g2.fillRect(barX, barY, barW, barH);
       }
 
       private void drawAim(
