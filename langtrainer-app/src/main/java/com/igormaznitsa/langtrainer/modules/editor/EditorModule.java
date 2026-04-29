@@ -33,6 +33,7 @@ import javax.swing.DefaultCellEditor;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
@@ -546,11 +547,75 @@ public final class EditorModule extends AbstractLangTrainerModule {
     remove.addActionListener(e -> this.removeSelectedEquiv());
     up.addActionListener(e -> this.moveEquiv(-1));
     down.addActionListener(e -> this.moveEquiv(1));
+    final JButton prefillEn =
+        new JButton("Prefill (English keyboard → …)");
+    prefillEn.setToolTipText(
+        "Replace rules with common US-keyboard → target-letter mappings (Estonian, German, Czech, Esperanto).");
+    EditorModule.stylePrimary(prefillEn, new Color(0, 121, 107));
+    prefillEn.addActionListener(e -> this.prefillEquivFromEnglishPreset());
     p.add(add);
     p.add(remove);
     p.add(up);
     p.add(down);
+    p.add(prefillEn);
     return p;
+  }
+
+  private boolean equivTableHasNonEmptyRule() {
+    for (int i = 0; i < this.equivPairModel.getRowCount(); i++) {
+      if (!EditorModule.cellString(this.equivPairModel.getValueAt(i, 1)).isEmpty()
+          || !EditorModule.cellString(this.equivPairModel.getValueAt(i, 2)).isEmpty()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private void prefillEquivFromEnglishPreset() {
+    final InputEquivalenceEnglishPresets.TargetLanguage[] langs =
+        InputEquivalenceEnglishPresets.TargetLanguage.values();
+    final JComboBox<String> combo = new JComboBox<>();
+    for (final InputEquivalenceEnglishPresets.TargetLanguage lang : langs) {
+      combo.addItem(lang.label());
+    }
+    combo.setSelectedIndex(0);
+    final JPanel panel = new JPanel(new BorderLayout(0, 8));
+    panel.add(
+        new JLabel(
+            "<html>Key column = typed on a US English keyboard;<br>"
+                + "Value column = letters that count as correct.</html>"),
+        BorderLayout.NORTH);
+    panel.add(combo, BorderLayout.CENTER);
+    if (JOptionPane.showConfirmDialog(
+        this.rootPanel,
+        panel,
+        "Prefill input equivalence",
+        JOptionPane.OK_CANCEL_OPTION,
+        JOptionPane.QUESTION_MESSAGE)
+        != JOptionPane.OK_OPTION) {
+      return;
+    }
+    final int choice = combo.getSelectedIndex();
+    if (choice < 0 || choice >= langs.length) {
+      return;
+    }
+    if (this.equivTableHasNonEmptyRule()) {
+      if (JOptionPane.showConfirmDialog(
+          this.rootPanel,
+          "Replace all existing input equivalence rules with this preset?",
+          "Replace rules",
+          JOptionPane.YES_NO_OPTION,
+          JOptionPane.WARNING_MESSAGE)
+          != JOptionPane.YES_OPTION) {
+        return;
+      }
+    }
+    this.stopEquivTableEditing();
+    this.fillEquivTableFromRules(
+        InputEquivalenceEnglishPresets.rowsFor(langs[choice]));
+    if (this.equivPairModel.getRowCount() > 0) {
+      this.equivPairTable.setRowSelectionInterval(0, 0);
+    }
   }
 
   private void removeSelectedLine() {
