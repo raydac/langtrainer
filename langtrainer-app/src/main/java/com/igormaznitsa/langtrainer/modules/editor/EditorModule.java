@@ -507,10 +507,6 @@ public final class EditorModule extends AbstractLangTrainerModule {
     final JButton remove = new JButton("Remove");
     final JButton up = new JButton("Move up");
     final JButton down = new JButton("Move down");
-    EditorModule.stylePrimary(add, new Color(46, 125, 50));
-    EditorModule.stylePrimary(remove, new Color(198, 40, 40));
-    EditorModule.stylePrimary(up, new Color(25, 118, 210));
-    EditorModule.stylePrimary(down, new Color(25, 118, 210));
     add.addActionListener(e -> {
       this.linesModel.addRow(new Object[] {0, "", ""});
       this.refreshLineIds();
@@ -534,10 +530,6 @@ public final class EditorModule extends AbstractLangTrainerModule {
     final JButton remove = new JButton("Remove rule");
     final JButton up = new JButton("Move rule up");
     final JButton down = new JButton("Move rule down");
-    EditorModule.stylePrimary(add, new Color(106, 27, 154));
-    EditorModule.stylePrimary(remove, new Color(198, 40, 40));
-    EditorModule.stylePrimary(up, new Color(123, 31, 162));
-    EditorModule.stylePrimary(down, new Color(123, 31, 162));
     add.addActionListener(e -> {
       this.equivPairModel.addRow(new Object[] {0, "", ""});
       this.refreshEquivPairIds();
@@ -548,10 +540,9 @@ public final class EditorModule extends AbstractLangTrainerModule {
     up.addActionListener(e -> this.moveEquiv(-1));
     down.addActionListener(e -> this.moveEquiv(1));
     final JButton prefillEn =
-        new JButton("Prefill (English keyboard → …)");
+        new JButton("Prefill for language");
     prefillEn.setToolTipText(
         "Replace rules with common US-keyboard → target-letter mappings (Estonian, German, Czech, Esperanto).");
-    EditorModule.stylePrimary(prefillEn, new Color(0, 121, 107));
     prefillEn.addActionListener(e -> this.prefillEquivFromEnglishPreset());
     p.add(add);
     p.add(remove);
