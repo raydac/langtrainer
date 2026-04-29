@@ -12,12 +12,14 @@ import java.awt.Color;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.Locale;
 import java.util.Objects;
 import javax.swing.BorderFactory;
 import javax.swing.JDialog;
@@ -52,6 +54,9 @@ public final class PhraseFlashBanner {
   private static final float PHRASE_FONT_MIN_PT = 52f;
   private static final float PHRASE_FONT_MAX_PT = 102f;
   private static final float PHRASE_FONT_HEIGHT_FRACTION = 0.072f;
+  private static final int PHRASE_VIEW_MIN_W = 520;
+  private static final int PHRASE_VIEW_MIN_H = 180;
+  private static final int PHRASE_VIEW_MAX_H = 400;
 
   private JDialog overlay;
   private Timer flipTimer;
@@ -67,6 +72,57 @@ public final class PhraseFlashBanner {
   private static float phraseFontPointsForWindow(final int ownerHeightPx) {
     final float scaled = Math.max(1, ownerHeightPx) * PHRASE_FONT_HEIGHT_FRACTION;
     return Math.max(PHRASE_FONT_MIN_PT, Math.min(PHRASE_FONT_MAX_PT, scaled));
+  }
+
+  private static int longestLinePixelWidth(
+      final FontMetrics metrics, final String first, final String second) {
+    int max = 0;
+    for (final String text : new String[] {first, second}) {
+      for (final String line : text.split("\n", -1)) {
+        max = Math.max(max, metrics.stringWidth(line));
+      }
+    }
+    return max;
+  }
+
+  private static int preferredTextHeightForWidth(
+      final JTextPane sample, final String text, final int width) {
+    sample.setText(text);
+    sample.setSize(new Dimension(width, Integer.MAX_VALUE / 16));
+    return sample.getPreferredSize().height;
+  }
+
+  private static Dimension computeFaceViewportSize(
+      final Window owner,
+      final Font font,
+      final String expectedFaceText,
+      final String partnerFaceText) {
+    final JTextPane sample = new JTextPane();
+    sample.setFont(font);
+    sample.setEditable(false);
+    sample.setFocusable(false);
+    sample.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+
+    final FontMetrics metrics = sample.getFontMetrics(font);
+    final int longestLineW =
+        PhraseFlashBanner.longestLinePixelWidth(metrics, expectedFaceText, partnerFaceText);
+
+    final int ownerW = Math.max(1, owner.getWidth());
+    final int ownerH = Math.max(1, owner.getHeight());
+    final int maxViewW = Math.max(PHRASE_VIEW_MIN_W, (int) (ownerW * 0.88f));
+    final int targetW = Math.max(PHRASE_VIEW_MIN_W, longestLineW + 100);
+    final int viewW = Math.min(maxViewW, targetW);
+
+    final int textHExpected =
+        PhraseFlashBanner.preferredTextHeightForWidth(sample, expectedFaceText, viewW);
+    final int textHPartner =
+        PhraseFlashBanner.preferredTextHeightForWidth(sample, partnerFaceText, viewW);
+    final int textH = Math.max(textHExpected, textHPartner);
+    final int targetH = Math.max(PHRASE_VIEW_MIN_H, textH + 16);
+    final int maxViewH =
+        Math.max(PHRASE_VIEW_MIN_H, Math.min(PHRASE_VIEW_MAX_H, (int) (ownerH * 0.7f)));
+    final int viewH = Math.min(maxViewH, targetH);
+    return new Dimension(viewW, viewH);
   }
 
   public void dismiss() {
@@ -133,9 +189,11 @@ public final class PhraseFlashBanner {
     face.setFocusable(false);
     face.setOpaque(true);
     face.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
-    face.setFont(face.getFont().deriveFont(Font.BOLD, phraseFontSize));
-    final int viewW = 520;
-    final int viewH = (int) Math.max(180, Math.min(400, owner.getHeight() * 0.5));
+    face.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(phraseFontSize));
+    final Dimension viewSize = PhraseFlashBanner.computeFaceViewportSize(
+        owner, face.getFont(), expectedFaceText, partnerFaceText);
+    final int viewW = viewSize.width;
+    final int viewH = viewSize.height;
     final JPanel phraseWrap = new JPanel(new GridBagLayout()) {
       @Override
       public Dimension getPreferredSize() {
@@ -246,8 +304,8 @@ public final class PhraseFlashBanner {
     final SimpleAttributeSet chars = new SimpleAttributeSet();
     setForeground(chars, fg);
     setBackground(chars, bg);
-    setBold(chars, true);
-    setFontFamily(chars, f.getFamily());
+    setBold(chars, false);
+    setFontFamily(chars, f.getFontName(Locale.ROOT));
     setFontSize(chars, f.getSize());
     final SimpleAttributeSet para = new SimpleAttributeSet();
     setAlignment(para, StyleConstants.ALIGN_CENTER);

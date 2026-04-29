@@ -16,6 +16,7 @@ import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
 import com.igormaznitsa.langtrainer.modules.dialog.InputEquivalenceSupport;
 import com.igormaznitsa.langtrainer.text.TypingComparisonUtils;
+import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
 import com.igormaznitsa.langtrainer.ui.PhraseFlashBanner;
 import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
@@ -24,7 +25,6 @@ import java.awt.Cursor;
 import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -361,7 +361,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       northBar.add(this.btnPause);
       northBar.add(this.btnClose);
       this.status.setForeground(Color.WHITE);
-      this.status.setFont(this.status.getFont().deriveFont(Font.BOLD, 16f));
+      this.status.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(16f));
 
       this.input.setHorizontalAlignment(JTextField.CENTER);
       this.input.setOpaque(false);
@@ -397,7 +397,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
 
       final JLabel hint = new JLabel("Press Enter to fire", SwingConstants.CENTER);
       hint.setForeground(new Color(240, 248, 255));
-      hint.setFont(hint.getFont().deriveFont(Font.PLAIN, FLY_INPUT_HINT_FONT_PT));
+      hint.setFont(LangTrainerFonts.MONO_NL_REGULAR.atPoints(FLY_INPUT_HINT_FONT_PT));
 
       final JPanel tipStack = new JPanel(new BorderLayout(0, 4));
       tipStack.setOpaque(false);
@@ -800,7 +800,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       };
 
       final JLabel label = new JLabel("Hurraa! Completed!", SwingConstants.CENTER);
-      label.setFont(label.getFont().deriveFont(Font.BOLD, VICTORY_BANNER_FONT_PT));
+      label.setFont(LangTrainerFonts.MONO_NL_EXTRA_BOLD.atPoints(VICTORY_BANNER_FONT_PT));
       label.setForeground(VICTORY_BANNER_FG);
       label.setOpaque(false);
       label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -1240,9 +1240,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
 
           final String prompt = GameBoard.this.currentPrompt();
           if (!prompt.isEmpty()) {
-            g2.setFont(
-                g2.getFont()
-                    .deriveFont(Font.BOLD, SkyCanvas.scaleFont(w, 14f, 28f)));
+            g2.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(SkyCanvas.scaleFont(w, 14f, 28f)));
             final FontMetrics fm = g2.getFontMetrics();
             final int pw = fm.stringWidth(prompt);
             final int px = Math.max(8, Math.min(w - pw - 8, hx - pw / 2));
@@ -1284,7 +1282,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         final String merged = GameBoard.this.input.getText();
         final String displayFull = FlyTypingSlotFormatter.overlayDisplayUpper(expected, merged);
         final float fontPt = SkyCanvas.scaleFont(w, 26f, FLY_INPUT_OVERLAY_FONT_PT);
-        g2.setFont(new Font(Font.MONOSPACED, Font.BOLD, 1).deriveFont(fontPt));
+        g2.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(fontPt));
         final FontMetrics fm = g2.getFontMetrics();
         final int maxLineW = Math.max(40, w - 32);
         final String visiblePrefix =
@@ -1366,8 +1364,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         g2.setComposite(AlphaComposite.SrcOver);
         g2.setColor(Color.WHITE);
         g2.setFont(
-            g2.getFont()
-                .deriveFont(Font.BOLD, SkyCanvas.scaleFont(w, 18f, 36f)));
+            LangTrainerFonts.MONO_NL_BOLD.atPoints(SkyCanvas.scaleFont(w, 18f, 36f)));
         final String msg = "Answer: " + GameBoard.this.answerBannerText();
         final FontMetrics fm = g2.getFontMetrics();
         final int maxLineW = Math.max(120, w - 80);
@@ -1376,9 +1373,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
           g2.drawString(line, (w - fm.stringWidth(line)) / 2, y);
           y += fm.getHeight() + 4;
         }
-        g2.setFont(
-            g2.getFont()
-                .deriveFont(Font.PLAIN, SkyCanvas.scaleFont(w, 14f, 22f)));
+        g2.setFont(LangTrainerFonts.MONO_NL_REGULAR.atPoints(SkyCanvas.scaleFont(w, 14f, 22f)));
         final FontMetrics fm2 = g2.getFontMetrics();
         final String sub = "Next flight in a moment…";
         g2.drawString(sub, (w - fm2.stringWidth(sub)) / 2, y + fm2.getHeight());
@@ -1390,7 +1385,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         g2.fillRect(0, 0, w, h);
         g2.setComposite(AlphaComposite.SrcOver);
         g2.setColor(Color.WHITE);
-        g2.setFont(g2.getFont().deriveFont(Font.BOLD, 32f));
+        g2.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(32f));
         final String t = "PAUSED";
         final FontMetrics fm = g2.getFontMetrics();
         g2.drawString(t, (w - fm.stringWidth(t)) / 2, h / 2);

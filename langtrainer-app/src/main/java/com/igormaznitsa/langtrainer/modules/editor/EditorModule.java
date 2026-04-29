@@ -10,12 +10,16 @@ import com.igormaznitsa.langtrainer.engine.DialogLine;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
 import com.igormaznitsa.langtrainer.engine.LangResourceJson;
+import com.igormaznitsa.langtrainer.ui.InputEquivalenceEnglishPresets;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -47,15 +51,33 @@ import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+import javax.swing.border.TitledBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellEditor;
 
 public final class EditorModule extends AbstractLangTrainerModule {
 
+  private static final float EDITOR_FONT_MIN_PT = 9f;
+  private static final float EDITOR_FONT_MAX_PT = 36f;
+  private static final float EDITOR_FONT_STEP_PT = 1f;
+  private static final float PRIMARY_BUTTON_EXTRA_PT = 2f;
+  /**
+   * {@link JTable} default row height does not follow font size; editors are clipped without this padding.
+   */
+  private static final int TABLE_ROW_PAD_PX = 8;
+  private static final int TABLE_ROW_MIN_PX = 22;
+
   private static volatile File workDirectory;
 
   private final JPanel rootPanel = new JPanel(new BorderLayout(0, 10));
+  private final List<JComponent> toolbarFontTargets = new ArrayList<>();
+  private final JTextField linesTableCellField = new JTextField();
+  private final JTextField equivTableCellField = new JTextField();
+  private float editorFontSizePoints = -1f;
+  private JButton newDocumentButton;
   private final JTextField fieldTitle = new JTextField();
   private final JTextArea fieldDescription = EditorModule.makeGrowingTextArea();
   private final JTextField fieldLangA = new JTextField();
@@ -105,6 +127,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
         "JSON root field \"shuffled\": when true, a module starts with line order randomization on if allowed.");
     this.buildUi();
     this.newDocument();
+    this.applyEditorModuleFonts();
   }
 
   /**
@@ -150,8 +173,8 @@ public final class EditorModule extends AbstractLangTrainerModule {
         });
   }
 
-  private static void stylePrimary(final JButton button, final Color bg) {
-    button.setFont(button.getFont().deriveFont(Font.BOLD, 15f));
+  private static void stylePrimary(final JButton button, final Color bg, final float sizePt) {
+    button.setFont(button.getFont().deriveFont(Font.BOLD, sizePt));
     button.setForeground(Color.WHITE);
     button.setBackground(bg);
     button.setOpaque(true);
@@ -312,10 +335,11 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private void configureEquivPairTable() {
     this.equivPairTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     this.equivPairTable.getTableHeader().setReorderingAllowed(false);
-    this.equivPairTable.setDefaultEditor(String.class, new DefaultCellEditor(new JTextField()));
+    this.equivPairTable.setDefaultEditor(
+        String.class, new DefaultCellEditor(this.equivTableCellField));
     this.equivPairTable.setFillsViewportHeight(true);
     this.equivPairTable.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
-    this.equivPairTable.getColumnModel().getColumn(0).setPreferredWidth(44);
+    this.configureIdColumnWidth(this.equivPairTable, 36);
     this.equivPairTable.getColumnModel().getColumn(1).setPreferredWidth(200);
     this.equivPairTable.getColumnModel().getColumn(2).setPreferredWidth(200);
   }
@@ -329,12 +353,19 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private void configureLinesTable() {
     this.linesTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     this.linesTable.getTableHeader().setReorderingAllowed(false);
-    this.linesTable.setDefaultEditor(String.class, new DefaultCellEditor(new JTextField()));
+    this.linesTable.setDefaultEditor(
+        String.class, new DefaultCellEditor(this.linesTableCellField));
     this.linesTable.setFillsViewportHeight(true);
     this.linesTable.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
-    this.linesTable.getColumnModel().getColumn(0).setPreferredWidth(44);
+    this.configureIdColumnWidth(this.linesTable, 36);
     this.linesTable.getColumnModel().getColumn(1).setPreferredWidth(280);
     this.linesTable.getColumnModel().getColumn(2).setPreferredWidth(280);
+  }
+
+  private void configureIdColumnWidth(final JTable table, final int width) {
+    table.getColumnModel().getColumn(0).setMinWidth(width);
+    table.getColumnModel().getColumn(0).setPreferredWidth(width);
+    table.getColumnModel().getColumn(0).setMaxWidth(width);
   }
 
   private void refreshLineIds() {
@@ -344,6 +375,10 @@ public final class EditorModule extends AbstractLangTrainerModule {
   }
 
   private void buildUi() {
+    if (this.editorFontSizePoints < 0f) {
+      this.editorFontSizePoints = UIManager.getFont("Label.font").getSize2D();
+    }
+
     this.rootPanel.setBorder(BorderFactory.createEmptyBorder(12, 14, 14, 14));
 
     final JLabel heading = new JLabel("Editor — dialog JSON", SwingConstants.CENTER);
@@ -477,14 +512,14 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
     final JPanel newDocRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
     newDocRow.setOpaque(false);
-    final JButton newDoc = new JButton("New document");
-    EditorModule.stylePrimary(newDoc, new Color(93, 64, 55));
-    newDoc.addActionListener(e -> {
+    this.newDocumentButton = new JButton("New document");
+    this.restyleNewDocumentButton();
+    this.newDocumentButton.addActionListener(e -> {
       if (this.confirmLoseChanges()) {
         this.newDocument();
       }
     });
-    newDocRow.add(newDoc);
+    newDocRow.add(this.newDocumentButton);
 
     this.rootPanel.add(newDocRow, BorderLayout.NORTH);
     this.rootPanel.add(center, BorderLayout.CENTER);
@@ -837,8 +872,104 @@ public final class EditorModule extends AbstractLangTrainerModule {
     }
   }
 
+  private void restyleNewDocumentButton() {
+    EditorModule.stylePrimary(
+        this.newDocumentButton,
+        new Color(93, 64, 55),
+        this.editorFontSizePoints + EditorModule.PRIMARY_BUTTON_EXTRA_PT);
+  }
+
+  private void applyFontSizeToTree(final Component c, final float sizePt) {
+    if (c instanceof JComponent jc) {
+      final Font existing = jc.getFont();
+      if (existing != null) {
+        jc.setFont(existing.deriveFont(sizePt));
+      }
+      if (jc.getBorder() instanceof final TitledBorder tb) {
+        Font titleFont = tb.getTitleFont();
+        if (titleFont == null) {
+          titleFont = existing != null ? existing : UIManager.getFont("Label.font");
+        }
+        tb.setTitleFont(titleFont.deriveFont(sizePt));
+      }
+      for (final Component child : jc.getComponents()) {
+        this.applyFontSizeToTree(child, sizePt);
+      }
+      return;
+    }
+    if (c instanceof Container ct) {
+      for (final Component child : ct.getComponents()) {
+        this.applyFontSizeToTree(child, sizePt);
+      }
+    }
+  }
+
+  private void applyEditorModuleFonts() {
+    this.applyFontSizeToTree(this.rootPanel, this.editorFontSizePoints);
+    this.restyleNewDocumentButton();
+    final Font cellFont = this.linesTableCellField.getFont().deriveFont(this.editorFontSizePoints);
+    this.linesTableCellField.setFont(cellFont);
+    this.equivTableCellField.setFont(cellFont);
+    for (final JComponent t : this.toolbarFontTargets) {
+      final Font f = t.getFont();
+      if (f != null) {
+        t.setFont(f.deriveFont(this.editorFontSizePoints));
+      }
+    }
+    this.syncEditorTableRowHeights();
+    this.rootPanel.revalidate();
+    this.rootPanel.repaint();
+    if (!this.toolbarFontTargets.isEmpty()) {
+      final Container bar = this.toolbarFontTargets.get(0).getParent();
+      if (bar != null) {
+        bar.revalidate();
+        bar.repaint();
+      }
+    }
+  }
+
+  private void syncEditorTableRowHeights() {
+    this.syncEditorTableRowHeight(this.linesTable);
+    this.syncEditorTableRowHeight(this.equivPairTable);
+  }
+
+  private void syncEditorTableRowHeight(final JTable table) {
+    final Font font = table.getFont();
+    if (font == null) {
+      return;
+    }
+    final FontMetrics fm = table.getFontMetrics(font);
+    table.setRowHeight(
+        Math.max(EditorModule.TABLE_ROW_MIN_PX, fm.getHeight() + EditorModule.TABLE_ROW_PAD_PX));
+    final JTableHeader header = table.getTableHeader();
+    if (header != null) {
+      final Font headerFont = header.getFont();
+      if (headerFont != null) {
+        final FontMetrics hfm = header.getFontMetrics(headerFont);
+        final int headerH =
+            Math.max(EditorModule.TABLE_ROW_MIN_PX,
+                hfm.getHeight() + EditorModule.TABLE_ROW_PAD_PX);
+        final Dimension headerPref = header.getPreferredSize();
+        header.setPreferredSize(new Dimension(headerPref.width, headerH));
+      }
+    }
+  }
+
+  private void bumpEditorFont(final float delta) {
+    final float clamped =
+        Math.min(
+            EditorModule.EDITOR_FONT_MAX_PT,
+            Math.max(EditorModule.EDITOR_FONT_MIN_PT, this.editorFontSizePoints + delta));
+    if (clamped == this.editorFontSizePoints) {
+      return;
+    }
+    this.editorFontSizePoints = clamped;
+    this.applyEditorModuleFonts();
+  }
+
   @Override
   public void populateMainToolbar(final JPanel eastToolbar) {
+    this.toolbarFontTargets.clear();
     final JButton load =
         new JButton(ImageResourceLoader.loadIcon("/editor/images/editor-load.svg", 24, 24));
     load.setToolTipText("Load JSON file…");
@@ -853,8 +984,31 @@ public final class EditorModule extends AbstractLangTrainerModule {
     save.setFocusPainted(false);
     save.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     save.addActionListener(e -> this.saveToUser());
+    final JButton fontSmaller =
+        new JButton(
+            ImageResourceLoader.loadIcon("/editor/images/editor-font-decrease.svg", 24, 24));
+    fontSmaller.setToolTipText("Decrease font size for this module");
+    fontSmaller.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+    fontSmaller.setFocusPainted(false);
+    fontSmaller.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    fontSmaller.addActionListener(e -> this.bumpEditorFont(-EditorModule.EDITOR_FONT_STEP_PT));
+    final JButton fontLarger =
+        new JButton(
+            ImageResourceLoader.loadIcon("/editor/images/editor-font-increase.svg", 24, 24));
+    fontLarger.setToolTipText("Increase font size for this module");
+    fontLarger.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+    fontLarger.setFocusPainted(false);
+    fontLarger.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    fontLarger.addActionListener(e -> this.bumpEditorFont(EditorModule.EDITOR_FONT_STEP_PT));
     eastToolbar.add(load);
     eastToolbar.add(save);
+    eastToolbar.add(fontSmaller);
+    eastToolbar.add(fontLarger);
+    this.toolbarFontTargets.add(load);
+    this.toolbarFontTargets.add(save);
+    this.toolbarFontTargets.add(fontSmaller);
+    this.toolbarFontTargets.add(fontLarger);
+    this.applyEditorModuleFonts();
   }
 
   @Override

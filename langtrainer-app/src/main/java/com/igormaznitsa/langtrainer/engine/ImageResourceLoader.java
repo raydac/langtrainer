@@ -1,12 +1,16 @@
 package com.igormaznitsa.langtrainer.engine;
 
 import java.awt.Graphics2D;
+import java.awt.GraphicsEnvironment;
 import java.awt.Image;
 import java.awt.RenderingHints;
+import java.awt.geom.AffineTransform;
+import java.awt.image.BaseMultiResolutionImage;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.net.URL;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.imageio.ImageIO;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
@@ -16,6 +20,8 @@ import org.apache.batik.transcoder.TranscoderOutput;
 import org.apache.batik.transcoder.image.PNGTranscoder;
 
 public final class ImageResourceLoader {
+
+  private static final ConcurrentHashMap<String, Icon> ICON_CACHE = new ConcurrentHashMap<>();
 
   private static final RenderingHints HIGH_QUALITY_DRAWING_HINTS;
 
@@ -42,16 +48,70 @@ public final class ImageResourceLoader {
   }
 
   public static Icon loadIcon(final String resourcePath, final int width, final int height) {
+    final String cacheKey = resourcePath + '\0' + width + 'x' + height;
+    return ImageResourceLoader.ICON_CACHE.computeIfAbsent(
+        cacheKey, key -> ImageResourceLoader.loadIconUncached(resourcePath, width, height));
+  }
+
+  private static Icon loadIconUncached(
+      final String resourcePath, final int width, final int height) {
     if (resourcePath.toLowerCase().endsWith(".svg")) {
-      return new ImageIcon(loadSvgImage(resourcePath, width, height));
+      return ImageResourceLoader.buildSvgIcon(resourcePath, width, height);
     }
     final URL resource = ImageResourceLoader.class.getResource(resourcePath);
     if (resource == null) {
       throw new IllegalArgumentException("Resource is not found: " + resourcePath);
     }
-    final Image scaled =
-        new ImageIcon(resource).getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
-    return new ImageIcon(scaled);
+    try {
+      final BufferedImage original = ImageIO.read(resource);
+      if (original == null) {
+        throw new IllegalStateException("Unsupported or empty image: " + resourcePath);
+      }
+      final BufferedImage scaled =
+          new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+      final Graphics2D graphics = scaled.createGraphics();
+      try {
+        ImageResourceLoader.applyHighQualityDrawingHints(graphics);
+        graphics.drawImage(original, 0, 0, width, height, null);
+      } finally {
+        graphics.dispose();
+      }
+      return new ImageIcon(scaled);
+    } catch (Exception ex) {
+      throw new IllegalStateException("Can't load raster image: " + resourcePath, ex);
+    }
+  }
+
+  /**
+   * Logical UI scale of the default screen (e.g. 2.0 on HiDPI). Used so SVG icons rasterize with
+   * enough pixels for {@link BaseMultiResolutionImage} / {@link ImageIcon} HiDPI selection.
+   */
+  private static double defaultScreenScale() {
+    if (GraphicsEnvironment.isHeadless()) {
+      return 1.0d;
+    }
+    final AffineTransform transform =
+        GraphicsEnvironment.getLocalGraphicsEnvironment()
+            .getDefaultScreenDevice()
+            .getDefaultConfiguration()
+            .getDefaultTransform();
+    return Math.max(transform.getScaleX(), transform.getScaleY());
+  }
+
+  private static Icon buildSvgIcon(final String resourcePath, final int width, final int height) {
+    final BufferedImage base = ImageResourceLoader.loadSvgImage(resourcePath, width, height);
+    final double scale = ImageResourceLoader.defaultScreenScale();
+    if (scale <= 1.001d) {
+      return new ImageIcon(base);
+    }
+    final int hiW = (int) Math.ceil(width * scale);
+    final int hiH = (int) Math.ceil(height * scale);
+    if (hiW <= width && hiH <= height) {
+      return new ImageIcon(base);
+    }
+    final BufferedImage hi = ImageResourceLoader.loadSvgImage(resourcePath, hiW, hiH);
+    final Image multi = new BaseMultiResolutionImage(0, base, hi);
+    return new ImageIcon(multi);
   }
 
   public static Image loadImage(final String resourcePath, final int width, final int height) {

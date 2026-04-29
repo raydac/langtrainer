@@ -16,6 +16,7 @@ import com.igormaznitsa.langtrainer.engine.LangResourceJson;
 import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
 import com.igormaznitsa.langtrainer.text.TypingComparisonUtils;
+import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
 import com.igormaznitsa.langtrainer.ui.PhraseFlashBanner;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
@@ -204,7 +205,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     area.setWrapStyleWord(true);
     area.setMargin(new Insets(8, 10, 8, 10));
     area.setOpaque(true);
-    area.setFont(area.getFont().deriveFont(INPUT_FONT_SIZE));
+    area.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(INPUT_FONT_SIZE));
     return area;
   }
 
@@ -458,7 +459,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
     this.progressHeader.setFont(
-        this.progressHeader.getFont().deriveFont(Font.BOLD, PROGRESS_HEADER_FONT_SIZE));
+        LangTrainerFonts.MONO_NL_SEMI_BOLD.atPoints(PROGRESS_HEADER_FONT_SIZE));
     this.progressHeader.setOpaque(true);
     this.progressHeader.setBackground(PROGRESS_HEADER_BG);
     this.progressHeader.setForeground(PROGRESS_HEADER_FG);
@@ -570,7 +571,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   }
 
   private void configureTipUi() {
-    this.tipToggle.setFont(this.tipToggle.getFont().deriveFont(Font.BOLD, 16f));
+    this.tipToggle.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(16f));
     this.tipToggle.setOpaque(true);
     this.tipToggle.setContentAreaFilled(true);
     this.tipToggle.setFocusPainted(false);
@@ -588,7 +589,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     this.tipZone.setOpaque(true);
     this.tipZone.setBackground(TIP_ZONE_BG);
     this.tipZone.setForeground(TIP_ZONE_FG);
-    this.tipZone.setFont(this.tipZone.getFont().deriveFont(Font.BOLD, 18f));
+    this.tipZone.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(18f));
     this.tipZone.setBorder(BorderFactory.createCompoundBorder(
         BorderFactory.createLineBorder(new Color(200, 80, 80), 2, true),
         BorderFactory.createEmptyBorder(8, 12, 8, 12)));
@@ -596,7 +597,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   }
 
   private void configureShuffleAndShowUi() {
-    this.shuffleToggle.setFont(this.shuffleToggle.getFont().deriveFont(Font.BOLD, 16f));
+    this.shuffleToggle.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(16f));
     this.shuffleToggle.setOpaque(true);
     this.shuffleToggle.setContentAreaFilled(true);
     this.shuffleToggle.setFocusPainted(false);
@@ -613,7 +614,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     });
     this.applyShuffleToggleLook();
 
-    this.showPhraseButton.setFont(this.showPhraseButton.getFont().deriveFont(Font.BOLD, 16f));
+    this.showPhraseButton.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(16f));
     this.showPhraseButton.setOpaque(true);
     this.showPhraseButton.setContentAreaFilled(true);
     this.showPhraseButton.setBackground(PhraseFlashBanner.SHOW_ACTION_BUTTON_BG);
@@ -917,22 +918,22 @@ public final class DialogModule extends AbstractLangTrainerModule {
       final JTextArea area,
       final boolean isWorkSide,
       final boolean sessionFinished) {
-    final Font base = area.getFont().deriveFont(INPUT_FONT_SIZE);
+    final Font base = LangTrainerFonts.MONO_NL_BOLD.atPoints(INPUT_FONT_SIZE);
     area.setEditable(false);
     area.setFocusable(false);
     if (sessionFinished) {
-      area.setFont(base.deriveFont(Font.BOLD));
+      area.setFont(base);
       area.setBackground(new Color(225, 225, 225));
       area.setForeground(Color.DARK_GRAY);
       syncViewportBackground(area);
       return;
     }
     if (isWorkSide) {
-      area.setFont(base.deriveFont(Font.BOLD));
+      area.setFont(base);
       area.setBackground(ZONE_WORK_BG);
       area.setForeground(Color.BLACK);
     } else {
-      area.setFont(base.deriveFont(Font.BOLD));
+      area.setFont(base);
       area.setBackground(ZONE_TARGET_BG);
       area.setForeground(ZONE_TARGET_FG);
     }
@@ -943,11 +944,11 @@ public final class DialogModule extends AbstractLangTrainerModule {
       final JTextArea area,
       final boolean isWorkZone,
       final boolean sessionFinished) {
-    final Font base = area.getFont().deriveFont(INPUT_FONT_SIZE);
+    final Font base = LangTrainerFonts.MONO_NL_BOLD.atPoints(INPUT_FONT_SIZE);
     if (sessionFinished) {
       area.setEditable(false);
       area.setFocusable(false);
-      area.setFont(base.deriveFont(Font.BOLD));
+      area.setFont(base);
       area.setBackground(new Color(225, 225, 225));
       area.setForeground(Color.DARK_GRAY);
       area.setCaretColor(Color.DARK_GRAY);
@@ -957,14 +958,14 @@ public final class DialogModule extends AbstractLangTrainerModule {
     if (isWorkZone) {
       area.setEditable(true);
       area.setFocusable(true);
-      area.setFont(base.deriveFont(Font.BOLD));
+      area.setFont(base);
       area.setBackground(ZONE_WORK_BG);
       area.setForeground(Color.BLACK);
       area.setCaretColor(Color.BLACK);
     } else {
       area.setEditable(false);
       area.setFocusable(false);
-      area.setFont(base.deriveFont(Font.BOLD));
+      area.setFont(base);
       area.setBackground(ZONE_TARGET_BG);
       area.setForeground(ZONE_TARGET_FG);
       area.setCaretColor(ZONE_TARGET_FG);
@@ -1124,7 +1125,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     };
 
     final JLabel label = new JLabel("Hurraa! Completed!", SwingConstants.CENTER);
-    label.setFont(label.getFont().deriveFont(Font.BOLD, BANNER_FONT_SIZE));
+    label.setFont(LangTrainerFonts.MONO_NL_EXTRA_BOLD.atPoints(BANNER_FONT_SIZE));
     label.setForeground(BANNER_FG);
     label.setOpaque(false);
     label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
