@@ -24,8 +24,8 @@ public final class SoundClip implements AutoCloseable {
         }
       });
       this.clip.open(FORMAT, data, 0, data.length);
-    } catch (Exception ex) {
-      throw new RuntimeException("Error during load and init sound clip: " + resource, ex);
+    } catch (final Exception ex) {
+      throw new SoundClipInitializationException(resource, ex);
     }
   }
 
@@ -65,6 +65,13 @@ public final class SoundClip implements AutoCloseable {
 
   public boolean isPlaying() {
     return this.playing.get();
+  }
+
+  public static final class SoundClipInitializationException extends IllegalStateException {
+
+    SoundClipInitializationException(final String resource, final Exception cause) {
+      super("Error during load and init sound clip: " + resource, cause);
+    }
   }
 
 

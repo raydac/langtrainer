@@ -958,6 +958,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       }
       this.status.setText(
           String.format(
+              Locale.ROOT,
               "%s · Bucket %d/%d · %d left",
               this.dialog.menuName(),
               this.leitner.currentBucketOneBased(),

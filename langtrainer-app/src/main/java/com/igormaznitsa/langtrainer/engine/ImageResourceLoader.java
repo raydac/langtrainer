@@ -10,6 +10,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.net.URL;
+import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.imageio.ImageIO;
 import javax.swing.Icon;
@@ -55,7 +56,7 @@ public final class ImageResourceLoader {
 
   private static Icon loadIconUncached(
       final String resourcePath, final int width, final int height) {
-    if (resourcePath.toLowerCase().endsWith(".svg")) {
+    if (resourcePath.toLowerCase(Locale.ROOT).endsWith(".svg")) {
       return ImageResourceLoader.buildSvgIcon(resourcePath, width, height);
     }
     final URL resource = ImageResourceLoader.class.getResource(resourcePath);

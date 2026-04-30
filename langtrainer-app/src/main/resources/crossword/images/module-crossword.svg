@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+    <rect width="128" height="128" rx="18" fill="#1e3a5f"/>
+    <rect x="18" y="18" width="92" height="92" rx="10" fill="#f6f8fa"/>
+    <g stroke="#8aa5b9" stroke-width="2">
+        <line x1="18" y1="36" x2="110" y2="36"/>
+        <line x1="18" y1="54" x2="110" y2="54"/>
+        <line x1="18" y1="72" x2="110" y2="72"/>
+        <line x1="18" y1="90" x2="110" y2="90"/>
+        <line x1="36" y1="18" x2="36" y2="110"/>
+        <line x1="54" y1="18" x2="54" y2="110"/>
+        <line x1="72" y1="18" x2="72" y2="110"/>
+        <line x1="90" y1="18" x2="90" y2="110"/>
+    </g>
+    <rect x="36" y="36" width="18" height="18" fill="#ffd54f"/>
+    <rect x="54" y="54" width="18" height="18" fill="#90caf9"/>
+    <rect x="72" y="72" width="18" height="18" fill="#a5d6a7"/>
+    <text x="45" y="50" font-family="monospace" font-size="12" text-anchor="middle" fill="#1a1a1a">A</text>
+    <text x="63" y="68" font-family="monospace" font-size="12" text-anchor="middle" fill="#1a1a1a">B</text>
+    <text x="81" y="86" font-family="monospace" font-size="12" text-anchor="middle" fill="#1a1a1a">C</text>
+</svg>

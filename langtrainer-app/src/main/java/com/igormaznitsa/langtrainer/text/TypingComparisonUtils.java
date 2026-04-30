@@ -2,6 +2,7 @@ package com.igormaznitsa.langtrainer.text;
 
 import static java.util.Optional.ofNullable;
 
+import java.util.Locale;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 
@@ -26,7 +27,7 @@ public final class TypingComparisonUtils {
     final String withYeFolded = text
         .replace('Ё', 'Е')
         .replace('ё', 'е');
-    final String lower = withYeFolded.toLowerCase();
+    final String lower = withYeFolded.toLowerCase(Locale.ROOT);
     final StringBuilder builder = new StringBuilder(lower.length());
     lower.codePoints()
         .filter(Character::isLetterOrDigit)

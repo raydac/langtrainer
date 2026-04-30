@@ -1,0 +1,58 @@
+Module Crossword
+------------------
+
+1. It is a child of AbstractLangTrainerModule
+2. On start it shows list of allowed resources like in Fly and Dialog modules
+3. User selects target input language (language he types in crossword cells)
+4. Module takes all valid single-word lines from selected target language in resource
+5. Crossword builder tries to place as many words as possible (not guaranteed 100% for every dataset)
+6. Board is rendered as one canvas and scaled to bounding box of used cells to fill available space better
+7. Single interaction mode: arrows move selection, typing enters a letter into selected cell
+8. Backspace/Delete clears currently selected working cell
+9. At intersections, current typing route is locked by direction and does not unexpectedly switch
+10. On top we show translation for currently selected word (word-start in current cell has priority)
+11. If all cells are filled:
+    - if all chars are correct, all cells become light green
+    - if there are errors, wrong words are highlighted light red
+12. If user presses End game:
+    - it switches to reveal mode (not "completed")
+    - cursor highlight is hidden
+    - green = correct entered char
+    - red = incorrect entered char
+    - yellow = missing char
+    - correct letters are shown in all crossword cells
+13. Virtual keyboard, End game button, and close button are available during gameplay
+
+
+Requirements for Crossword Word Files
+-------------------------------------
+
+Format
+1. File format is standard dialog JSON used by app (DialogDefinition):
+   - menuName, description, langA, langB, lines
+2. Each line is object with keys:
+   - "A": word/phrase in langA
+   - "B": word/phrase in langB
+
+Selection Rules
+3. User chooses target input language (A or B) before start
+4. Module checks only selected side of each line for crossword word candidate
+5. Candidate is accepted only if selected side is:
+   - non-empty
+   - one word (no spaces)
+   - contains only letters or '-'
+6. Lines not matching these rules are ignored
+7. At least 3 valid words are required to start module
+
+Data Quality Recommendations (for good crossword density)
+8. Prefer 8+ valid words (better 12-30)
+9. Prefer medium-length words (3-8 chars)
+10. Prefer words with shared letters (high intersection potential)
+11. Avoid many rare-letter words with no overlaps
+12. Keep translations meaningful and short for top hint readability
+
+Example valid lines for EN-RU
+13.
+    {"A":"house","B":"дом"}
+    {"A":"sun","B":"солнце"}
+    {"A":"apple","B":"яблоко"}

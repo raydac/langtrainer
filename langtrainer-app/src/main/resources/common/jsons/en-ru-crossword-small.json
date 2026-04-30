@@ -1,0 +1,48 @@
+{
+  "menuName": "English-Russian Crossword Small",
+  "description": "Simple EN-RU single-word set for crossword training",
+  "langA": "English",
+  "langB": "Russian",
+  "lines": [
+    {
+      "A": "cat",
+      "B": "кот"
+    },
+    {
+      "A": "car",
+      "B": "машина"
+    },
+    {
+      "A": "tree",
+      "B": "дерево"
+    },
+    {
+      "A": "book",
+      "B": "книга"
+    },
+    {
+      "A": "milk",
+      "B": "молоко"
+    },
+    {
+      "A": "sun",
+      "B": "солнце"
+    },
+    {
+      "A": "moon",
+      "B": "луна"
+    },
+    {
+      "A": "apple",
+      "B": "яблоко"
+    },
+    {
+      "A": "water",
+      "B": "вода"
+    },
+    {
+      "A": "house",
+      "B": "дом"
+    }
+  ]
+}

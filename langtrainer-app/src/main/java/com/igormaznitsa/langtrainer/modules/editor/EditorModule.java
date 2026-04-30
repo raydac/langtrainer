@@ -31,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultCellEditor;
@@ -855,7 +856,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     if (out == null) {
       return;
     }
-    if (!out.getName().toLowerCase().endsWith(".json")) {
+    if (!out.getName().toLowerCase(Locale.ROOT).endsWith(".json")) {
       out = new File(out.getParentFile(), out.getName() + ".json");
     }
     EditorModule.rememberWorkDir(out);

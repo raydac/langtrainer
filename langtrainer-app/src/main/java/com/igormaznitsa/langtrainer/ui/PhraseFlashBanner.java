@@ -309,10 +309,7 @@ public final class PhraseFlashBanner {
     setFontSize(chars, f.getSize());
     final SimpleAttributeSet para = new SimpleAttributeSet();
     setAlignment(para, StyleConstants.ALIGN_CENTER);
-    try {
-      doc.setCharacterAttributes(0, len, chars, true);
-      doc.setParagraphAttributes(0, len, para, true);
-    } catch (final Exception ignored) {
-    }
+    doc.setCharacterAttributes(0, len, chars, true);
+    doc.setParagraphAttributes(0, len, para, true);
   }
 }

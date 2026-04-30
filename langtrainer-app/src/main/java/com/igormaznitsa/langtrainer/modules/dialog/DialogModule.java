@@ -171,11 +171,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     if (scroll == null || area == null) {
       return;
     }
-    try {
-      area.setCaretPosition(area.getDocument().getLength());
-    } catch (final Exception ignored) {
-      // caret move is best-effort for non-editable areas
-    }
+    area.setCaretPosition(area.getDocument().getLength());
   }
 
   private static void nudgeScrollBarToEnd(final JScrollPane scroll) {

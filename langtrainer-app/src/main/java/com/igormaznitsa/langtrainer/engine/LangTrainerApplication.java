@@ -8,6 +8,7 @@ import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
@@ -123,8 +124,30 @@ public final class LangTrainerApplication {
       this.activeModule.populateMainToolbar(rightButtons);
     }
     rightButtons.add(closeButton);
+    this.normalizeToolbarButtonSizes(rightButtons);
     topPanel.add(rightButtons, BorderLayout.EAST);
     return topPanel;
+  }
+
+  private void normalizeToolbarButtonSizes(final JPanel buttonPanel) {
+    int maxW = 0;
+    int maxH = 0;
+    for (final Component component : buttonPanel.getComponents()) {
+      if (component instanceof JButton button) {
+        final Dimension pref = button.getPreferredSize();
+        maxW = Math.max(maxW, pref.width);
+        maxH = Math.max(maxH, pref.height);
+      }
+    }
+    final int side = Math.max(maxW, maxH);
+    final Dimension normalized = new Dimension(side, side);
+    for (final Component component : buttonPanel.getComponents()) {
+      if (component instanceof JButton button) {
+        button.setPreferredSize(normalized);
+        button.setMinimumSize(normalized);
+        button.setMaximumSize(normalized);
+      }
+    }
   }
 
   private void setModuleTopToolbarVisible(final boolean visible) {

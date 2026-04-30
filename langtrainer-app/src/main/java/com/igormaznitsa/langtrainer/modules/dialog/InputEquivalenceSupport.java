@@ -2,6 +2,7 @@ package com.igormaznitsa.langtrainer.modules.dialog;
 
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
 import java.util.List;
+import java.util.Optional;
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
@@ -94,7 +95,7 @@ public final class InputEquivalenceSupport {
     return new String(Character.toChars(Character.toLowerCase(m)));
   }
 
-  public static String matchInputEquivalence(
+  public static Optional<String> matchInputEquivalence(
       final String typed,
       final String expectedChar,
       final List<InputEquivalenceRow> rules) {
@@ -106,10 +107,10 @@ public final class InputEquivalenceSupport {
               ? matchPositional(typed, expectedChar, keys, vals)
               : matchAnyKeyToExpectedValue(typed, expectedChar, keys, vals);
       if (matched != null) {
-        return matched;
+        return Optional.of(matched);
       }
     }
-    return null;
+    return Optional.empty();
   }
 
   private static String matchPositional(
@@ -183,11 +184,12 @@ public final class InputEquivalenceSupport {
         p += chLen;
         continue;
       }
-      final String replacement = matchInputEquivalence(typedStr, expStr, rules);
-      if (replacement != null && !replacement.equals(typedStr)) {
-        replaceSubstring(area, p, p + chLen, replacement);
-        end += replacement.length() - chLen;
-        p += replacement.length();
+      final Optional<String> replacement = matchInputEquivalence(typedStr, expStr, rules);
+      if (replacement.isPresent() && !replacement.get().equals(typedStr)) {
+        final String updated = replacement.get();
+        replaceSubstring(area, p, p + chLen, updated);
+        end += updated.length() - chLen;
+        p += updated.length();
       } else {
         p += chLen;
       }

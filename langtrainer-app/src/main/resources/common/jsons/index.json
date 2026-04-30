@@ -48,6 +48,12 @@
         "DIALOG",
         "FLY_GAME"
       ]
+    },
+    {
+      "resource": "/common/jsons/en-ru-crossword-small.json",
+      "modules": [
+        "CROSSWORD"
+      ]
     }
   ]
 }
