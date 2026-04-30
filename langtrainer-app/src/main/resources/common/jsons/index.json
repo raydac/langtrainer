@@ -37,32 +37,15 @@
       ]
     },
     {
-      "resource": "/common/jsons/est-ru-b1-dialog-1.json",
-      "modules": [
-        "DIALOG"
-      ]
-    },
-    {
       "resource": "/common/jsons/en-ru-100-words-c1-1.json",
       "modules": [
         "DIALOG"
       ]
     },
     {
-      "resource": "/common/jsons/est-ru-400-freq.json",
+      "resource": "/common/jsons/sw-rus-travel-phrases.json",
       "modules": [
-        "DIALOG"
-      ]
-    },
-    {
-      "resource": "/common/jsons/est-ru-100-a2-1.json",
-      "modules": [
-        "DIALOG"
-      ]
-    },
-    {
-      "resource": "/common/jsons/est-ru-words-1.json",
-      "modules": [
+        "DIALOG",
         "FLY_GAME"
       ]
     }
