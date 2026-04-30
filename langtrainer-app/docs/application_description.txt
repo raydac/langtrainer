@@ -14,13 +14,13 @@ Implementation requirements
       +--api (contains all abstract and api modules)
       +--engine (contains all stuff related to internal work of application not related to modules work)
       +--modules (here added every custom module for application)
-      +--Main.java (main class to start application)
+      +--LangTrainer.java (main class to start application)
       +--Modules.java (enum to have links to all modules of application which added as enum records)
 
 Functional requirements
 ------
 1. Application is a language trainer application
-2. Main menu is extendable one and shows list of registered modules as some image and name. Module activated through mouse click by user. Also keyboard navigation must be allowed through cursor keys and enter or space key to activate.
+2. LangTrainer menu is extendable one and shows list of registered modules as some image and name. Module activated through mouse click by user. Also keyboard navigation must be allowed through cursor keys and enter or space key to activate.
    +-------------------------+
    | /-----\  /-----\        |
    | |Item1|  |Item2|        |

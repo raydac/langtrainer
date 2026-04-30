@@ -13,6 +13,7 @@ import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.KeyEvent;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -26,6 +27,7 @@ public final class LangTrainerApplication {
 
   public static final String CLOSE_MODULE_CLIENT_PROPERTY = "langtrainer.closeModule";
   public static final String SET_TOOLBAR_VISIBLE_CLIENT_PROPERTY = "langtrainer.setToolbarVisible";
+  private static final String APP_VERSION_SYSTEM_PROPERTY = "langtrainer.app.version";
 
   private final JFrame mainFrame;
   private final List<AbstractLangTrainerModule> modules;
@@ -51,7 +53,7 @@ public final class LangTrainerApplication {
   public void start() {
     this.initMainFrame();
     this.mainFrame.setEnabled(false);
-    final SplashWindow splashWindow = new SplashWindow(this.mainFrame);
+    final SplashWindow splashWindow = new SplashWindow(this.mainFrame, this.resolveAppVersion());
     splashWindow.showForMillis(
         5000,
         () -> this.mainFrame.setVisible(true),
@@ -60,6 +62,13 @@ public final class LangTrainerApplication {
           this.mainFrame.toFront();
           this.mainMenuPanel.focusList();
         });
+  }
+
+  private String resolveAppVersion() {
+    return Optional.ofNullable(System.getProperty(APP_VERSION_SYSTEM_PROPERTY))
+        .or(() -> Optional.ofNullable(
+            LangTrainerApplication.class.getPackage().getImplementationVersion()))
+        .orElse("dev");
   }
 
   private void initMainFrame() {

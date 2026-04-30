@@ -113,7 +113,7 @@
                                     <string>msa</string>
                                 </CFBundleURLTypes>
                                 <JVMVersion>11+</JVMVersion>
-                                <JVMMainClassName>com.igormaznitsa.langtrainer.Main</JVMMainClassName>
+                                <JVMMainClassName>LangTrainer</JVMMainClassName>
                             </plist>
                             <dmg>
                                 <generate>true</generate>
@@ -139,7 +139,7 @@
                             <outfile>${project.build.directory}/${app.name}.exe</outfile>
                             <downloadUrl>https://bell-sw.com/pages/downloads/#jdk-21-lts</downloadUrl>
                             <classPath>
-                                <mainClass>com.igormaznitsa.langtrainer.Main</mainClass>
+                                <mainClass>LangTrainer</mainClass>
                                 <preCp>anything</preCp>
                             </classPath>
                             <icon>
@@ -667,7 +667,10 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <mainClass>com.igormaznitsa.langtrainer.Main</mainClass>
+                    <mainClass>LangTrainer</mainClass>
+                    <systemPropertyVariables>
+                        <langtrainer.app.version>${project.version}</langtrainer.app.version>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
             <plugin>
@@ -696,7 +699,10 @@
                             <minimizeJar>false</minimizeJar>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.igormaznitsa.langtrainer.Main</mainClass>
+                                    <mainClass>LangTrainer</mainClass>
+                                    <manifestEntries>
+                                        <Implementation-Version>${project.version}</Implementation-Version>
+                                    </manifestEntries>
                                 </transformer>
                             </transformers>
                         </configuration>

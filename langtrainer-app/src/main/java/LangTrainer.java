@@ -1,13 +1,11 @@
-package com.igormaznitsa.langtrainer;
-
 import com.igormaznitsa.langtrainer.engine.LangTrainerApplication;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 
-public final class Main {
+public final class LangTrainer {
 
-  private Main() {
+  private LangTrainer() {
   }
 
   public static void main(final String[] args) {

@@ -1316,7 +1316,10 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
             Math.min(Math.min(w * 2 / 5, 340), Math.min(h * 2 / 5, 340));
         final int aimX;
         final int aimY;
-        if (typed.isEmpty()) {
+        if (GameBoard.this.explodeFramesLeft() > 0) {
+          aimX = heliCx;
+          aimY = heliCy;
+        } else if (typed.isEmpty()) {
           aimX = w / 2;
           aimY = h / 2;
         } else if (TypingComparisonUtils.isCloseEnough(typed, expected)) {
