@@ -19,6 +19,7 @@ import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.WindowConstants;
@@ -47,7 +48,8 @@ public final class LangTrainerApplication {
       System.err.println("Can't load app icon");
     }
     this.modules = Modules.createAll();
-    this.mainMenuPanel = new MainMenuPanel(this.modules, this::activateModule);
+    this.mainMenuPanel =
+        new MainMenuPanel(this.modules, this::activateModule, this::showHowToUseDialog);
     this.realKeyboardDispatcher = this::dispatchTypedChar;
   }
 
@@ -174,6 +176,34 @@ public final class LangTrainerApplication {
     this.mainFrame.revalidate();
     this.mainFrame.repaint();
     this.mainMenuPanel.focusList();
+  }
+
+  private void showHowToUseDialog() {
+    final String message = """
+        <html>
+        <body style='width:620px;font-family:sans-serif;'>
+        <h2>How to use LangTrainer</h2>
+        <ol>
+          <li><b>Choose a module</b> on the main screen (Dialog, Fly game, Crossword, Editor).</li>
+          <li><b>Open built-in content</b> by selecting a list item, or load your own JSON file where supported.</li>
+          <li><b>Start a session</b> with Enter, Space, or mouse click.</li>
+          <li><b>Type answers</b> using your physical keyboard or the virtual keyboard button in module toolbar.</li>
+          <li><b>Finish or return</b> with module controls, then use <b>X</b> in the top-right to come back.</li>
+        </ol>
+        <p><b>Tips</b></p>
+        <ul>
+          <li>Use the <b>Editor</b> module to create or adjust your own training JSON packs.</li>
+          <li>In game modules, status lines and highlights explain progress and mistakes.</li>
+          <li>You can hide/show module top toolbar when module supports it.</li>
+        </ul>
+        </body>
+        </html>
+        """;
+    JOptionPane.showMessageDialog(
+        this.mainFrame,
+        message,
+        "LangTrainer - Quick Help",
+        JOptionPane.INFORMATION_MESSAGE);
   }
 
   private void showVirtualKeyboard() {

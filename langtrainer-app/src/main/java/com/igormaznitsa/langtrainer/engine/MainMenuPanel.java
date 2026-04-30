@@ -13,20 +13,30 @@ import java.util.function.Consumer;
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
+import javax.swing.Icon;
+import javax.swing.JButton;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
+import javax.swing.border.EmptyBorder;
 import javax.swing.event.MouseInputAdapter;
 
 public final class MainMenuPanel extends JPanel {
 
+  private static final Icon HELP_ICON =
+      ImageResourceLoader.loadIcon("/images/help-question.svg", 84, 84);
+  private static final Icon HELP_HOVER_ICON =
+      ImageResourceLoader.loadIcon("/images/help-question-hover.svg", 84, 84);
+  private static final Icon HELP_PRESSED_ICON =
+      ImageResourceLoader.loadIcon("/images/help-question-pressed.svg", 84, 84);
   private final JList<AbstractLangTrainerModule> modulesList;
 
   public MainMenuPanel(
       final List<AbstractLangTrainerModule> modules,
-      final Consumer<AbstractLangTrainerModule> onModuleActivate) {
+      final Consumer<AbstractLangTrainerModule> onModuleActivate,
+      final Runnable onHelpRequested) {
     super(new BorderLayout());
     final Color menuBg = new Color(248, 250, 252);
     this.setBackground(menuBg);
@@ -121,6 +131,37 @@ public final class MainMenuPanel extends JPanel {
     scrollPane.setBorder(BorderFactory.createEmptyBorder(8, 12, 12, 12));
     scrollPane.setPreferredSize(new Dimension(720, 440));
     this.add(scrollPane, BorderLayout.CENTER);
+    this.add(this.makeHelpButtonPanel(onHelpRequested), BorderLayout.SOUTH);
+  }
+
+  private JPanel makeHelpButtonPanel(final Runnable onHelpRequested) {
+    final JPanel panel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 20, 14));
+    panel.setOpaque(false);
+    panel.setBorder(new EmptyBorder(0, 0, 10, 10));
+    panel.add(this.makeHelpButton(onHelpRequested));
+    return panel;
+  }
+
+  private JButton makeHelpButton(final Runnable onHelpRequested) {
+    final JButton button = new JButton();
+    button.setFocusPainted(false);
+    button.setBackground(new Color(0, 0, 0, 0));
+    button.setOpaque(false);
+    button.setContentAreaFilled(false);
+    button.setBorderPainted(false);
+    button.setBorder(new EmptyBorder(0, 0, 0, 0));
+    button.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+    button.setVerticalAlignment(javax.swing.SwingConstants.CENTER);
+    button.setIcon(HELP_ICON);
+    button.setRolloverEnabled(true);
+    button.setRolloverIcon(HELP_HOVER_ICON);
+    button.setPressedIcon(HELP_PRESSED_ICON);
+    final Dimension size = new Dimension(98, 98);
+    button.setPreferredSize(size);
+    button.setMinimumSize(size);
+    button.setMaximumSize(size);
+    button.addActionListener(event -> onHelpRequested.run());
+    return button;
   }
 
   public void focusList() {
