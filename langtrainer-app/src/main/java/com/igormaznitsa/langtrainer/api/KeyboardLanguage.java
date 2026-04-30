@@ -15,7 +15,7 @@ public enum KeyboardLanguage {
       "RUS",
       List.of(
           "1234567890",
-          "йцукенгшщз",
+          "йцукенгшщзё",
           "фывапролдж",
           "ячсмитьбю",
           " ,.-()")),
@@ -26,12 +26,101 @@ public enum KeyboardLanguage {
           "qwertyuiopü",
           "asdfghjklöä",
           "zxcvbnmšžõ",
-          " ,.-()"));
+          " ,.-()")),
+  GER(
+      "GER",
+      List.of(
+          "1234567890",
+          "qwertzuiopü",
+          "asdfghjklöä",
+          "yxcvbnmß",
+          " ,.-()")),
+  CZE(
+      "CZE",
+      List.of(
+          "1234567890",
+          "qwertzuiopúů",
+          "asdfghjkléáí",
+          "yxcvbnmčďěňřšťžýó",
+          " ,.-()")),
+  ESP(
+      "ESP",
+      List.of(
+          "1234567890",
+          "qwertyuiopĝĥ",
+          "asdfghjklĵŝ",
+          "zxcvbnmĉŭ",
+          " ,.-()")),
+  SWE(
+      "SWE",
+      List.of(
+          "1234567890",
+          "qwertyuiopå",
+          "asdfghjklöä",
+          "zxcvbnm",
+          " ,.-()")),
+  NOR(
+      "NOR",
+      List.of(
+          "1234567890",
+          "qwertyuiopå",
+          "asdfghjkløæ",
+          "zxcvbnm",
+          " ,.-()")),
+  DAN(
+      "DAN",
+      List.of(
+          "1234567890",
+          "qwertyuiopå",
+          "asdfghjklæø",
+          "zxcvbnm",
+          " ,.-()")),
+  DUT(
+      "DUT",
+      List.of(
+          "1234567890",
+          "qwertyuiop",
+          "asdfghjkl",
+          "zxcvbnmàáâäèéêëìíîïòóôöùúûüÿ",
+          " ,.-()")),
+  FIN(
+      "FIN",
+      List.of(
+          "1234567890",
+          "qwertyuiopå",
+          "asdfghjklöä",
+          "zxcvbnm",
+          " ,.-()")),
+  LIT(
+      "LIT",
+      List.of(
+          "1234567890",
+          "qwertyuiopąčęė",
+          "asdfghjklįšųū",
+          "zxcvbnmž",
+          " ,.-()")),
+  LAT(
+      "LAT",
+      List.of(
+          "1234567890",
+          "qwertyuiopāčē",
+          "asdfghjklģīķļ",
+          "zxcvbnmņšūž",
+          " ,.-()")),
+  SPA(
+      "SPA",
+      List.of(
+          "1234567890",
+          "qwertyuiop",
+          "asdfghjklñ",
+          "zxcvbnmáéíóúü",
+          " ,.-()?!¡¿"));
 
   /**
    * Languages for modules that show the full on-screen virtual keyboard (ENG / RUS / EST rows).
    */
-  public static final List<KeyboardLanguage> VIRTUAL_BOARD_ALL = List.of(ENG, RUS, EST);
+  public static final List<KeyboardLanguage> VIRTUAL_BOARD_ALL = List.of(
+      ENG, RUS, EST, GER, CZE, ESP, SWE, NOR, DAN, DUT, FIN, LIT, LAT, SPA);
 
   private final String abbreviation;
   private final List<String> rows;
