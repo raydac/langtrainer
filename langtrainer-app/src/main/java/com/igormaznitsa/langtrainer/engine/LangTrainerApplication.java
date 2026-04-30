@@ -8,21 +8,29 @@ import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.KeyEvent;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JEditorPane;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.WindowConstants;
+import javax.swing.event.HyperlinkEvent;
 import javax.swing.text.JTextComponent;
 
 public final class LangTrainerApplication {
@@ -30,6 +38,8 @@ public final class LangTrainerApplication {
   public static final String CLOSE_MODULE_CLIENT_PROPERTY = "langtrainer.closeModule";
   public static final String SET_TOOLBAR_VISIBLE_CLIENT_PROPERTY = "langtrainer.setToolbarVisible";
   private static final String APP_VERSION_SYSTEM_PROPERTY = "langtrainer.app.version";
+  private static final String HELP_DIALOG_HTML_RESOURCE = "/html/how-to-use.html";
+  private static final String HELP_VERSION_PLACEHOLDER = "${project.version}";
 
   private final JFrame mainFrame;
   private final List<AbstractLangTrainerModule> modules;
@@ -179,31 +189,56 @@ public final class LangTrainerApplication {
   }
 
   private void showHowToUseDialog() {
-    final String message = """
-        <html>
-        <body style='width:620px;font-family:sans-serif;'>
-        <h2>How to use LangTrainer</h2>
-        <ol>
-          <li><b>Choose a module</b> on the main screen (Dialog, Fly game, Crossword, Editor).</li>
-          <li><b>Open built-in content</b> by selecting a list item, or load your own JSON file where supported.</li>
-          <li><b>Start a session</b> with Enter, Space, or mouse click.</li>
-          <li><b>Type answers</b> using your physical keyboard or the virtual keyboard button in module toolbar.</li>
-          <li><b>Finish or return</b> with module controls, then use <b>X</b> in the top-right to come back.</li>
-        </ol>
-        <p><b>Tips</b></p>
-        <ul>
-          <li>Use the <b>Editor</b> module to create or adjust your own training JSON packs.</li>
-          <li>In game modules, status lines and highlights explain progress and mistakes.</li>
-          <li>You can hide/show module top toolbar when module supports it.</li>
-        </ul>
-        </body>
-        </html>
-        """;
+    final String message = this.loadHelpDialogHtml();
+    final JEditorPane htmlPane = new JEditorPane("text/html", message);
+    htmlPane.setEditable(false);
+    htmlPane.setOpaque(false);
+    htmlPane.setBackground(new Color(0, 0, 0, 0));
+    htmlPane.setCaretPosition(0);
+    htmlPane.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+    htmlPane.addHyperlinkListener(this::handleHelpHyperlink);
     JOptionPane.showMessageDialog(
         this.mainFrame,
-        message,
+        htmlPane,
         "LangTrainer - Quick Help",
         JOptionPane.INFORMATION_MESSAGE);
+  }
+
+  private String loadHelpDialogHtml() {
+    try (InputStream input = LangTrainerApplication.class.getResourceAsStream(
+        HELP_DIALOG_HTML_RESOURCE)) {
+      if (input == null) {
+        throw new IllegalStateException(
+            "Help HTML resource not found: " + HELP_DIALOG_HTML_RESOURCE);
+      }
+      return new String(input.readAllBytes(), StandardCharsets.UTF_8)
+          .replace(HELP_VERSION_PLACEHOLDER, this.resolveAppVersion());
+    } catch (final IOException ex) {
+      throw new IllegalStateException("Can't read help HTML resource: " + HELP_DIALOG_HTML_RESOURCE,
+          ex);
+    }
+  }
+
+  private void handleHelpHyperlink(final HyperlinkEvent event) {
+    if (event.getEventType() != HyperlinkEvent.EventType.ACTIVATED || event.getURL() == null) {
+      return;
+    }
+    try {
+      this.openInSystemBrowser(event.getURL().toURI());
+    } catch (final URISyntaxException ex) {
+      throw new IllegalStateException("Invalid help hyperlink URL: " + event.getURL(), ex);
+    }
+  }
+
+  private void openInSystemBrowser(final URI uri) {
+    if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+      throw new IllegalStateException("Desktop browser open action is not supported");
+    }
+    try {
+      Desktop.getDesktop().browse(uri);
+    } catch (final IOException ex) {
+      throw new IllegalStateException("Can't open help link in browser: " + uri, ex);
+    }
   }
 
   private void showVirtualKeyboard() {
