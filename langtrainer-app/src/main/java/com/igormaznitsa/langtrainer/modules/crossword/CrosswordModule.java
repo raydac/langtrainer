@@ -13,6 +13,7 @@ import com.igormaznitsa.langtrainer.engine.LangResourceJson;
 import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
 import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
@@ -64,6 +65,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private static final Color EMPTY_CELL_BG = new Color(225, 225, 225);
   private static final Color FILLED_CELL_BG = Color.WHITE;
   private static final Color SELECTED_CELL_BG = new Color(187, 222, 251);
+  private static final Color SELECTED_AIM_COLOR = new Color(198, 40, 40);
   private static final Color START_CELL_BG = new Color(250, 235, 250);
   private static final Color ALL_CORRECT_BG = new Color(200, 240, 200);
   private static final Color WRONG_WORD_BG = new Color(255, 215, 215);
@@ -284,9 +286,53 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
         }
       }
       this.paintGridEdges(g2, edges, viewport);
+      this.paintSelectedCellAim(g2, viewport);
     } finally {
       g2.dispose();
     }
+  }
+
+  private void paintSelectedCellAim(final Graphics2D g2, final PaintViewport viewport) {
+    if (this.gameFinished || this.revealMode ||
+        !this.isFillable(this.selectedRow, this.selectedCol)) {
+      return;
+    }
+    final CellRect cell = this.resolveCellRect(this.selectedRow, this.selectedCol, viewport);
+    final int centerX = cell.x() + cell.width() / 2;
+    final int centerY = cell.y() + cell.height() / 2;
+    final int radius = Math.max(10, (int) Math.round(cell.width() * 0.74d));
+    final int tickInset = Math.max(1, (int) Math.round(cell.width() * 0.1d));
+    final int tickLength = Math.max(6, (int) Math.round(cell.width() * 0.38d));
+    final int strokeWidth = Math.max(2, cell.width() / 14);
+    final java.awt.Stroke oldStroke = g2.getStroke();
+    final int diagonalInner = (int) Math.round((radius + tickInset) / Math.sqrt(2.0d));
+    final int diagonalOuter = (int) Math.round((radius + tickInset + tickLength) / Math.sqrt(2.0d));
+
+    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+    g2.setStroke(new BasicStroke(strokeWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+    g2.setColor(SELECTED_AIM_COLOR);
+    g2.drawLine(
+        centerX - diagonalInner,
+        centerY - diagonalInner,
+        centerX - diagonalOuter,
+        centerY - diagonalOuter);
+    g2.drawLine(
+        centerX + diagonalInner,
+        centerY - diagonalInner,
+        centerX + diagonalOuter,
+        centerY - diagonalOuter);
+    g2.drawLine(
+        centerX - diagonalInner,
+        centerY + diagonalInner,
+        centerX - diagonalOuter,
+        centerY + diagonalOuter);
+    g2.drawLine(
+        centerX + diagonalInner,
+        centerY + diagonalInner,
+        centerX + diagonalOuter,
+        centerY + diagonalOuter);
+    g2.drawOval(centerX - radius, centerY - radius, radius * 2, radius * 2);
+    g2.setStroke(oldStroke);
   }
 
   private Font resolveCellFontForViewport(final PaintViewport viewport) {
@@ -416,7 +462,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     final int drawH = Math.max(1, (int) (this.boardPanel.getHeight() * CROSSWORD_FILL_RATIO));
     final int cellByWidth = Math.max(1, drawW / usedCols);
     final int cellByHeight = Math.max(1, drawH / usedRows);
-    final int cellSize = Math.max(1, Math.min(cellByWidth, cellByHeight));
+    final int cellSize = Math.min(cellByWidth, cellByHeight);
     final int actualW = usedCols * cellSize;
     final int actualH = usedRows * cellSize;
     final int offsetX = (this.boardPanel.getWidth() - actualW) / 2;
@@ -578,7 +624,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
       if (this.isWordCorrect(placement)) {
         continue;
       }
-      this.collectWordCells(placement).forEach(this.wrongCells::add);
+      this.wrongCells.addAll(this.collectWordCells(placement));
     }
     this.gameFinished = this.wrongCells.isEmpty();
     this.revealMode = false;
@@ -645,14 +691,14 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     this.resetBoardState();
     this.placements = generated;
     this.placeWordsOnBoard(generated);
-    this.selectFirstCell();
+    this.selectStartOfLongestWord();
     this.preferredHorizontalDirection = true;
     this.refreshTranslationLabel();
     this.modeLabel.setText("Use arrows to move and type letters to fill selected cell");
     this.showCard(CARD_WORK);
     this.repaintBoard();
     this.syncEndButtonEnabled();
-    SwingUtilities.invokeLater(() -> this.boardPanel.requestFocusInWindow());
+    SwingUtilities.invokeLater(this.boardPanel::requestFocusInWindow);
   }
 
   private void resetBoardState() {
@@ -685,10 +731,16 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     this.startCells.add(new Point(placement.row(), placement.col()));
   }
 
-  private void selectFirstCell() {
-    final Point first = this.fillableCells.stream().findFirst().orElse(new Point(0, 0));
-    this.selectedRow = first.x;
-    this.selectedCol = first.y;
+  private void selectStartOfLongestWord() {
+    final Point selected = this.placements.stream()
+        .max(
+            Comparator.comparingInt((WordPlacement placement) -> placement.word().length())
+                .thenComparingInt(WordPlacement::row)
+                .thenComparingInt(WordPlacement::col))
+        .map(placement -> new Point(placement.row(), placement.col()))
+        .orElseGet(() -> this.fillableCells.stream().findFirst().orElse(new Point(0, 0)));
+    this.selectedRow = selected.x;
+    this.selectedCol = selected.y;
   }
 
   private List<WordPair> extractSingleWordPairs(final DialogDefinition definition) {
@@ -938,17 +990,12 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
       return "End game: green correct, red incorrect, yellow missing.";
     }
     if (this.gameFinished) {
-      return "Completed! Press End game or close module.";
+      return "Completed! You can close the module!";
     }
     if (this.allCellsFilled) {
       return "There are errors. Wrong words are highlighted red.";
     }
     return "Use arrows to move and type letters to fill selected cell";
-  }
-
-  private boolean hasFillableNeighbor(final int row, final int col) {
-    return row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE &&
-        this.isFillable(row, col);
   }
 
   private boolean isFillable(final int row, final int col) {
