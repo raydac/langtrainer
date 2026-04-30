@@ -9,9 +9,11 @@ import com.igormaznitsa.langtrainer.engine.DialogDefinition;
 import com.igormaznitsa.langtrainer.engine.DialogLine;
 import com.igormaznitsa.langtrainer.engine.DialogListEntry;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
+import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
 import com.igormaznitsa.langtrainer.engine.LangResourceJson;
 import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
+import com.igormaznitsa.langtrainer.modules.dialog.InputEquivalenceSupport;
 import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
@@ -36,6 +38,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -97,6 +100,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private int selectedCol;
   private boolean preferredHorizontalDirection = true;
   private WordPlacement lockedTypingWord;
+  private List<InputEquivalenceRow> activeInputEquivalenceRules = List.of();
   public CrosswordModule() {
     ClasspathLangResourceIndex.loadShared(
             CrosswordModule.class, this, "Can't load crossword resources")
@@ -509,7 +513,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     }
     final int col = viewport.minCol() + relativeX / viewport.cellSize();
     final int row = viewport.minRow() + relativeY / viewport.cellSize();
-    if (!this.insideBoard(row, col) || !this.isFillable(row, col)) {
+    if (this.notInsideBoard(row, col) || !this.isFillable(row, col)) {
       return;
     }
     this.selectedRow = row;
@@ -574,10 +578,22 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
 
   private void applyChar(final char ch) {
     this.ensureLockedTypingWord();
-    this.userInput[this.selectedRow][this.selectedCol] = ch;
+    this.userInput[this.selectedRow][this.selectedCol] = this.resolveCrosswordInputChar(ch);
     this.moveCursorToNextCellInWord();
     this.checkBoardState();
     this.repaintBoard();
+  }
+
+  private char resolveCrosswordInputChar(final char typedChar) {
+    final char expectedChar = this.solution[this.selectedRow][this.selectedCol];
+    final Optional<String> mapped = InputEquivalenceSupport.matchInputEquivalence(
+        String.valueOf(typedChar),
+        String.valueOf(expectedChar),
+        this.activeInputEquivalenceRules);
+    if (mapped.isEmpty() || mapped.get().isEmpty()) {
+      return typedChar;
+    }
+    return Character.toUpperCase(mapped.get().charAt(0));
   }
 
   private void ensureLockedTypingWord() {
@@ -670,6 +686,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   }
 
   private void startCrossword(final DialogDefinition definition) {
+    this.activeInputEquivalenceRules = definition.inputEqu();
     final List<WordPair> words = this.extractSingleWordPairs(definition);
     if (words.size() < MIN_WORDS_IN_CROSSWORD) {
       JOptionPane.showMessageDialog(
@@ -935,7 +952,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     for (int i = 0; i < word.length(); i++) {
       final int row = placement.row() + (placement.horizontal() ? 0 : i);
       final int col = placement.col() + (placement.horizontal() ? i : 0);
-      if (!this.insideBoard(row, col)) {
+      if (this.notInsideBoard(row, col)) {
         return false;
       }
       final char existing = board[row][col];
@@ -964,11 +981,11 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   }
 
   private boolean isEmptyOrOutside(final int row, final int col, final char[][] board) {
-    return !this.insideBoard(row, col) || board[row][col] == 0;
+    return this.notInsideBoard(row, col) || board[row][col] == 0;
   }
 
-  private boolean insideBoard(final int row, final int col) {
-    return row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE;
+  private boolean notInsideBoard(final int row, final int col) {
+    return row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE;
   }
 
   private void applyPlacement(final WordPlacement placement, final char[][] board) {
