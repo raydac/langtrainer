@@ -19,6 +19,14 @@ public enum KeyboardLanguage {
           "фывапролдж",
           "ячсмитьбю",
           " ,.-()")),
+  UKR(
+      "УКРАЇНСЬКА",
+      List.of(
+          "1234567890",
+          "йцукенгшщзхї",
+          "фівапролджєґ",
+          "ячсмитьбю",
+          " ,.-()")),
   EST(
       "EESTI",
       List.of(
@@ -120,7 +128,7 @@ public enum KeyboardLanguage {
    * Languages for modules that show the full on-screen virtual keyboard (ENG / RUS / EST rows).
    */
   public static final List<KeyboardLanguage> VIRTUAL_BOARD_ALL = List.of(
-      ENG, SPA, GER, EST, FIN, LIT, LAT, RUS, CZE, ESP, SWE, NOR, DAN, DUT);
+      ENG, SPA, GER, EST, FIN, LIT, LAT, RUS, UKR, CZE, ESP, SWE, NOR, DAN, DUT);
 
   private final String abbreviation;
   private final List<String> rows;
@@ -145,9 +153,4 @@ public enum KeyboardLanguage {
     return this.rows;
   }
 
-  public KeyboardLanguage nextIn(final List<KeyboardLanguage> enabledLanguages) {
-    final int index = enabledLanguages.indexOf(this);
-    final int safeIndex = Math.max(index, 0);
-    return enabledLanguages.get((safeIndex + 1) % enabledLanguages.size());
-  }
 }

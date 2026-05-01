@@ -578,7 +578,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     final JButton prefillEn =
         new JButton("Prefill for language");
     prefillEn.setToolTipText(
-        "Replace rules with common US-keyboard → target-letter mappings (Estonian, German, Czech, Esperanto).");
+        "Replace rules with common US-keyboard -> target-letter mappings for the selected language.");
     prefillEn.addActionListener(e -> this.prefillEquivFromEnglishPreset());
     p.add(add);
     p.add(remove);

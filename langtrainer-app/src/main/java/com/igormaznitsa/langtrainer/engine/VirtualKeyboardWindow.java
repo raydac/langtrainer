@@ -8,6 +8,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.Point;
@@ -42,6 +43,7 @@ public final class VirtualKeyboardWindow {
   private static final int KEY_HORIZONTAL_PADDING = 12;
   private static final int KEY_LABEL_MIN_WIDTH = 72;
   private static final int SPACE_KEY_MIN_WIDTH = 180;
+  private static final int LANGUAGE_COMBO_EXTRA_WIDTH = 48;
   private static KeyboardLanguage lastSelectedLanguage = KeyboardLanguage.ENG;
   private static Point lastWindowLocation;
 
@@ -298,10 +300,19 @@ public final class VirtualKeyboardWindow {
   }
 
   private void applyLanguageComboBoxSize() {
+    final FontMetrics fontMetrics =
+        this.languageComboBox.getFontMetrics(this.languageComboBox.getFont());
+    final int longestLabelWidth = this.languages.stream()
+        .map(KeyboardLanguage::getAbbreviation)
+        .mapToInt(fontMetrics::stringWidth)
+        .max()
+        .orElse(0);
     final Dimension preferredSize = this.languageComboBox.getPreferredSize();
-    this.languageComboBox.setMinimumSize(preferredSize);
-    this.languageComboBox.setPreferredSize(preferredSize);
-    this.languageComboBox.setMaximumSize(preferredSize);
+    final int width = Math.max(preferredSize.width, longestLabelWidth + LANGUAGE_COMBO_EXTRA_WIDTH);
+    final Dimension fixedSize = new Dimension(width, preferredSize.height);
+    this.languageComboBox.setMinimumSize(fixedSize);
+    this.languageComboBox.setPreferredSize(fixedSize);
+    this.languageComboBox.setMaximumSize(fixedSize);
   }
 
   private void rememberCurrentWindowLocation() {

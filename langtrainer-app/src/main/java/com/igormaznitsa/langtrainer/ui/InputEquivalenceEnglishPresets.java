@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * Ready-made {@link InputEquivalenceRow} lists for learners who type on a US English keyboard while
  * the answer side uses Estonian, German, Czech, Esperanto, Swedish, Norwegian, Danish, Dutch,
- * Finnish, Lithuanian, or Latvian letters. Key tokens are what may be typed;
+ * Finnish, Lithuanian, Latvian, or Ukrainian letters. Key tokens are what may be typed;
  * value tokens are accepted substitutions for the expected character (see {@code InputEquivalenceSupport}).
  */
 public final class InputEquivalenceEnglishPresets {
@@ -85,6 +85,10 @@ public final class InputEquivalenceEnglishPresets {
           row("s,S", "š,Š"),
           row("u,U", "ū,Ū"),
           row("z,Z", "ž,Ž"));
+      case UKRAINIAN -> List.of(
+          row("e,E", "є,Є"),
+          row("g,G", "ґ,Ґ"),
+          row("i,I", "і,І,ї,Ї"));
     };
   }
 
@@ -114,7 +118,8 @@ public final class InputEquivalenceEnglishPresets {
     DUTCH("Dutch"),
     FINNISH("Finnish"),
     LITHUANIAN("Lithuanian"),
-    LATVIAN("Latvian");
+    LATVIAN("Latvian"),
+    UKRAINIAN("Ukrainian");
 
     private final String label;
 
