@@ -9,8 +9,10 @@ import java.awt.image.BaseMultiResolutionImage;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.net.URL;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.imageio.ImageIO;
 import javax.swing.Icon;
@@ -46,6 +48,15 @@ public final class ImageResourceLoader {
 
   public static void applyHighQualityDrawingHints(final Graphics2D graphics) {
     graphics.addRenderingHints(HIGH_QUALITY_DRAWING_HINTS);
+  }
+
+  public static BufferedImage loadImage(final String resourcePath) {
+    try (final InputStream stream = Objects.requireNonNull(
+        ImageResourceLoader.class.getResourceAsStream(resourcePath))) {
+      return ImageIO.read(stream);
+    } catch (Exception ex) {
+      throw new RuntimeException("Can't load image " + resourcePath, ex);
+    }
   }
 
   public static Icon loadIcon(final String resourcePath, final int width, final int height) {

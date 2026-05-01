@@ -4,7 +4,7 @@ import java.util.List;
 
 public enum KeyboardLanguage {
   ENG(
-      "ENG",
+      "ENGLISH",
       List.of(
           "1234567890",
           "qwertyuiop",
@@ -12,7 +12,7 @@ public enum KeyboardLanguage {
           "zxcvbnm",
           " ,.-()")),
   RUS(
-      "RUS",
+      "РУССКИЙ",
       List.of(
           "1234567890",
           "йцукенгшщзё",
@@ -20,7 +20,7 @@ public enum KeyboardLanguage {
           "ячсмитьбю",
           " ,.-()")),
   EST(
-      "EST",
+      "EESTI",
       List.of(
           "1234567890",
           "qwertyuiopü",
@@ -28,7 +28,7 @@ public enum KeyboardLanguage {
           "zxcvbnmšžõ",
           " ,.-()")),
   GER(
-      "GER",
+      "DEUTSCH",
       List.of(
           "1234567890",
           "qwertzuiopü",
@@ -36,7 +36,7 @@ public enum KeyboardLanguage {
           "yxcvbnmß",
           " ,.-()")),
   CZE(
-      "CZE",
+      "ČEŠTINA",
       List.of(
           "1234567890",
           "qwertzuiopúů",
@@ -44,7 +44,7 @@ public enum KeyboardLanguage {
           "yxcvbnmčďěňřšťžýó",
           " ,.-()")),
   ESP(
-      "ESP",
+      "ESPERANTO",
       List.of(
           "1234567890",
           "qwertyuiopĝĥ",
@@ -52,7 +52,7 @@ public enum KeyboardLanguage {
           "zxcvbnmĉŭ",
           " ,.-()")),
   SWE(
-      "SWE",
+      "SVENSKA",
       List.of(
           "1234567890",
           "qwertyuiopå",
@@ -60,7 +60,7 @@ public enum KeyboardLanguage {
           "zxcvbnm",
           " ,.-()")),
   NOR(
-      "NOR",
+      "NORSK",
       List.of(
           "1234567890",
           "qwertyuiopå",
@@ -68,7 +68,7 @@ public enum KeyboardLanguage {
           "zxcvbnm",
           " ,.-()")),
   DAN(
-      "DAN",
+      "DANSK",
       List.of(
           "1234567890",
           "qwertyuiopå",
@@ -76,15 +76,15 @@ public enum KeyboardLanguage {
           "zxcvbnm",
           " ,.-()")),
   DUT(
-      "DUT",
+      "NEDERLANDS",
       List.of(
           "1234567890",
-          "qwertyuiop",
-          "asdfghjkl",
-          "zxcvbnmàáâäèéêëìíîïòóôöùúûüÿ",
+          "qwertyuiopùúûüÿ",
+          "asdfghjklêëìíîï",
+          "zxcvbnmàáâäèéòóôö",
           " ,.-()")),
   FIN(
-      "FIN",
+      "SUOMEN",
       List.of(
           "1234567890",
           "qwertyuiopå",
@@ -92,7 +92,7 @@ public enum KeyboardLanguage {
           "zxcvbnm",
           " ,.-()")),
   LIT(
-      "LIT",
+      "LIETUVIŲ",
       List.of(
           "1234567890",
           "qwertyuiopąčęė",
@@ -100,7 +100,7 @@ public enum KeyboardLanguage {
           "zxcvbnmž",
           " ,.-()")),
   LAT(
-      "LAT",
+      "LATVIEŠU",
       List.of(
           "1234567890",
           "qwertyuiopāčē",
@@ -108,7 +108,7 @@ public enum KeyboardLanguage {
           "zxcvbnmņšūž",
           " ,.-()")),
   SPA(
-      "SPA",
+      "ESPAÑOL",
       List.of(
           "1234567890",
           "qwertyuiop",
@@ -120,7 +120,7 @@ public enum KeyboardLanguage {
    * Languages for modules that show the full on-screen virtual keyboard (ENG / RUS / EST rows).
    */
   public static final List<KeyboardLanguage> VIRTUAL_BOARD_ALL = List.of(
-      ENG, RUS, EST, GER, CZE, ESP, SWE, NOR, DAN, DUT, FIN, LIT, LAT, SPA);
+      ENG, SPA, GER, EST, FIN, LIT, LAT, RUS, CZE, ESP, SWE, NOR, DAN, DUT);
 
   private final String abbreviation;
   private final List<String> rows;

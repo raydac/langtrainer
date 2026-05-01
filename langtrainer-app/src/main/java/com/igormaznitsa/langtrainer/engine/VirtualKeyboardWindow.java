@@ -1,26 +1,36 @@
 package com.igormaznitsa.langtrainer.engine;
 
+import static java.util.Comparator.comparingInt;
+
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
 import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.Point;
 import java.awt.Window;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
+import javax.swing.JToggleButton;
 
 public final class VirtualKeyboardWindow {
+
+  private static final Color BACKGROUND = Color.LIGHT_GRAY;
 
   private static final Color DIGIT_KEY_COLOR = new Color(141, 244, 255);
   private static final Color LETTER_KEY_COLOR = new Color(191, 248, 191);
@@ -39,11 +49,10 @@ public final class VirtualKeyboardWindow {
   private final Consumer<Character> charConsumer;
   private final Runnable onHide;
   private final List<KeyboardLanguage> languages;
-  private final JButton languageButton;
-  private final JButton shiftButton;
+  private final JComboBox<KeyboardLanguage> languageComboBox;
+  private final JToggleButton shiftButton;
   private final JPanel keysPanel;
   private KeyboardLanguage currentLanguage;
-  private boolean shiftEnabled;
 
   public VirtualKeyboardWindow(
       final Window owner,
@@ -51,32 +60,37 @@ public final class VirtualKeyboardWindow {
       final Consumer<Character> charConsumer,
       final Runnable onHide) {
     this.dialog = new JDialog(owner, "Virtual Keyboard");
+    this.dialog.setLayout(new BorderLayout(0, 0));
     this.charConsumer = charConsumer;
     this.onHide = onHide;
+
     this.languages = KeyboardLanguage.normalize(supportedLanguages);
     this.currentLanguage = this.resolveInitialLanguage(this.languages);
-    this.languageButton = new JButton();
-    this.shiftButton = new JButton();
+    this.languageComboBox = new JComboBox<>(this.languages.toArray(KeyboardLanguage[]::new));
+    this.languageComboBox.setToolTipText("Select a language");
+    this.languageComboBox.setPrototypeDisplayValue(this.findLanguageWithLongestAbbreviation());
+
+    this.shiftButton = new JToggleButton(
+        new ImageIcon(ImageResourceLoader.loadImage("/images/capitalization.png")));
+    this.shiftButton.setToolTipText("Shift");
+
     this.keysPanel = new JPanel();
-    this.shiftEnabled = false;
+    this.keysPanel.setBackground(BACKGROUND);
     this.initDialog();
   }
 
   public void show() {
-    this.refreshLanguageButton();
-    this.refreshShiftButton();
-    this.rebuildKeys();
-    this.dialog.pack();
+    this.refreshLanguageSelection();
     this.applyLastWindowLocation();
+
+    this.keysPanel.revalidate();
+    this.keysPanel.doLayout();
+    this.doRebuildKeys();
     this.dialog.setVisible(true);
   }
 
   public void hide() {
     this.dialog.setVisible(false);
-  }
-
-  public boolean isVisible() {
-    return this.dialog.isVisible();
   }
 
   public void dispose() {
@@ -88,57 +102,68 @@ public final class VirtualKeyboardWindow {
     this.dialog.setResizable(false);
     this.dialog.setAlwaysOnTop(false);
     this.dialog.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
-    this.dialog.setLayout(new BorderLayout(8, 8));
     this.dialog.setLocationByPlatform(true);
 
-    final JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-    this.languageButton.addActionListener(event -> this.switchLanguage());
-    this.shiftButton.addActionListener(event -> this.toggleShift());
-    final JButton hideButton = new JButton("Hide");
+    final JPanel topPanel = new JPanel();
+    topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.X_AXIS));
+    topPanel.add(Box.createHorizontalGlue());
+    topPanel.setBackground(BACKGROUND);
+
+    topPanel.setBorder(BorderFactory.createEmptyBorder(4, 0, 8, 0));
+
+    final DefaultListCellRenderer languageRenderer = new DefaultListCellRenderer();
+    this.languageComboBox.setRenderer((list, value, index, isSelected, cellHasFocus) ->
+        languageRenderer.getListCellRendererComponent(
+            list,
+            value == null ? "" : value.getAbbreviation(),
+            index,
+            isSelected,
+            cellHasFocus));
+    this.applyLanguageComboBoxSize();
+    this.languageComboBox.addActionListener(event -> this.changeLanguage());
+    this.shiftButton.addActionListener(event -> this.doRebuildKeys());
+    final JButton hideButton =
+        new JButton(new ImageIcon(ImageResourceLoader.loadImage("/images/cross.png")));
+    hideButton.setToolTipText("Hide keyboard");
     hideButton.addActionListener(event -> {
       this.hide();
       this.onHide.run();
     });
-    topPanel.add(this.languageButton);
+
+    topPanel.add(this.languageComboBox);
     topPanel.add(this.shiftButton);
     topPanel.add(hideButton);
-    this.dialog.add(topPanel, BorderLayout.NORTH);
 
-    this.keysPanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-    final JScrollPane keysScrollPane = new JScrollPane(this.keysPanel);
-    keysScrollPane.setBorder(BorderFactory.createEmptyBorder());
-    keysScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-    keysScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-    this.dialog.add(keysScrollPane, BorderLayout.CENTER);
-    this.dialog.addComponentListener(new java.awt.event.ComponentAdapter() {
+    this.dialog.add(topPanel, BorderLayout.NORTH);
+    this.dialog.add(this.keysPanel, BorderLayout.CENTER);
+    this.dialog.addComponentListener(new ComponentAdapter() {
       @Override
-      public void componentHidden(final java.awt.event.ComponentEvent event) {
+      public void componentHidden(final ComponentEvent event) {
         VirtualKeyboardWindow.this.rememberCurrentWindowLocation();
         VirtualKeyboardWindow.this.onHide.run();
       }
 
       @Override
-      public void componentMoved(final java.awt.event.ComponentEvent event) {
+      public void componentMoved(final ComponentEvent event) {
         VirtualKeyboardWindow.this.rememberCurrentWindowLocation();
       }
     });
   }
 
-  private void switchLanguage() {
-    this.currentLanguage = this.currentLanguage.nextIn(this.languages);
+  private void changeLanguage() {
+    final Object selected = this.languageComboBox.getSelectedItem();
+    if (!(selected instanceof KeyboardLanguage selectedLanguage) ||
+        this.currentLanguage == selectedLanguage) {
+      return;
+    }
+    this.currentLanguage = selectedLanguage;
     lastSelectedLanguage = this.currentLanguage;
-    this.refreshLanguageButton();
     this.rebuildKeys();
     this.dialog.pack();
   }
 
-  private void refreshLanguageButton() {
-    this.languageButton.setText(this.currentLanguage.getAbbreviation());
-  }
-
-  private void refreshShiftButton() {
-    final String state = this.shiftEnabled ? "ON" : "OFF";
-    this.shiftButton.setText("SHIFT " + state);
+  private void refreshLanguageSelection() {
+    this.languageComboBox.setSelectedItem(this.currentLanguage);
   }
 
   private void rebuildKeys() {
@@ -199,9 +224,7 @@ public final class VirtualKeyboardWindow {
     return symbol == ' ' ? "Space" : Character.toString(symbol);
   }
 
-  private void toggleShift() {
-    this.shiftEnabled = !this.shiftEnabled;
-    this.refreshShiftButton();
+  private void doRebuildKeys() {
     this.rebuildKeys();
     this.dialog.pack();
   }
@@ -210,7 +233,8 @@ public final class VirtualKeyboardWindow {
     if (!Character.isLetter(symbol)) {
       return symbol;
     }
-    return this.shiftEnabled ? Character.toUpperCase(symbol) : Character.toLowerCase(symbol);
+    return this.shiftButton.isSelected() ? Character.toUpperCase(symbol) :
+        Character.toLowerCase(symbol);
   }
 
   private void styleKeyButton(final JButton button, final char symbol) {
@@ -265,6 +289,19 @@ public final class VirtualKeyboardWindow {
     final KeyboardLanguage fallback = availableLanguages.get(0);
     lastSelectedLanguage = fallback;
     return fallback;
+  }
+
+  private KeyboardLanguage findLanguageWithLongestAbbreviation() {
+    return this.languages.stream()
+        .max(comparingInt(left -> left.getAbbreviation().length()))
+        .orElse(this.languages.get(0));
+  }
+
+  private void applyLanguageComboBoxSize() {
+    final Dimension preferredSize = this.languageComboBox.getPreferredSize();
+    this.languageComboBox.setMinimumSize(preferredSize);
+    this.languageComboBox.setPreferredSize(preferredSize);
+    this.languageComboBox.setMaximumSize(preferredSize);
   }
 
   private void rememberCurrentWindowLocation() {
