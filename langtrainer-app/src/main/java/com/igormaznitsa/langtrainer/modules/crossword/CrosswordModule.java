@@ -19,6 +19,7 @@ import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
@@ -33,6 +34,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -40,6 +42,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.swing.BorderFactory;
@@ -54,6 +58,8 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+import javax.swing.Timer;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 public final class CrosswordModule extends AbstractLangTrainerModule {
@@ -62,6 +68,12 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private static final String CARD_WORK = "work";
   private static final int BOARD_SIZE = 25;
   private static final int MAX_START_WORDS_TO_TRY = 10;
+  private static final int SEARCH_BEAM_WIDTH = 12;
+  private static final int SEARCH_BRANCH_LIMIT = 18;
+  private static final int SEARCH_CANDIDATES_PER_WORD = 2;
+  private static final long SEARCH_TIME_BUDGET_NS = 5_000_000_000L;
+  private static final double SEARCH_TIME_BUDGET_SECONDS = SEARCH_TIME_BUDGET_NS / 1_000_000_000.0d;
+  private static final int SEARCH_PROGRESS_UPDATE_PERIOD_MS = 150;
   private static final int MIN_WORDS_IN_CROSSWORD = 3;
   private static final double CROSSWORD_FILL_RATIO = 0.92d;
   private static final int TRANSLATION_TO_BOARD_GAP_PX = 6;
@@ -100,6 +112,10 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private int selectedCol;
   private boolean preferredHorizontalDirection = true;
   private WordPlacement lockedTypingWord;
+  private boolean generationInProgress;
+  private long generationStartedAtNs;
+  private Timer generationProgressTimer;
+  private SwingWorker<List<WordPlacement>, Void> generationWorker;
   private List<InputEquivalenceRow> activeInputEquivalenceRules = List.of();
   public CrosswordModule() {
     ClasspathLangResourceIndex.loadShared(
@@ -154,12 +170,13 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
 
   @Override
   public void onClose() {
+    this.cancelGenerationIfRunning();
     this.finishGameAndReveal();
   }
 
   @Override
   public void onCharClick(final char symbol) {
-    if (this.gameFinished || this.revealMode ||
+    if (this.generationInProgress || this.gameFinished || this.revealMode ||
         !this.isFillable(this.selectedRow, this.selectedCol)) {
       return;
     }
@@ -486,7 +503,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   }
 
   private void processKeyTyped(final KeyEvent event) {
-    if (this.gameFinished || this.revealMode ||
+    if (this.generationInProgress || this.gameFinished || this.revealMode ||
         !this.isFillable(this.selectedRow, this.selectedCol)) {
       return;
     }
@@ -499,7 +516,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   }
 
   private void processBoardMouseClick(final int x, final int y) {
-    if (this.gameFinished || this.revealMode) {
+    if (this.generationInProgress || this.gameFinished || this.revealMode) {
       return;
     }
     final PaintViewport viewport = this.resolvePaintViewport();
@@ -527,7 +544,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     if (this.fillableCells.isEmpty()) {
       return;
     }
-    if (this.gameFinished || this.revealMode) {
+    if (this.generationInProgress || this.gameFinished || this.revealMode) {
       return;
     }
     if (event.getKeyCode() == KeyEvent.VK_BACK_SPACE || event.getKeyCode() == KeyEvent.VK_DELETE) {
@@ -686,6 +703,9 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   }
 
   private void startCrossword(final DialogDefinition definition) {
+    if (this.generationInProgress) {
+      return;
+    }
     this.activeInputEquivalenceRules = definition.inputEqu();
     final List<WordPair> words = this.extractSingleWordPairs(definition);
     if (words.size() < MIN_WORDS_IN_CROSSWORD) {
@@ -696,15 +716,71 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
           JOptionPane.WARNING_MESSAGE);
       return;
     }
-    final List<WordPlacement> generated = this.buildCrossword(words);
-    if (generated.size() < MIN_WORDS_IN_CROSSWORD) {
-      JOptionPane.showMessageDialog(
-          this.rootPanel,
-          "Can't build crossword from selected words.",
-          "Crossword",
-          JOptionPane.WARNING_MESSAGE);
-      return;
-    }
+    this.startCrosswordGeneration(words);
+  }
+
+  private void startCrosswordGeneration(final List<WordPair> words) {
+    this.generationInProgress = true;
+    this.generationStartedAtNs = System.nanoTime();
+    this.resetBoardState();
+    this.placements = List.of();
+    this.translationLabel.setText("Searching best crossword variant...");
+    this.modeLabel.setText(
+        String.format(Locale.ROOT, "Generating crossword... %.1f / %.1f s", 0.0d,
+            SEARCH_TIME_BUDGET_SECONDS));
+    this.rootPanel.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+    this.showCard(CARD_WORK);
+    this.boardPanel.repaint();
+    this.syncEndButtonEnabled();
+    this.startGenerationProgressTimer();
+
+    this.generationWorker = new SwingWorker<>() {
+      @Override
+      protected List<WordPlacement> doInBackground() {
+        return CrosswordModule.this.buildCrossword(words);
+      }
+
+      @Override
+      protected void done() {
+        CrosswordModule.this.finishGenerationProgress();
+        try {
+          if (this.isCancelled()) {
+            CrosswordModule.this.showCard(CARD_SELECT);
+            return;
+          }
+          final List<WordPlacement> generated = this.get();
+          if (generated.size() < MIN_WORDS_IN_CROSSWORD) {
+            JOptionPane.showMessageDialog(
+                CrosswordModule.this.rootPanel,
+                "Can't build crossword from selected words.",
+                "Crossword",
+                JOptionPane.WARNING_MESSAGE);
+            CrosswordModule.this.showCard(CARD_SELECT);
+            return;
+          }
+          CrosswordModule.this.applyGeneratedCrossword(generated);
+        } catch (final InterruptedException interruptedException) {
+          Thread.currentThread().interrupt();
+          CrosswordModule.this.showCard(CARD_SELECT);
+        } catch (final CancellationException cancelledException) {
+          CrosswordModule.this.showCard(CARD_SELECT);
+        } catch (final ExecutionException executionException) {
+          final Throwable cause = executionException.getCause() == null
+              ? executionException
+              : executionException.getCause();
+          JOptionPane.showMessageDialog(
+              CrosswordModule.this.rootPanel,
+              cause.getMessage(),
+              "Can't build crossword",
+              JOptionPane.ERROR_MESSAGE);
+          CrosswordModule.this.showCard(CARD_SELECT);
+        }
+      }
+    };
+    this.generationWorker.execute();
+  }
+
+  private void applyGeneratedCrossword(final List<WordPlacement> generated) {
     this.resetBoardState();
     this.placements = generated;
     this.placeWordsOnBoard(generated);
@@ -716,6 +792,42 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     this.repaintBoard();
     this.syncEndButtonEnabled();
     SwingUtilities.invokeLater(this.boardPanel::requestFocusInWindow);
+  }
+
+  private void startGenerationProgressTimer() {
+    final Timer previousTimer = this.generationProgressTimer;
+    if (previousTimer != null) {
+      previousTimer.stop();
+    }
+    final Timer timer = new Timer(SEARCH_PROGRESS_UPDATE_PERIOD_MS, event -> {
+      final double elapsed = (System.nanoTime() - this.generationStartedAtNs) / 1_000_000_000.0d;
+      final double boundedElapsed = Math.min(SEARCH_TIME_BUDGET_SECONDS, elapsed);
+      this.modeLabel.setText(
+          String.format(Locale.ROOT, "Generating crossword... %.1f / %.1f s", boundedElapsed,
+              SEARCH_TIME_BUDGET_SECONDS));
+    });
+    timer.setRepeats(true);
+    timer.start();
+    this.generationProgressTimer = timer;
+  }
+
+  private void finishGenerationProgress() {
+    this.generationInProgress = false;
+    this.rootPanel.setCursor(Cursor.getDefaultCursor());
+    final Timer timer = this.generationProgressTimer;
+    if (timer != null) {
+      timer.stop();
+      this.generationProgressTimer = null;
+    }
+    this.generationWorker = null;
+  }
+
+  private void cancelGenerationIfRunning() {
+    final SwingWorker<List<WordPlacement>, Void> worker = this.generationWorker;
+    if (worker != null) {
+      worker.cancel(true);
+    }
+    this.finishGenerationProgress();
   }
 
   private void resetBoardState() {
@@ -793,20 +905,27 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     if (words.isEmpty()) {
       return List.of();
     }
+    final long startedAt = System.nanoTime();
     final Map<Character, Long> letterFrequency = this.makeLetterFrequency(words);
     final List<WordPair> rankedWords = this.rankWordsForStart(words, letterFrequency);
     final int startsToTry = Math.min(MAX_START_WORDS_TO_TRY, rankedWords.size());
     List<WordPlacement> best = List.of();
     for (int i = 0; i < startsToTry; i++) {
+      if (System.nanoTime() - startedAt >= SEARCH_TIME_BUDGET_NS) {
+        break;
+      }
       final WordPair startWord = rankedWords.get(i);
       final List<WordPlacement> horizontal =
-          this.tryBuildFromStart(words, startWord, true, letterFrequency);
-      if (horizontal.size() > best.size()) {
+          this.tryBuildFromStart(words, startWord, true, letterFrequency, startedAt);
+      if (this.isBetterPlacementSet(horizontal, best)) {
         best = horizontal;
       }
+      if (System.nanoTime() - startedAt >= SEARCH_TIME_BUDGET_NS) {
+        break;
+      }
       final List<WordPlacement> vertical =
-          this.tryBuildFromStart(words, startWord, false, letterFrequency);
-      if (vertical.size() > best.size()) {
+          this.tryBuildFromStart(words, startWord, false, letterFrequency, startedAt);
+      if (this.isBetterPlacementSet(vertical, best)) {
         best = vertical;
       }
       if (best.size() == words.size()) {
@@ -820,71 +939,234 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
       final List<WordPair> allWords,
       final WordPair startWord,
       final boolean horizontal,
-      final Map<Character, Long> letterFrequency) {
+      final Map<Character, Long> letterFrequency,
+      final long startedAt) {
     final char[][] board = new char[BOARD_SIZE][BOARD_SIZE];
     final List<WordPlacement> placed = new ArrayList<>();
+    final Map<Character, Set<AnchorCell>> boardAnchors = new HashMap<>();
     final WordPlacement startPlacement = this.makeCenteredPlacement(startWord, horizontal);
     if (!this.canPlace(startPlacement, board)) {
       return List.of();
     }
     this.applyPlacement(startPlacement, board);
     placed.add(startPlacement);
+    this.addPlacementAnchors(startPlacement, boardAnchors);
 
     final List<WordPair> remaining = new ArrayList<>(allWords);
     remaining.remove(startWord);
-    while (!remaining.isEmpty()) {
-      final PlacementCandidate best =
-          this.findBestNextPlacement(remaining, placed, board, letterFrequency);
-      if (best == null) {
-        break;
-      }
-      this.applyPlacement(best.placement(), board);
-      placed.add(best.placement());
-      remaining.remove(best.word());
-    }
-    return placed;
-  }
+    List<SearchState> beam = List.of(new SearchState(
+        board,
+        placed,
+        remaining,
+        boardAnchors,
+        this.evaluateStateScore(placed, board)));
+    List<WordPlacement> best = placed;
 
-  private PlacementCandidate findBestNextPlacement(
-      final List<WordPair> remaining,
-      final List<WordPlacement> placed,
-      final char[][] board,
-      final Map<Character, Long> letterFrequency) {
-    PlacementCandidate best = null;
-    for (final WordPair word : remaining) {
-      final List<WordPlacement> options = this.findAllPlacements(word, placed, board);
-      for (final WordPlacement option : options) {
-        final int score = this.scorePlacement(option, board, letterFrequency);
-        if (best == null || score > best.score()) {
-          best = new PlacementCandidate(word, option, score);
+    while (!beam.isEmpty() && System.nanoTime() - startedAt < SEARCH_TIME_BUDGET_NS) {
+      final List<SearchState> nextBeam = new ArrayList<>();
+      for (final SearchState state : beam) {
+        if (state.remaining().isEmpty()) {
+          continue;
+        }
+        final List<PlacementCandidate> candidates = this.findPlacementCandidates(
+            state.remaining(),
+            state.board(),
+            letterFrequency,
+            state.boardAnchors(),
+            SEARCH_BRANCH_LIMIT);
+        if (candidates.isEmpty()) {
+          continue;
+        }
+        for (final PlacementCandidate candidate : candidates) {
+          final char[][] nextBoard = this.copyBoard(state.board());
+          final Map<Character, Set<AnchorCell>> nextAnchors =
+              this.copyAnchors(state.boardAnchors());
+          final List<WordPlacement> nextPlaced = new ArrayList<>(state.placed());
+          final List<WordPair> nextRemaining = new ArrayList<>(state.remaining());
+          this.applyPlacement(candidate.placement(), nextBoard);
+          nextPlaced.add(candidate.placement());
+          this.addPlacementAnchors(candidate.placement(), nextAnchors);
+          nextRemaining.remove(candidate.word());
+          final SearchState nextState = new SearchState(
+              nextBoard,
+              nextPlaced,
+              nextRemaining,
+              nextAnchors,
+              this.evaluateStateScore(nextPlaced, nextBoard));
+          nextBeam.add(nextState);
+          if (this.isBetterPlacementSet(nextPlaced, best)) {
+            best = nextPlaced;
+          }
         }
       }
+      if (nextBeam.isEmpty()) {
+        break;
+      }
+      beam = nextBeam.stream()
+          .sorted(Comparator.comparingInt(SearchState::score).reversed())
+          .limit(SEARCH_BEAM_WIDTH)
+          .toList();
     }
     return best;
   }
 
+  private List<PlacementCandidate> findPlacementCandidates(
+      final List<WordPair> remaining,
+      final char[][] board,
+      final Map<Character, Long> letterFrequency,
+      final Map<Character, Set<AnchorCell>> boardAnchors,
+      final int limit) {
+    final List<CandidateChoice> candidates = new ArrayList<>();
+    for (final WordPair word : remaining) {
+      final List<WordPlacement> options = this.findAllPlacements(word, board, boardAnchors);
+      if (options.isEmpty()) {
+        continue;
+      }
+      final int optionCount = options.size();
+      options.stream()
+          .map(option -> new CandidateChoice(
+              new PlacementCandidate(word, option,
+                  this.scorePlacement(option, board, letterFrequency)),
+              optionCount,
+              this.countIntersections(option, board)))
+          .sorted(this::compareCandidateChoices)
+          .limit(SEARCH_CANDIDATES_PER_WORD)
+          .forEach(candidates::add);
+    }
+    return candidates.stream()
+        .sorted(this::compareCandidateChoices)
+        .limit(limit)
+        .map(CandidateChoice::candidate)
+        .toList();
+  }
+
+  private int compareCandidateChoices(final CandidateChoice left, final CandidateChoice right) {
+    final int byOptions = Integer.compare(left.optionCount(), right.optionCount());
+    if (byOptions != 0) {
+      return byOptions;
+    }
+    final int byIntersections = Integer.compare(right.intersections(), left.intersections());
+    if (byIntersections != 0) {
+      return byIntersections;
+    }
+    return Integer.compare(right.candidate().score(), left.candidate().score());
+  }
+
+  private char[][] copyBoard(final char[][] source) {
+    final char[][] copy = new char[BOARD_SIZE][BOARD_SIZE];
+    for (int row = 0; row < BOARD_SIZE; row++) {
+      System.arraycopy(source[row], 0, copy[row], 0, BOARD_SIZE);
+    }
+    return copy;
+  }
+
+  private Map<Character, Set<AnchorCell>> copyAnchors(
+      final Map<Character, Set<AnchorCell>> source) {
+    final Map<Character, Set<AnchorCell>> copy = new HashMap<>();
+    source.forEach((key, value) -> copy.put(key, new HashSet<>(value)));
+    return copy;
+  }
+
+  private int evaluateStateScore(final List<WordPlacement> placed, final char[][] board) {
+    if (placed.isEmpty()) {
+      return Integer.MIN_VALUE;
+    }
+    final Bounds bounds = this.resolveBounds(board);
+    if (bounds == null) {
+      return Integer.MIN_VALUE;
+    }
+    final int area = bounds.height() * bounds.width();
+    final int perimeter = bounds.height() + bounds.width();
+    return placed.size() * 1_000_000 - area * 200 - perimeter * 20;
+  }
+
+  private Bounds resolveBounds(final char[][] board) {
+    int minRow = BOARD_SIZE;
+    int maxRow = -1;
+    int minCol = BOARD_SIZE;
+    int maxCol = -1;
+    for (int row = 0; row < BOARD_SIZE; row++) {
+      for (int col = 0; col < BOARD_SIZE; col++) {
+        if (board[row][col] == 0) {
+          continue;
+        }
+        minRow = Math.min(minRow, row);
+        maxRow = Math.max(maxRow, row);
+        minCol = Math.min(minCol, col);
+        maxCol = Math.max(maxCol, col);
+      }
+    }
+    if (maxRow < 0) {
+      return null;
+    }
+    return new Bounds(minRow, maxRow, minCol, maxCol);
+  }
+
+  private boolean isBetterPlacementSet(
+      final List<WordPlacement> candidate, final List<WordPlacement> currentBest) {
+    if (candidate.size() != currentBest.size()) {
+      return candidate.size() > currentBest.size();
+    }
+    if (candidate.isEmpty()) {
+      return false;
+    }
+    final int candidateArea = this.resolveBoundingArea(candidate);
+    final int bestArea = this.resolveBoundingArea(currentBest);
+    if (candidateArea != bestArea) {
+      return candidateArea < bestArea;
+    }
+    return this.totalWordLength(candidate) > this.totalWordLength(currentBest);
+  }
+
+  private int resolveBoundingArea(final List<WordPlacement> placements) {
+    int minRow = BOARD_SIZE;
+    int maxRow = -1;
+    int minCol = BOARD_SIZE;
+    int maxCol = -1;
+    for (final WordPlacement placement : placements) {
+      final int endRow =
+          placement.row() + (placement.horizontal() ? 0 : placement.word().length() - 1);
+      final int endCol =
+          placement.col() + (placement.horizontal() ? placement.word().length() - 1 : 0);
+      minRow = Math.min(minRow, placement.row());
+      maxRow = Math.max(maxRow, endRow);
+      minCol = Math.min(minCol, placement.col());
+      maxCol = Math.max(maxCol, endCol);
+    }
+    if (maxRow < 0) {
+      return Integer.MAX_VALUE;
+    }
+    return (maxRow - minRow + 1) * (maxCol - minCol + 1);
+  }
+
+  private int totalWordLength(final List<WordPlacement> placements) {
+    return placements.stream().mapToInt(placement -> placement.word().length()).sum();
+  }
+
   private List<WordPlacement> findAllPlacements(
       final WordPair candidate,
-      final List<WordPlacement> alreadyPlaced,
-      final char[][] board) {
+      final char[][] board,
+      final Map<Character, Set<AnchorCell>> boardAnchors) {
     final List<WordPlacement> options = new ArrayList<>();
-    for (final WordPlacement existing : alreadyPlaced) {
-      for (int i = 0; i < existing.word().length(); i++) {
-        final char anchor = existing.word().charAt(i);
-        for (int j = 0; j < candidate.word().length(); j++) {
-          if (candidate.word().charAt(j) != anchor) {
+    final Set<PlacementKey> seen = new HashSet<>();
+    final Map<Character, List<Integer>> candidateLetterIndexes =
+        this.makeLetterIndexes(candidate.word());
+    for (final Map.Entry<Character, List<Integer>> entry : candidateLetterIndexes.entrySet()) {
+      final Set<AnchorCell> anchors = boardAnchors.getOrDefault(entry.getKey(), Set.of());
+      if (anchors.isEmpty()) {
+        continue;
+      }
+      for (final int letterIndex : entry.getValue()) {
+        for (final AnchorCell anchor : anchors) {
+          final boolean horizontal = !anchor.horizontal();
+          final int row = horizontal ? anchor.row() : anchor.row() - letterIndex;
+          final int col = horizontal ? anchor.col() - letterIndex : anchor.col();
+          final PlacementKey placementKey = new PlacementKey(row, col, horizontal);
+          if (!seen.add(placementKey)) {
             continue;
           }
-          final int row =
-              existing.row() + (existing.horizontal() ? 0 : i) - (existing.horizontal() ? j : 0);
-          final int col =
-              existing.col() + (existing.horizontal() ? i : 0) - (existing.horizontal() ? 0 : j);
-          final WordPlacement placement = new WordPlacement(
-              row,
-              col,
-              !existing.horizontal(),
-              candidate.word(),
-              candidate.translation());
+          final WordPlacement placement =
+              new WordPlacement(row, col, horizontal, candidate.word(), candidate.translation());
           if (this.canPlace(placement, board)) {
             options.add(placement);
           }
@@ -892,6 +1174,26 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
       }
     }
     return options;
+  }
+
+  private Map<Character, List<Integer>> makeLetterIndexes(final String word) {
+    final Map<Character, List<Integer>> indexes = new HashMap<>();
+    for (int i = 0; i < word.length(); i++) {
+      final char ch = word.charAt(i);
+      indexes.computeIfAbsent(ch, x -> new ArrayList<>()).add(i);
+    }
+    return indexes;
+  }
+
+  private void addPlacementAnchors(
+      final WordPlacement placement, final Map<Character, Set<AnchorCell>> boardAnchors) {
+    for (int i = 0; i < placement.word().length(); i++) {
+      final int row = placement.row() + (placement.horizontal() ? 0 : i);
+      final int col = placement.col() + (placement.horizontal() ? i : 0);
+      final char ch = placement.word().charAt(i);
+      final AnchorCell anchor = new AnchorCell(row, col, placement.horizontal());
+      boardAnchors.computeIfAbsent(ch, x -> new HashSet<>()).add(anchor);
+    }
   }
 
   private int scorePlacement(
@@ -912,6 +1214,18 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
       letterConnectivity += letterFrequency.getOrDefault(placement.word().charAt(i), 0L).intValue();
     }
     return intersections * 10_000 + letterConnectivity * 10 - centerDistance;
+  }
+
+  private int countIntersections(final WordPlacement placement, final char[][] board) {
+    int intersections = 0;
+    for (int i = 0; i < placement.word().length(); i++) {
+      final int row = placement.row() + (placement.horizontal() ? 0 : i);
+      final int col = placement.col() + (placement.horizontal() ? i : 0);
+      if (board[row][col] != 0) {
+        intersections++;
+      }
+    }
+    return intersections;
   }
 
   private WordPlacement makeCenteredPlacement(final WordPair word, final boolean horizontal) {
@@ -1134,6 +1448,28 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private record PlacementCandidate(WordPair word, WordPlacement placement, int score) {
   }
 
+  private record CandidateChoice(
+      PlacementCandidate candidate, int optionCount, int intersections) {
+  }
+
+  private record SearchState(
+      char[][] board,
+      List<WordPlacement> placed,
+      List<WordPair> remaining,
+      Map<Character, Set<AnchorCell>> boardAnchors,
+      int score) {
+  }
+
+  private record Bounds(int minRow, int maxRow, int minCol, int maxCol) {
+    private int width() {
+      return this.maxCol - this.minCol + 1;
+    }
+
+    private int height() {
+      return this.maxRow - this.minRow + 1;
+    }
+  }
+
   private record CellRect(int x, int y, int width, int height) {
   }
 
@@ -1147,6 +1483,12 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
       }
       return new GridEdge(x2, y2, x1, y1);
     }
+  }
+
+  private record AnchorCell(int row, int col, boolean horizontal) {
+  }
+
+  private record PlacementKey(int row, int col, boolean horizontal) {
   }
 
 
