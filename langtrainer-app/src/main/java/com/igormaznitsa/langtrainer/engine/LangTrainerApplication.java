@@ -37,6 +37,8 @@ public final class LangTrainerApplication {
 
   public static final String CLOSE_MODULE_CLIENT_PROPERTY = "langtrainer.closeModule";
   public static final String SET_TOOLBAR_VISIBLE_CLIENT_PROPERTY = "langtrainer.setToolbarVisible";
+  public static final String SHOW_VIRTUAL_KEYBOARD_CLIENT_PROPERTY =
+      "langtrainer.showVirtualKeyboard";
   private static final String APP_VERSION_SYSTEM_PROPERTY = "langtrainer.app.version";
   private static final String HELP_DIALOG_HTML_RESOURCE = "/html/how-to-use.html";
   private static final String HELP_VERSION_PLACEHOLDER = "${project.version}";
@@ -103,6 +105,8 @@ public final class LangTrainerApplication {
     container.putClientProperty(CLOSE_MODULE_CLIENT_PROPERTY, (Runnable) this::closeActiveModule);
     container.putClientProperty(
         SET_TOOLBAR_VISIBLE_CLIENT_PROPERTY, (Consumer<Boolean>) this::setModuleTopToolbarVisible);
+    container.putClientProperty(
+        SHOW_VIRTUAL_KEYBOARD_CLIENT_PROPERTY, (Runnable) this::showVirtualKeyboard);
     container.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
     container.add(this.makeTopPanel(), BorderLayout.NORTH);
     container.add(module.createControlForm(), BorderLayout.CENTER);

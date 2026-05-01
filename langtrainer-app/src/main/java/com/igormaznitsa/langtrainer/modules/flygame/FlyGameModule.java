@@ -259,6 +259,17 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     }
   }
 
+  void requestShowVirtualKeyboard() {
+    final java.awt.Container parent = this.rootPanel.getParent();
+    if (parent instanceof JComponent jc) {
+      final Object handler =
+          jc.getClientProperty(LangTrainerApplication.SHOW_VIRTUAL_KEYBOARD_CLIENT_PROPERTY);
+      if (handler instanceof Runnable runnable) {
+        runnable.run();
+      }
+    }
+  }
+
   private static final class GameBoard extends JPanel {
 
     private static final Color SKY = new Color(165, 215, 255);
@@ -293,6 +304,8 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         ImageResourceLoader.loadIcon("/fly_game/images/fly-game-sound-off.svg", 40, 40);
     private static final Icon ICON_FLY_HINT =
         ImageResourceLoader.loadIcon("/fly_game/images/fly-game-hint.svg", 40, 40);
+    private static final Icon ICON_FLY_KEYBOARD =
+        ImageResourceLoader.loadIcon("/fly_game/images/fly-game-keyboard.svg", 40, 40);
 
     private final FlyGameModule host;
     private final SkyCanvas sky = new SkyCanvas();
@@ -301,6 +314,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     private final JButton btnClose = new JButton();
     private final JButton btnPause = new JButton();
     private final JButton btnShowPhrase = new JButton();
+    private final JButton btnVirtualKeyboard = new JButton();
     private final JToggleButton btnSound = new JToggleButton();
     private final PhraseFlashBanner phraseFlashBanner = new PhraseFlashBanner();
     private final Random queueRandom = new Random();
@@ -344,7 +358,15 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
           this.btnShowPhrase,
           ICON_FLY_HINT,
           "Flash the answer and translation");
+      GameBoard.configureSvgButton(
+          this.btnVirtualKeyboard,
+          ICON_FLY_KEYBOARD,
+          "Show virtual keyboard");
       this.btnShowPhrase.addActionListener(e -> this.showCurrentWordPhraseBanner());
+      this.btnVirtualKeyboard.addActionListener(e -> {
+        this.host.requestShowVirtualKeyboard();
+        this.refocusInputIfPlaying();
+      });
       this.btnClose.addActionListener(e -> this.host.requestCloseToMainMenu());
       this.btnPause.addActionListener(e -> {
         this.togglePause();
@@ -358,6 +380,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       this.refreshSoundToggleIcon();
       northBar.add(this.btnSound);
       northBar.add(this.btnShowPhrase);
+      northBar.add(this.btnVirtualKeyboard);
       northBar.add(this.btnPause);
       northBar.add(this.btnClose);
       this.status.setForeground(Color.WHITE);
