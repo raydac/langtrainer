@@ -15,6 +15,8 @@ import java.awt.Point;
 import java.awt.Window;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -54,6 +56,8 @@ public final class VirtualKeyboardWindow {
   private final JComboBox<KeyboardLanguage> languageComboBox;
   private final JToggleButton shiftButton;
   private final JPanel keysPanel;
+  private Point dragAnchorOnScreen;
+  private Point dragAnchorWindowLocation;
   private KeyboardLanguage currentLanguage;
 
   public VirtualKeyboardWindow(
@@ -62,6 +66,7 @@ public final class VirtualKeyboardWindow {
       final Consumer<Character> charConsumer,
       final Runnable onHide) {
     this.dialog = new JDialog(owner, "Virtual Keyboard");
+    this.dialog.setUndecorated(true);
     this.dialog.setLayout(new BorderLayout(0, 0));
     this.charConsumer = charConsumer;
     this.onHide = onHide;
@@ -105,6 +110,9 @@ public final class VirtualKeyboardWindow {
     this.dialog.setAlwaysOnTop(false);
     this.dialog.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
     this.dialog.setLocationByPlatform(true);
+    this.dialog.getRootPane().setBorder(
+        BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(BACKGROUND.darker(), 2),
+            BorderFactory.createLineBorder(BACKGROUND, 4)));
 
     final JPanel topPanel = new JPanel();
     topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.X_AXIS));
@@ -112,6 +120,7 @@ public final class VirtualKeyboardWindow {
     topPanel.setBackground(BACKGROUND);
 
     topPanel.setBorder(BorderFactory.createEmptyBorder(4, 0, 8, 0));
+    this.installWindowDragging(topPanel);
 
     final DefaultListCellRenderer languageRenderer = new DefaultListCellRenderer();
     this.languageComboBox.setRenderer((list, value, index, isSelected, cellHasFocus) ->
@@ -313,6 +322,40 @@ public final class VirtualKeyboardWindow {
     this.languageComboBox.setMinimumSize(fixedSize);
     this.languageComboBox.setPreferredSize(fixedSize);
     this.languageComboBox.setMaximumSize(fixedSize);
+  }
+
+  private void installWindowDragging(final JPanel dragArea) {
+    final MouseAdapter dragListener = new MouseAdapter() {
+      @Override
+      public void mousePressed(final MouseEvent event) {
+        VirtualKeyboardWindow.this.startWindowDragging(event);
+      }
+
+      @Override
+      public void mouseDragged(final MouseEvent event) {
+        VirtualKeyboardWindow.this.dragWindowTo(event);
+      }
+    };
+    dragArea.addMouseListener(dragListener);
+    dragArea.addMouseMotionListener(dragListener);
+  }
+
+  private void startWindowDragging(final MouseEvent event) {
+    this.dragAnchorOnScreen = event.getLocationOnScreen();
+    this.dragAnchorWindowLocation = this.dialog.getLocation();
+  }
+
+  private void dragWindowTo(final MouseEvent event) {
+    if (this.dragAnchorOnScreen == null || this.dragAnchorWindowLocation == null) {
+      return;
+    }
+
+    final Point mouseOnScreen = event.getLocationOnScreen();
+    final int deltaX = mouseOnScreen.x - this.dragAnchorOnScreen.x;
+    final int deltaY = mouseOnScreen.y - this.dragAnchorOnScreen.y;
+    this.dialog.setLocation(
+        this.dragAnchorWindowLocation.x + deltaX,
+        this.dragAnchorWindowLocation.y + deltaY);
   }
 
   private void rememberCurrentWindowLocation() {
