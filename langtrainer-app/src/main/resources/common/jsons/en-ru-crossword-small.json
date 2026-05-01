@@ -1,48 +1,116 @@
 {
   "menuName": "English-Russian Crossword Small",
-  "description": "Simple EN-RU single-word set for crossword training",
+  "description": "Expanded EN-RU vocabulary with longer, abstract, and academic terms for crossword training",
   "langA": "English",
   "langB": "Russian",
   "lines": [
     {
-      "A": "cat",
-      "B": "кот"
+      "A": "democracy",
+      "B": "демократия"
     },
     {
-      "A": "car",
-      "B": "машина"
+      "A": "phenomenon",
+      "B": "явление"
     },
     {
-      "A": "tree",
-      "B": "дерево"
+      "A": "literature",
+      "B": "литература"
     },
     {
-      "A": "book",
-      "B": "книга"
+      "A": "philosophy",
+      "B": "философия"
     },
     {
-      "A": "milk",
-      "B": "молоко"
+      "A": "architecture",
+      "B": "архитектура"
     },
     {
-      "A": "sun",
-      "B": "солнце"
+      "A": "conscience",
+      "B": "совесть"
     },
     {
-      "A": "moon",
-      "B": "луна"
+      "A": "prosperity",
+      "B": "процветание"
     },
     {
-      "A": "apple",
-      "B": "яблоко"
+      "A": "melancholy",
+      "B": "меланхолия"
     },
     {
-      "A": "water",
-      "B": "вода"
+      "A": "hypothesis",
+      "B": "гипотеза"
     },
     {
-      "A": "house",
-      "B": "дом"
+      "A": "trajectory",
+      "B": "траектория"
+    },
+    {
+      "A": "compromise",
+      "B": "компромисс"
+    },
+    {
+      "A": "vocabulary",
+      "B": "лексика"
+    },
+    {
+      "A": "revolution",
+      "B": "революция"
+    },
+    {
+      "A": "constellation",
+      "B": "созвездие"
+    },
+    {
+      "A": "entrepreneur",
+      "B": "предприниматель"
+    },
+    {
+      "A": "bureaucracy",
+      "B": "бюрократия"
+    },
+    {
+      "A": "sovereignty",
+      "B": "суверенитет"
+    },
+    {
+      "A": "propagation",
+      "B": "распространение"
+    },
+    {
+      "A": "metamorphosis",
+      "B": "метаморфоза"
+    },
+    {
+      "A": "reminiscence",
+      "B": "воспоминание"
+    },
+    {
+      "A": "perseverance",
+      "B": "настойчивость"
+    },
+    {
+      "A": "juxtaposition",
+      "B": "сопоставление"
+    },
+    {
+      "A": "quintessence",
+      "B": "квинтэссенция"
+    },
+    {
+      "A": "expedition",
+      "B": "экспедиция"
+    },
+    {
+      "A": "laboratory",
+      "B": "лаборатория"
+    },
+    {
+      "A": "telescope",
+      "B": "телескоп"
+    },
+    {
+      "A": "civilization",
+      "B": "цивилизация"
     }
   ]
 }

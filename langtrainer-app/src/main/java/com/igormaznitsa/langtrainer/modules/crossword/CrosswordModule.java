@@ -30,6 +30,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.geom.AffineTransform;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -74,6 +75,8 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private static final long SEARCH_TIME_BUDGET_NS = 5_000_000_000L;
   private static final double SEARCH_TIME_BUDGET_SECONDS = SEARCH_TIME_BUDGET_NS / 1_000_000_000.0d;
   private static final int SEARCH_PROGRESS_UPDATE_PERIOD_MS = 150;
+  private static final long GENERATION_SPIN_PERIOD_NS = 1_200_000_000L;
+  private static final int GENERATION_ANIMATION_PERIOD_MS = 16;
   private static final int MIN_WORDS_IN_CROSSWORD = 3;
   private static final double CROSSWORD_FILL_RATIO = 0.92d;
   private static final int TRANSLATION_TO_BOARD_GAP_PX = 6;
@@ -93,10 +96,58 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private final DefaultListModel<DialogListEntry> listModel = new DefaultListModel<>();
   private final JPanel rootPanel = new JPanel(new CardLayout());
   private final javax.swing.JLabel translationLabel =
-      new javax.swing.JLabel(" ", SwingConstants.CENTER);  private final JPanel boardHost = this.makeBoardHost();
-  private final javax.swing.JLabel modeLabel = new javax.swing.JLabel(" ", SwingConstants.CENTER);  private final JPanel boardPanel = this.makeBoardPanel();
+      new javax.swing.JLabel(" ", SwingConstants.CENTER);
+  private final javax.swing.JLabel modeLabel = new javax.swing.JLabel(" ", SwingConstants.CENTER);
+  private Timer generationAnimationTimer;  private final JPanel boardHost = this.makeBoardHost();
   private final char[][] solution = new char[BOARD_SIZE][BOARD_SIZE];
   private final char[][] userInput = new char[BOARD_SIZE][BOARD_SIZE];
+
+  private JPanel makeWorkPanel() {
+    final JPanel panel = new JPanel(new BorderLayout(8, 8));
+    panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+
+    this.translationLabel.setOpaque(false);
+    this.translationLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 2, 0));
+    this.translationLabel.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(34f));
+    this.translationLabel.setForeground(new Color(20, 20, 20));
+
+    this.modeLabel.setOpaque(true);
+    this.modeLabel.setBackground(new Color(227, 242, 253));
+    this.modeLabel.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+    this.modeLabel.setFont(LangTrainerFonts.MONO_NL_REGULAR.atPoints(18f));
+
+    panel.add(this.modeLabel, BorderLayout.NORTH);
+
+    this.boardPanel.setBorder(BorderFactory.createLineBorder(new Color(120, 144, 156), 2));
+    this.boardPanel.setBackground(EMPTY_CELL_BG);
+    this.boardPanel.setDoubleBuffered(true);
+    this.boardPanel.setFocusable(true);
+    this.boardPanel.addKeyListener(new KeyAdapter() {
+      @Override
+      public void keyPressed(final KeyEvent event) {
+        CrosswordModule.this.processKeyPressed(event);
+      }
+
+      @Override
+      public void keyTyped(final KeyEvent event) {
+        CrosswordModule.this.processKeyTyped(event);
+      }
+    });
+    this.boardPanel.addMouseListener(new MouseAdapter() {
+      @Override
+      public void mousePressed(final MouseEvent event) {
+        CrosswordModule.this.processBoardMouseClick(event.getX(), event.getY());
+      }
+    });
+
+    this.boardHost.add(this.boardPanel);
+    final JPanel centerStack = new JPanel(new BorderLayout(0, 0));
+    centerStack.setOpaque(false);
+    centerStack.add(this.translationLabel, BorderLayout.NORTH);
+    centerStack.add(this.boardHost, BorderLayout.CENTER);
+    panel.add(centerStack, BorderLayout.CENTER);
+    return panel;
+  }  private final JPanel boardPanel = this.makeBoardPanel();
   private final Set<Point> fillableCells = new HashSet<>();
   private final Set<Point> startCells = new HashSet<>();
   private final Set<Point> wrongCells = new HashSet<>();
@@ -115,6 +166,40 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private boolean generationInProgress;
   private long generationStartedAtNs;
   private Timer generationProgressTimer;
+
+  private void paintCrosswordBoard(final Graphics graphics) {
+    final Graphics2D g2 = (Graphics2D) graphics.create();
+    try {
+      this.applyCrosswordQualityHints(g2);
+      if (this.generationInProgress && this.fillableCells.isEmpty()) {
+        this.paintGenerationLoadingIndicator(g2);
+        return;
+      }
+      final Set<GridEdge> edges = new HashSet<>();
+      final PaintViewport viewport = this.resolvePaintViewport();
+      if (viewport == null) {
+        return;
+      }
+      final Font drawFont = this.resolveCellFontForViewport(viewport);
+      g2.setFont(drawFont);
+      final FontMetrics metrics = g2.getFontMetrics(drawFont);
+      for (int row = 0; row < BOARD_SIZE; row++) {
+        for (int col = 0; col < BOARD_SIZE; col++) {
+          if (!this.isFillable(row, col)) {
+            continue;
+          }
+          final CellRect cell = this.resolveCellRect(row, col, viewport);
+          this.paintCellBackground(g2, row, col, cell);
+          this.paintCellText(g2, row, col, cell, metrics);
+          this.collectCellEdges(edges, row, col);
+        }
+      }
+      this.paintGridEdges(g2, edges, viewport);
+      this.paintSelectedCellAim(g2, viewport);
+    } finally {
+      g2.dispose();
+    }
+  }
   private SwingWorker<List<WordPlacement>, Void> generationWorker;
   private List<InputEquivalenceRow> activeInputEquivalenceRules = List.of();
   public CrosswordModule() {
@@ -212,50 +297,35 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     return view.panel();
   }
 
-  private JPanel makeWorkPanel() {
-    final JPanel panel = new JPanel(new BorderLayout(8, 8));
-    panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-
-    this.translationLabel.setOpaque(false);
-    this.translationLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 2, 0));
-    this.translationLabel.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(34f));
-    this.translationLabel.setForeground(new Color(20, 20, 20));
-
-    this.modeLabel.setOpaque(true);
-    this.modeLabel.setBackground(new Color(227, 242, 253));
-    this.modeLabel.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
-    this.modeLabel.setFont(LangTrainerFonts.MONO_NL_REGULAR.atPoints(18f));
-
-    panel.add(this.modeLabel, BorderLayout.NORTH);
-
-    this.boardPanel.setBorder(BorderFactory.createLineBorder(new Color(120, 144, 156), 2));
-    this.boardPanel.setBackground(EMPTY_CELL_BG);
-    this.boardPanel.setFocusable(true);
-    this.boardPanel.addKeyListener(new KeyAdapter() {
-      @Override
-      public void keyPressed(final KeyEvent event) {
-        CrosswordModule.this.processKeyPressed(event);
-      }
-
-      @Override
-      public void keyTyped(final KeyEvent event) {
-        CrosswordModule.this.processKeyTyped(event);
-      }
-    });
-    this.boardPanel.addMouseListener(new MouseAdapter() {
-      @Override
-      public void mousePressed(final MouseEvent event) {
-        CrosswordModule.this.processBoardMouseClick(event.getX(), event.getY());
-      }
-    });
-
-    this.boardHost.add(this.boardPanel);
-    final JPanel centerStack = new JPanel(new BorderLayout(0, 0));
-    centerStack.setOpaque(false);
-    centerStack.add(this.translationLabel, BorderLayout.NORTH);
-    centerStack.add(this.boardHost, BorderLayout.CENTER);
-    panel.add(centerStack, BorderLayout.CENTER);
-    return panel;
+  private void paintGenerationLoadingIndicator(final Graphics2D g2) {
+    final int w = this.boardPanel.getWidth();
+    final int h = this.boardPanel.getHeight();
+    if (w < 12 || h < 12) {
+      return;
+    }
+    final double cx = w * 0.5d;
+    final double cy = h * 0.5d;
+    final int diameterRaw = Math.max(44, Math.min(w, h) / 6);
+    final int diameter = diameterRaw - (diameterRaw & 1);
+    final long elapsedNs = System.nanoTime() - this.generationStartedAtNs;
+    final long phaseNs = Math.floorMod(elapsedNs, GENERATION_SPIN_PERIOD_NS);
+    final double angleRad = phaseNs * (Math.PI * 2.0d / GENERATION_SPIN_PERIOD_NS);
+    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+    final AffineTransform savedTransform = g2.getTransform();
+    final java.awt.Stroke savedStroke = g2.getStroke();
+    try {
+      g2.translate(cx, cy);
+      g2.rotate(angleRad);
+      final float strokeW = Math.max(3f, diameter / 14f);
+      g2.setStroke(new BasicStroke(strokeW, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+      g2.setColor(new Color(200, 200, 200));
+      g2.drawOval(-diameter / 2, -diameter / 2, diameter, diameter);
+      g2.setColor(new Color(25, 118, 210));
+      g2.drawArc(-diameter / 2, -diameter / 2, diameter, diameter, 90, 270);
+    } finally {
+      g2.setTransform(savedTransform);
+      g2.setStroke(savedStroke);
+    }
   }
 
   private JPanel makeBoardHost() {
@@ -283,34 +353,45 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     };
   }
 
-  private void paintCrosswordBoard(final Graphics graphics) {
-    final Graphics2D g2 = (Graphics2D) graphics.create();
-    try {
-      this.applyCrosswordQualityHints(g2);
-      final Set<GridEdge> edges = new HashSet<>();
-      final PaintViewport viewport = this.resolvePaintViewport();
-      if (viewport == null) {
-        return;
-      }
-      final Font drawFont = this.resolveCellFontForViewport(viewport);
-      g2.setFont(drawFont);
-      final FontMetrics metrics = g2.getFontMetrics(drawFont);
-      for (int row = 0; row < BOARD_SIZE; row++) {
-        for (int col = 0; col < BOARD_SIZE; col++) {
-          if (!this.isFillable(row, col)) {
-            continue;
-          }
-          final CellRect cell = this.resolveCellRect(row, col, viewport);
-          this.paintCellBackground(g2, row, col, cell);
-          this.paintCellText(g2, row, col, cell, metrics);
-          this.collectCellEdges(edges, row, col);
-        }
-      }
-      this.paintGridEdges(g2, edges, viewport);
-      this.paintSelectedCellAim(g2, viewport);
-    } finally {
-      g2.dispose();
+  private void layoutBoardByHostSize(final int hostWidth, final int hostHeight) {
+    final int targetSide = (int) (Math.min(hostWidth, hostHeight) * 0.8d);
+    if (targetSide <= 0) {
+      return;
     }
+    final int side = Math.max(BOARD_SIZE, targetSide - (targetSide % BOARD_SIZE));
+    final int x = (hostWidth - side) / 2;
+    final int y = Math.max(0, Math.min(TRANSLATION_TO_BOARD_GAP_PX, hostHeight - side));
+    if (this.boardPanel.getX() != x || this.boardPanel.getY() != y ||
+        this.boardPanel.getWidth() != side || this.boardPanel.getHeight() != side) {
+      this.boardPanel.setBounds(x, y, side, side);
+    }
+  }
+
+  private void startGenerationProgressTimer() {
+    final Timer previousTimer = this.generationProgressTimer;
+    if (previousTimer != null) {
+      previousTimer.stop();
+    }
+    final Timer previousAnim = this.generationAnimationTimer;
+    if (previousAnim != null) {
+      previousAnim.stop();
+    }
+    final Timer timer = new Timer(SEARCH_PROGRESS_UPDATE_PERIOD_MS, event -> {
+      final double elapsed = (System.nanoTime() - this.generationStartedAtNs) / 1_000_000_000.0d;
+      final double boundedElapsed = Math.min(SEARCH_TIME_BUDGET_SECONDS, elapsed);
+      this.modeLabel.setText(
+          String.format(Locale.ROOT, "Generating crossword... %.1f / %.1f s", boundedElapsed,
+              SEARCH_TIME_BUDGET_SECONDS));
+    });
+    timer.setRepeats(true);
+    timer.start();
+    this.generationProgressTimer = timer;
+    final Timer animTimer = new Timer(GENERATION_ANIMATION_PERIOD_MS,
+        event -> this.boardPanel.repaint());
+    animTimer.setRepeats(true);
+    animTimer.setInitialDelay(0);
+    animTimer.start();
+    this.generationAnimationTimer = animTimer;
   }
 
   private void paintSelectedCellAim(final Graphics2D g2, final PaintViewport viewport) {
@@ -491,15 +572,20 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     return new PaintViewport(minRow, minCol, cellSize, offsetX, offsetY);
   }
 
-  private void layoutBoardByHostSize(final int hostWidth, final int hostHeight) {
-    final int targetSide = (int) (Math.min(hostWidth, hostHeight) * 0.8d);
-    if (targetSide <= 0) {
-      return;
+  private void finishGenerationProgress() {
+    this.generationInProgress = false;
+    this.rootPanel.setCursor(Cursor.getDefaultCursor());
+    final Timer timer = this.generationProgressTimer;
+    if (timer != null) {
+      timer.stop();
+      this.generationProgressTimer = null;
     }
-    final int side = Math.max(BOARD_SIZE, targetSide - (targetSide % BOARD_SIZE));
-    final int x = (hostWidth - side) / 2;
-    final int y = Math.max(0, Math.min(TRANSLATION_TO_BOARD_GAP_PX, hostHeight - side));
-    this.boardPanel.setBounds(x, y, side, side);
+    final Timer animTimer = this.generationAnimationTimer;
+    if (animTimer != null) {
+      animTimer.stop();
+      this.generationAnimationTimer = null;
+    }
+    this.generationWorker = null;
   }
 
   private void processKeyTyped(final KeyEvent event) {
@@ -794,33 +880,9 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     SwingUtilities.invokeLater(this.boardPanel::requestFocusInWindow);
   }
 
-  private void startGenerationProgressTimer() {
-    final Timer previousTimer = this.generationProgressTimer;
-    if (previousTimer != null) {
-      previousTimer.stop();
-    }
-    final Timer timer = new Timer(SEARCH_PROGRESS_UPDATE_PERIOD_MS, event -> {
-      final double elapsed = (System.nanoTime() - this.generationStartedAtNs) / 1_000_000_000.0d;
-      final double boundedElapsed = Math.min(SEARCH_TIME_BUDGET_SECONDS, elapsed);
-      this.modeLabel.setText(
-          String.format(Locale.ROOT, "Generating crossword... %.1f / %.1f s", boundedElapsed,
-              SEARCH_TIME_BUDGET_SECONDS));
-    });
-    timer.setRepeats(true);
-    timer.start();
-    this.generationProgressTimer = timer;
-  }
 
-  private void finishGenerationProgress() {
-    this.generationInProgress = false;
-    this.rootPanel.setCursor(Cursor.getDefaultCursor());
-    final Timer timer = this.generationProgressTimer;
-    if (timer != null) {
-      timer.stop();
-      this.generationProgressTimer = null;
-    }
-    this.generationWorker = null;
-  }
+
+
 
   private void cancelGenerationIfRunning() {
     final SwingWorker<List<WordPlacement>, Void> worker = this.generationWorker;
@@ -1490,8 +1552,6 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
 
   private record PlacementKey(int row, int col, boolean horizontal) {
   }
-
-
 
 
 }
