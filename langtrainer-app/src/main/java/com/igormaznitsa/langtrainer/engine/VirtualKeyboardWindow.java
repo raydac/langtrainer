@@ -47,7 +47,6 @@ public final class VirtualKeyboardWindow {
   private static final int SPACE_KEY_MIN_WIDTH = 180;
   private static final int LANGUAGE_COMBO_EXTRA_WIDTH = 48;
   private static KeyboardLanguage lastSelectedLanguage = KeyboardLanguage.ENG;
-  private static Point lastWindowLocation;
 
   private final JDialog dialog;
   private final Consumer<Character> charConsumer;
@@ -88,11 +87,11 @@ public final class VirtualKeyboardWindow {
 
   public void show() {
     this.refreshLanguageSelection();
-    this.applyLastWindowLocation();
 
     this.keysPanel.revalidate();
     this.keysPanel.doLayout();
     this.doRebuildKeys();
+    this.dialog.setLocationRelativeTo(this.dialog.getOwner());
     this.dialog.setVisible(true);
   }
 
@@ -150,13 +149,7 @@ public final class VirtualKeyboardWindow {
     this.dialog.addComponentListener(new ComponentAdapter() {
       @Override
       public void componentHidden(final ComponentEvent event) {
-        VirtualKeyboardWindow.this.rememberCurrentWindowLocation();
         VirtualKeyboardWindow.this.onHide.run();
-      }
-
-      @Override
-      public void componentMoved(final ComponentEvent event) {
-        VirtualKeyboardWindow.this.rememberCurrentWindowLocation();
       }
     });
   }
@@ -358,13 +351,4 @@ public final class VirtualKeyboardWindow {
         this.dragAnchorWindowLocation.y + deltaY);
   }
 
-  private void rememberCurrentWindowLocation() {
-    lastWindowLocation = this.dialog.getLocation();
-  }
-
-  private void applyLastWindowLocation() {
-    if (lastWindowLocation != null) {
-      this.dialog.setLocation(lastWindowLocation);
-    }
-  }
 }
