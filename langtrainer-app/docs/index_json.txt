@@ -1,0 +1,149 @@
+Shared resource index — classpath location
+--------------------------------------------
+
+File: src/main/resources/common/jsons/index.json
+
+This file is the central catalogue of bundled JSON language resources (dialog / word-list /
+crossword payloads in the format described in JSON_format.txt). The application loads it at
+runtime, builds a tree, and shows entries in each module’s resource picker. Folders are shown as
+collapsible groups in the UI (single click toggles open/closed).
+
+
+Root object
+-----------
+
+The root must be a JSON object with exactly one top-level array:
+
+  "resources": [ ... ]
+
+Each element of "resources" is either a LEAF (one playable resource) or a FOLDER (named group
+containing more leaves and/or nested folders). Order in the array is preserved: the list UI
+follows depth-first order when folders are expanded.
+
+
+Leaf entry (resource)
+---------------------
+
+A leaf points to one JSON file on the classpath.
+
+Required fields:
+
+  "resource"  — string, classpath path to the dialog JSON file.
+
+Allowed form today (enforced by the loader):
+
+  /common/jsons/<file-name>.json
+
+  where <file-name> has no slashes (a single file name under common/jsons). Examples:
+
+    /common/jsons/en-ru-small.json
+    /common/jsons/en-ru-crossword-small.json
+
+Optional fields:
+
+  "modules"   — array of module id strings. If present, this resource is offered only to those
+                modules. If omitted, the resource is visible to every module that loads the index.
+
+Module id values (enum LangTrainerModuleId, must match exactly):
+
+  DIALOG
+  FLY_GAME
+  CROSSWORD
+
+Example — dialog only:
+
+  {
+    "resource": "/common/jsons/en-ru-small.json",
+    "modules": [ "DIALOG" ]
+  }
+
+Example — same file shared by dialog and fly game:
+
+  {
+    "resource": "/common/jsons/sw-rus-travel-phrases.json",
+    "modules": [ "DIALOG", "FLY_GAME" ]
+  }
+
+
+Folder entry (grouping)
+-----------------------
+
+Folders group resources for the picker; nesting depth is unlimited.
+
+Required fields:
+
+  "name"      — string, label shown in the list (folder row).
+
+  "children"  — array of objects; each item is again a leaf or a folder.
+
+Rules:
+
+  - A folder must NOT also contain "resource". Folders and leaves are mutually exclusive shapes.
+  - If a folder has no visible descendants for the current module (see filtering below), that
+    folder is omitted entirely from the list for that module.
+
+Example — one level:
+
+  {
+    "name": "Travel",
+    "children": [
+      {
+        "resource": "/common/jsons/sw-rus-travel-phrases.json",
+        "modules": [ "DIALOG", "FLY_GAME" ]
+      }
+    ]
+  }
+
+Example — nested folders:
+
+  {
+    "name": "By size",
+    "children": [
+      {
+        "name": "50 terms",
+        "children": [
+          { "resource": "/common/jsons/en-ru-50-stock-1.json", "modules": [ "DIALOG" ] }
+        ]
+      }
+    ]
+  }
+
+
+Filtering and visibility
+------------------------
+
+1) Classpath gate
+   Only paths matching the allowed pattern under /common/jsons/ are loaded. Invalid or missing
+   paths fail fast when the index is read.
+
+2) Module gate ("modules" on a leaf)
+   If "modules" is absent on a leaf, all modules may list it (subject to their own rules).
+   If "modules" is present, the leaf appears only in pickers for modules whose id is listed.
+
+3) Empty branches
+   A folder whose subtree contains no leaf visible to the current module is not shown for that
+   module.
+
+Implementation reference: ClasspathLangResourceIndex, ClasspathResourceIndexTree,
+LangTrainerResourceAccess.visibleToModule, AbstractLangTrainerModule.isResourceAllowed.
+
+
+Validation errors
+-----------------
+
+The loader throws IllegalStateException with a clear message if:
+
+  - the root is not an object or has no "resources" array;
+  - an object has "children" but also has "resource";
+  - a folder has "children" but no string "name";
+  - an object is neither a valid leaf nor a valid folder (e.g. missing both).
+
+
+UI behaviour (brief)
+--------------------
+
+- List order follows the index: depth-first traversal when parents are expanded.
+- Folders start collapsed; single-click a folder row to expand or collapse.
+- Double-click / Start applies only to resource (leaf) rows, not folder headers.
+
+For the JSON schema of each pointed-to resource file, see JSON_format.txt in this folder.
