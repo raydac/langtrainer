@@ -1,14 +1,15 @@
 Module FLY GAME
 ---------------
 
-1. It is a child of AbstractLangTrainerModule
-2. It is a dynamic interactive game
-3. It works with resources described in ./JSON_format.txt
-4. Load and select of such file is organized as in ./Module_Dialog.txt through list of resource file but in the case of the module from resource folder ./fly_game
-5. The idea of the game
- 5.1. It is a dynamic interactive game where user should learn new words from list for selected language.
- 5.2. User sees blue field with seldom slowly moving white clouds from right to left
- 5.3. For every learning word, the game starts a copter slowly flying from left corner to the right corner of field.
+1. It is a child of AbstractLangTrainerModule.
+2. It is a dynamic interactive game.
+3. Word lists use the same DialogDefinition JSON as the Dialog module (see JSON_format.txt).
+4. Bundled lists are discovered through common/jsons/index.json (same mechanism as Dialog; see index_json.txt). Entries visible to FLY_GAME are those whose index leaf includes "FLY_GAME" in "modules" when that array is present. The user may also open a JSON file from disk from the same picker pattern as Dialog/Crossword.
+5. Module-specific images and sounds live under classpath paths such as /fly_game/images/ and /fly_game/sounds/ — these are not the same as the shared JSON index path (/common/jsons/).
+6. Game idea:
+ 6.1. User learns words from the selected list for the chosen typing language.
+ 6.2. Blue field with slowly drifting white clouds (right to left).
+ 6.3. For each word, an aircraft crosses the field over a fixed flight time (see FlyGameModule FLIGHT_SECONDS and tick timer).
 
  +--------------------------------------------------------------------------+
  |                                                                          |
@@ -33,10 +34,11 @@ Module FLY GAME
  |                                                                          |
  +--------------------------------------------------------------------------+
 
- 5.4. User has time to enter correct word during time till the copter didn't reach space behind right field corner
- 5.5. User drives the aim and position of aim relative target calculated through distance of entered word and expected word, distance in worse case must not be too big, and in correct input it should be just over the copter
- 5.6. As only user entered word and pressed enter then we check that word is correct and if so then copter is exploded and we start learn next word, if word is not correct then do nothing
- 5.7. If user didn't manage enter correct word till copter hidden behind the right corner then we show correct translation of word for 5 seconds and game begin again with the same word
- 5.8. Words from source resource shown in random order till all them will be learned and correctly entered by user
+ 6.4. The user must enter the correct word before the aircraft leaves the playable area on the right.
+ 6.5. Aim / feedback position reflects how close the typed word is to the expected answer (see Fly game typing slot logic).
+ 6.6. On Enter: if correct, the aircraft is cleared and the next word starts; if incorrect, input may be adjusted without advancing.
+ 6.7. If time runs out before a correct answer, the correct translation is shown briefly (ANSWER_SHOW_MS in code), then the same word is repeated.
+ 6.8. Words are taken from the resource in random order until all have been answered correctly in the session.
+ 6.9. Optional WAV sound effects for start, hit, miss, end (SoundClip / FlyGameSfx) when assets load successfully.
 
-6. Because application window can be scaled by user then the UI must be scalable and use SVG as source graphics. There must be two graphics buttons on the game field - to close the game and pause/resume
+7. UI scales with the window; vector artwork is used where provided. Toolbar on the game field includes close, pause/resume, sound, hint, and keyboard controls as implemented in FlyGameModule.

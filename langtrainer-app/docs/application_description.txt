@@ -1,55 +1,65 @@
 Implementation requirements
 ------
-1. It is a Java 17 based project
-2. Maven is in use as build system for the project
-3. Swing as GUI tool to show interface and interact with user, image resources can be provided as PNG, JPG and SVG
-4. Single module command line based project, use as less external libraries as possible it is good to use only external library to render SVG
-5. Start must be from CLI and also maven exec plugin should have config for start
-6. On start the application shows splash image for 5 seconds (it doesn't lock load of application)
-7. Common application package com.igormaznitsa.langtrainer
-8. Expected package tree
+1. Java 17 based project.
+2. Maven is the build system (langtrainer-app/pom.xml configures exec-maven-plugin with mainClass LangTrainer).
+3. Swing for GUI; image resources may be PNG, JPG, or SVG (SVG via Batik in ImageResourceLoader).
+4. Prefer minimal external dependencies; SVG rendering uses a dedicated library.
+5. Application starts from the command line; Maven exec plugin is configured for a standard launch.
+6. On start the application shows a splash screen for 5 seconds while the main window loads; the splash does not block loading.
+7. Base Java package for most code: com.igormaznitsa.langtrainer
+8. Package layout (actual sources under src/main/java):
+
+   LangTrainer.java
+      Entry point (default package). Invokes LangTrainerApplication on the Swing EDT.
 
    com.igormaznitsa.langtrainer
-      |
-      +--api (contains all abstract and api modules)
-      +--engine (contains all stuff related to internal work of application not related to modules work)
-      +--modules (here added every custom module for application)
-      +--LangTrainer.java (main class to start application)
-      +--Modules.java (enum to have links to all modules of application which added as enum records)
+      Modules.java — enum listing all built-in modules (factories for AbstractLangTrainerModule).
+
+   com.igormaznitsa.langtrainer.api
+      AbstractLangTrainerModule, KeyboardLanguage, LangTrainerModuleId, etc.
+
+   com.igormaznitsa.langtrainer.engine
+      LangTrainerApplication, main menu, classpath index, virtual keyboard wiring, JSON parsing helpers, etc.
+
+   com.igormaznitsa.langtrainer.modules
+      DialogModule, FlyGameModule, CrosswordModule, EditorModule — one package per module area.
+
+   com.igormaznitsa.langtrainer.ui
+      Shared UI helpers (fonts, banners, etc.).
+
+   com.igormaznitsa.langtrainer.text
+      Text comparison helpers used by typing modules.
+
 
 Functional requirements
 ------
-1. Application is a language trainer application
-2. LangTrainer menu is extendable one and shows list of registered modules as some image and name. Module activated through mouse click by user. Also keyboard navigation must be allowed through cursor keys and enter or space key to activate.
-   +-------------------------+
-   | /-----\  /-----\        |
-   | |Item1|  |Item2|        |
-   | \-----/  \-----/        |
-   |                         |
-   |                         |
-   +-------------------------+
-3. Every main menu module describes some internal mini application and has ancestor AbstractLangTrainerModule which should provide methods to get description, name, image and internal module control form which will be shown. In right top corner of module should be shown big close button shown as red X and if user click it then it return system to main menu.
-4. During activation called AbstractLangTrainerModule#onActivation
-5. During exit to the main menu called AbstractLangTrainerModule#onClose for active module
+1. Language trainer desktop application.
+2. Main menu lists registered modules (icon + name). Activation: mouse click, or keyboard (arrow keys + Enter or Space). See MainMenuPanel.
+3. Each module is a mini-application extending AbstractLangTrainerModule (name, description, image, control form). A red close control in the module toolbar returns to the main menu.
+4. AbstractLangTrainerModule#onActivation is called when a module becomes active.
+5. AbstractLangTrainerModule#onClose is called when leaving the module for the main menu.
 
-
-Java requirement
+Registered modules (Modules enum)
 ------
-1. Use DRY and CLEAN CODE approach
-2. Use final modifier if variable or argument should not be changed
-3. Use single return point for functions
-4. Write comments only in places where it must have
-5. Write appropriate but not too long names of methods
-6. Strongly prefer use of Java Stream API style for code write!
+  DIALOG     — phrase typing / translation practice (Module_Dialog.txt).
+  FLY_GAME   — timed word entry with aircraft metaphor (Module_FlyGame.txt).
+  CROSSWORD  — generated crossword from word lists (Module_Crossword.txt).
+  EDITOR     — JSON resource editor for the same dialog format (Module_Editor.txt).
+
+
+Java / code style (project norms)
+------
+1. Prefer DRY and readable structure; use final where values must not change.
+2. Comments where non-obvious invariants or behaviour matter; avoid noise.
+3. Meaningful method and type names.
+4. Streams and records are used where they clarify batch processing or data shapes.
+
 
 Design
 --------
-Design must be nice but not very hard, it is possible to add sounds into application so implement some auxiliary player which will be able take wav file and play
-Also provide auxiliary classes to load images from resources.
+Polished but pragmatic UI. Optional WAV playback is supported (SoundClip; e.g. Fly game SFX). Image loading helpers live under engine (ImageResourceLoader).
 
 
-Test
+Tests
 -----
-
-1. Add test module which shows record TEST
-
+Automated tests are not described in this file; refer to the Maven test phase in the reactor if present.

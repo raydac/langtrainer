@@ -147,3 +147,5 @@ UI behaviour (brief)
 - Double-click / Start applies only to resource (leaf) rows, not folder headers.
 
 For the JSON schema of each pointed-to resource file, see JSON_format.txt in this folder.
+
+For which application modules consume these entries, see application_description.txt (registered modules) and the Module_*.txt notes.

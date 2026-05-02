@@ -2,7 +2,7 @@ Module Crossword
 ------------------
 
 1. It is a child of AbstractLangTrainerModule
-2. On start it shows list of allowed resources like in Fly and Dialog modules
+2. On start it shows the same style of resource list as Dialog and Fly game: bundled entries from common/jsons/index.json (see index_json.txt) plus optional "Open from file" JSON from disk
 3. User selects target input language (language he types in crossword cells)
 4. Module takes all valid single-word lines from selected target language in resource
 5. Crossword builder tries to place as many words as possible (not guaranteed 100% for every dataset)

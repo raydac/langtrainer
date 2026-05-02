@@ -1,4 +1,6 @@
-JSON file format describes language learning resources and keyboard behaviour.
+JSON file format describes language learning resources in the DialogDefinition shape (menuName, description, languages, lines, optional inputEqu, optional shuffled).
+
+Bundled files are normally registered in common/jsons/index.json (see index_json.txt in this folder). The virtual keyboard is configured separately (keyboard.txt).
 
     {
         "menuName" :  "Menu name of the dialog",
