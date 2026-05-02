@@ -7,6 +7,7 @@ import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
 import com.igormaznitsa.langtrainer.api.LangTrainerModuleId;
 import com.igormaznitsa.langtrainer.engine.ClasspathLangResourceIndex;
+import com.igormaznitsa.langtrainer.engine.ClasspathResourceIndexTree;
 import com.igormaznitsa.langtrainer.engine.DialogDefinition;
 import com.igormaznitsa.langtrainer.engine.DialogLine;
 import com.igormaznitsa.langtrainer.engine.DialogListEntry;
@@ -38,8 +39,10 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.Icon;
@@ -101,13 +104,14 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private static final Color SHUFFLE_TOGGLE_ON_FG = Color.WHITE;
   private static final Color SHUFFLE_TOGGLE_ON_BORDER = new Color(255, 214, 0);
 
-  /**
-   * Same border thickness and padding for Shuffle / Show / Tip so heights align and layout is stable.
-   */
   private static final int HEADER_ACTION_BORDER_W = 3;
   private static final Insets HEADER_ACTION_INSETS = new Insets(8, 16, 8, 16);
 
   private final DefaultListModel<DialogListEntry> dialogListModel = new DefaultListModel<>();
+  private final Set<String> expandedClasspathFolders = new HashSet<>();
+  private final List<DialogListEntry.DialogResourceRow> externalClasspathResourceRows =
+      new ArrayList<>();
+  private ClasspathResourceIndexTree classpathResourceTree;
   private final JPanel rootPanel = new JPanel(new CardLayout());
   private final JTextArea showA = makeShowArea();
   private final JTextArea showB = makeShowArea();
@@ -126,14 +130,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private JList<DialogListEntry> dialogSelectionList;
   private DialogDefinition activeDialog;
   private boolean userWritesToA;
-  /**
-   * Indices of dialog lines not yet answered correctly. The active prompt is always one of these
-   * until the user submits; then that index is removed so it is never chosen again.
-   */
   private final List<Integer> remainingLineIndices = new ArrayList<>();
-  /**
-   * Index in {@link DialogDefinition#lines()} for the line the user is typing now.
-   */
   private int currentLineOrdinal;
   private boolean workRoundActive;
   private JDialog completionOverlay;
@@ -142,9 +139,10 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private boolean applyingInputEquivalence;
 
   public DialogModule() {
-    ClasspathLangResourceIndex.loadShared(
-            DialogModule.class, this, "Can't load dialog definitions")
-        .forEach(d -> this.dialogListModel.addElement(new DialogListEntry(d, false)));
+    this.classpathResourceTree =
+        ClasspathLangResourceIndex.loadSharedTree(
+            DialogModule.class, this, "Can't load dialog definitions");
+    this.rebuildDialogResourceListModel();
     this.bindEnterToSubmit(this.inputA);
     this.bindEnterToSubmit(this.inputB);
     this.attachKeepFocusOnWorkField(this.inputA);
@@ -158,6 +156,29 @@ public final class DialogModule extends AbstractLangTrainerModule {
     this.rootPanel.add(this.makeSelectPanel(), CARD_SELECT);
     this.rootPanel.add(this.makeWorkPanel(), CARD_WORK);
     this.showCard(CARD_SELECT);
+  }
+
+  private void rebuildDialogResourceListModel() {
+    this.dialogListModel.clear();
+    this.classpathResourceTree.materializeInto(
+        this.dialogListModel, this.expandedClasspathFolders);
+    for (final DialogListEntry.DialogResourceRow row : this.externalClasspathResourceRows) {
+      this.dialogListModel.addElement(row);
+    }
+  }
+
+  private void onClasspathFolderRowClicked(final DialogListEntry.DialogFolderRow folder) {
+    final String key = folder.pathKey();
+    if (this.expandedClasspathFolders.contains(key)) {
+      this.expandedClasspathFolders.remove(key);
+    } else {
+      this.expandedClasspathFolders.add(key);
+    }
+    this.rebuildDialogResourceListModel();
+    final int rowIndex = DialogListEntry.indexOfFolderPathKey(this.dialogListModel, key);
+    if (this.dialogSelectionList != null && rowIndex >= 0) {
+      this.dialogSelectionList.setSelectedIndex(rowIndex);
+    }
   }
 
   private static void syncViewportBackground(final JTextArea area) {
@@ -182,11 +203,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
     vertical.setValue(vertical.getMaximum());
   }
 
-  /**
-   * Line-wrapped {@link JTextArea} that still reports a real content height so a {@link
-   * JScrollPane} can show a vertical bar (default wrapped text areas track viewport height and
-   * never scroll vertically).
-   */
   private static JTextArea makeShowArea() {
     final JTextArea area =
         new JTextArea() {
@@ -205,12 +221,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
     return area;
   }
 
-  /**
-   * Tip for the current expected word: correct prefix, then one {@code .} per still-hidden slot
-   * before the last <em>letter</em> of the word (trailing {@code ? ! …} are not used as the
-   * right anchor). If the user finished all letters of a token and only punctuation remains
-   * (e.g. {@code Jah} vs {@code Jah,}), the tip advances to the next word.
-   */
   private static String computeTypingTip(final String entered, final String expected) {
     if (expected == null || expected.isEmpty()) {
       return "";
@@ -320,9 +330,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
     return ImageResourceLoader.loadIcon("/dialogs/images/module-dialog.svg", 128, 128);
   }
 
-  /**
-   * True if every code point from {@code from} onward is not a Unicode letter.
-   */
   private static boolean onlyNonLettersFrom(final String word, final int from) {
     int i = from;
     while (i < word.length()) {
@@ -335,9 +342,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
     return true;
   }
 
-  /**
-   * Start index in {@code word} of the last Unicode letter, or {@code -1} if none.
-   */
   private static int indexOfLastLetterStart(final String word) {
     int last = -1;
     for (int i = 0; i < word.length(); ) {
@@ -405,9 +409,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
     return scroll;
   }
 
-  /**
-   * After history text grows, show the newly appended line (both panes scroll to bottom).
-   */
   private void scrollHistoryPanesToBottom() {
     SwingUtilities.invokeLater(() -> {
       scrollHistoryPaneToBottom(this.historyScrollA, this.showA);
@@ -424,9 +425,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
     return Math.max(metrics.stringWidth(a), metrics.stringWidth(b));
   }
 
-  /**
-   * Minimum width from label text (avoids ellipsis when the east header is squeezed).
-   */
   private static int minToggleWidthForLabels(
       final JToggleButton button, final String offText, final String onText) {
     final FontMetrics fm = button.getFontMetrics(button.getFont());
@@ -526,10 +524,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
             HEADER_ACTION_INSETS.right)));
   }
 
-  /**
-   * Sets Shuffle, Show, and Tip to the same width and height (widest/tallest needed). Drops
-   * {@code maximumSize} caps so BorderLayout does not clip labels to "Tip O…".
-   */
   private void syncWorkHeaderActionButtonSizes() {
     this.applyShuffleToggleLook();
     this.applyTipToggleLook();
@@ -640,10 +634,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
     this.syncWorkHeaderActionButtonSizes();
   }
 
-  /**
-   * Chooses {@link #currentLineOrdinal} from {@link #remainingLineIndices}: lowest dialog index
-   * when shuffle is off, otherwise a uniform random remaining index.
-   */
   private void pickCurrentLineFromRemaining() {
     if (this.remainingLineIndices.isEmpty()) {
       return;
@@ -664,7 +654,8 @@ public final class DialogModule extends AbstractLangTrainerModule {
         "Choose and Start",
         "Open from file",
         this::chooseUserLanguageAndStart,
-        this::openDialogFromFile);
+        this::openDialogFromFile,
+        this::onClasspathFolderRowClicked);
     this.dialogSelectionList = view.list();
     return view.panel();
   }
@@ -686,9 +677,15 @@ public final class DialogModule extends AbstractLangTrainerModule {
     }
     try {
       final DialogDefinition loaded = LangResourceJson.parseFromPath(file.toPath());
-      final int index = DialogListEntry.addOrReplaceByMenuTitle(
-          this.dialogListModel, new DialogListEntry(loaded, true));
-      list.setSelectedIndex(index);
+      DialogListEntry.mergeExternalResourceRow(
+          this.externalClasspathResourceRows, DialogListEntry.externalResourceRow(loaded));
+      this.rebuildDialogResourceListModel();
+      final int index =
+          DialogListEntry.indexOfExternalResourceMenuName(
+              this.dialogListModel, loaded.menuName());
+      if (index >= 0) {
+        list.setSelectedIndex(index);
+      }
       final File parent = file.getParentFile();
       if (parent != null) {
         this.lastDialogOpenDirectory = parent;
@@ -780,9 +777,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
     InputEquivalenceSupport.applyAfterInsert(area, expectedFull, rules, start, insertLen);
   }
 
-  /**
-   * After input-equivalence adjustments, refresh tips once the document is in its final state.
-   */
   private void scheduleTipRefreshAfterInputMutation() {
     if (!this.tipToggle.isSelected() || !this.workRoundActive || this.activeDialog == null) {
       return;

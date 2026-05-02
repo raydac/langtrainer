@@ -65,9 +65,6 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private static final float EDITOR_FONT_MAX_PT = 36f;
   private static final float EDITOR_FONT_STEP_PT = 1f;
   private static final float PRIMARY_BUTTON_EXTRA_PT = 2f;
-  /**
-   * {@link JTable} default row height does not follow font size; editors are clipped without this padding.
-   */
   private static final int TABLE_ROW_PAD_PX = 8;
   private static final int TABLE_ROW_MIN_PX = 22;
 
@@ -98,9 +95,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
         }
       };
   private final JTable linesTable = new JTable(this.linesModel);
-  /**
-   * One row per {@link InputEquivalenceRow}; Key/Value cells are comma-separated token lists (e.g. {@code e,E}).
-   */
+
   private final DefaultTableModel equivPairModel =
       new DefaultTableModel(new Object[] {"Id", "Key", "Value"}, 0) {
         @Override
@@ -131,10 +126,6 @@ public final class EditorModule extends AbstractLangTrainerModule {
     this.applyEditorModuleFonts();
   }
 
-  /**
-   * Text area that expands with its {@link JScrollPane} viewport when the window is resized (default
-   * {@link JTextArea} keeps a fixed preferred height and ignores extra vertical space).
-   */
   private static JTextArea makeGrowingTextArea() {
     final JTextArea area =
         new JTextArea() {
@@ -156,9 +147,6 @@ public final class EditorModule extends AbstractLangTrainerModule {
     c.setMinimumSize(new Dimension(0, 0));
   }
 
-  /**
-   * Scrolls the table's viewport so {@code row} is in view (after move up/down, etc.).
-   */
   private static void ensureTableRowVisible(final JTable table, final int row) {
     if (row < 0 || row >= table.getRowCount()) {
       return;
@@ -219,10 +207,6 @@ public final class EditorModule extends AbstractLangTrainerModule {
     return List.copyOf(out);
   }
 
-  /**
-   * Key/Value cells: comma-separated tokens; spaces inside a token are allowed (e.g. {@code A,B, C, D}).
-   * Empty segments from extra commas are invalid ({@code A,,B}, leading/trailing comma).
-   */
   private static Optional<String> validateEquivTokenListSyntax(final String raw) {
     if (raw == null || raw.isBlank()) {
       return of("must not be empty or blank");

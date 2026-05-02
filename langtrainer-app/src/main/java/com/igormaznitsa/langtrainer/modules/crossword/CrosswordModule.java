@@ -5,6 +5,7 @@ import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
 import com.igormaznitsa.langtrainer.api.LangTrainerModuleId;
 import com.igormaznitsa.langtrainer.engine.ClasspathLangResourceIndex;
+import com.igormaznitsa.langtrainer.engine.ClasspathResourceIndexTree;
 import com.igormaznitsa.langtrainer.engine.DialogDefinition;
 import com.igormaznitsa.langtrainer.engine.DialogLine;
 import com.igormaznitsa.langtrainer.engine.DialogListEntry;
@@ -94,6 +95,10 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
       ImageResourceLoader.loadIcon("/crossword/images/crossword-end-game.svg", 24, 24);
 
   private final DefaultListModel<DialogListEntry> listModel = new DefaultListModel<>();
+  private final Set<String> expandedClasspathFolders = new HashSet<>();
+  private final List<DialogListEntry.DialogResourceRow> externalClasspathResourceRows =
+      new ArrayList<>();
+  private ClasspathResourceIndexTree classpathResourceTree;
   private final JPanel rootPanel = new JPanel(new CardLayout());
   private final javax.swing.JLabel translationLabel =
       new javax.swing.JLabel(" ", SwingConstants.CENTER);
@@ -203,12 +208,35 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private SwingWorker<List<WordPlacement>, Void> generationWorker;
   private List<InputEquivalenceRow> activeInputEquivalenceRules = List.of();
   public CrosswordModule() {
-    ClasspathLangResourceIndex.loadShared(
-            CrosswordModule.class, this, "Can't load crossword resources")
-        .forEach(d -> this.listModel.addElement(new DialogListEntry(d, false)));
+    this.classpathResourceTree =
+        ClasspathLangResourceIndex.loadSharedTree(
+            CrosswordModule.class, this, "Can't load crossword resources");
+    this.rebuildCrosswordResourceListModel();
     this.rootPanel.add(this.makeSelectPanel(), CARD_SELECT);
     this.rootPanel.add(this.makeWorkPanel(), CARD_WORK);
     this.showCard(CARD_SELECT);
+  }
+
+  private void rebuildCrosswordResourceListModel() {
+    this.listModel.clear();
+    this.classpathResourceTree.materializeInto(this.listModel, this.expandedClasspathFolders);
+    for (final DialogListEntry.DialogResourceRow row : this.externalClasspathResourceRows) {
+      this.listModel.addElement(row);
+    }
+  }
+
+  private void onClasspathFolderRowClicked(final DialogListEntry.DialogFolderRow folder) {
+    final String key = folder.pathKey();
+    if (this.expandedClasspathFolders.contains(key)) {
+      this.expandedClasspathFolders.remove(key);
+    } else {
+      this.expandedClasspathFolders.add(key);
+    }
+    this.rebuildCrosswordResourceListModel();
+    final int rowIndex = DialogListEntry.indexOfFolderPathKey(this.listModel, key);
+    if (this.selectionList != null && rowIndex >= 0) {
+      this.selectionList.setSelectedIndex(rowIndex);
+    }
   }
 
   @Override
@@ -292,7 +320,8 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
         "Choose language and start",
         "Open from file",
         this::chooseLanguageAndStart,
-        this::openFromFile);
+        this::openFromFile,
+        this::onClasspathFolderRowClicked);
     this.selectionList = view.list();
     return view.panel();
   }
@@ -1479,9 +1508,14 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     }
     try {
       final DialogDefinition loaded = LangResourceJson.parseFromPath(file.toPath());
-      final int index = DialogListEntry.addOrReplaceByMenuTitle(
-          this.listModel, new DialogListEntry(loaded, true));
-      list.setSelectedIndex(index);
+      DialogListEntry.mergeExternalResourceRow(
+          this.externalClasspathResourceRows, DialogListEntry.externalResourceRow(loaded));
+      this.rebuildCrosswordResourceListModel();
+      final int index =
+          DialogListEntry.indexOfExternalResourceMenuName(this.listModel, loaded.menuName());
+      if (index >= 0) {
+        list.setSelectedIndex(index);
+      }
       final File parent = file.getParentFile();
       if (parent != null) {
         this.lastOpenDirectory = parent;

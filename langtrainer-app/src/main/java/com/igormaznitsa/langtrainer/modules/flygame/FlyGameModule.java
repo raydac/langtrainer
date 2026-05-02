@@ -5,6 +5,7 @@ import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
 import com.igormaznitsa.langtrainer.api.LangTrainerModuleId;
 import com.igormaznitsa.langtrainer.engine.ClasspathLangResourceIndex;
+import com.igormaznitsa.langtrainer.engine.ClasspathResourceIndexTree;
 import com.igormaznitsa.langtrainer.engine.DialogDefinition;
 import com.igormaznitsa.langtrainer.engine.DialogLine;
 import com.igormaznitsa.langtrainer.engine.DialogListEntry;
@@ -39,9 +40,11 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.Ellipse2D;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import java.util.Set;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
@@ -74,13 +77,8 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   private static final String CARD_SELECT = "select";
   private static final String CARD_GAME = "game";
 
-  /**
-   * ~25 FPS; full-sky repaint each tick — keep modest to limit CPU while typing.
-   */
   private static final int TIMER_MS = 50;
-  /**
-   * Cloud drift was originally tuned per tick at 25 ms; scale so motion stays consistent if {@link #TIMER_MS} changes.
-   */
+
   private static final float CLOUD_DRIFT_REF_MS = 25f;
   private static final float FLIGHT_SECONDS = 20f;
   private static final int EXPLODE_FRAMES = 18;
@@ -90,18 +88,45 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   private static final Color INPUT_TEXT_COLOR_SHADOW = Color.BLACK;
 
   private final DefaultListModel<DialogListEntry> listModel = new DefaultListModel<>();
+  private final Set<String> expandedClasspathFolders = new HashSet<>();
+  private final List<DialogListEntry.DialogResourceRow> externalClasspathResourceRows =
+      new ArrayList<>();
+  private ClasspathResourceIndexTree classpathResourceTree;
   private final JPanel rootPanel = new JPanel(new java.awt.CardLayout());
   private final GameBoard gameBoard = new GameBoard(this);
   private JList<DialogListEntry> selectionList;
   private File lastOpenDir;
 
   public FlyGameModule() {
-    ClasspathLangResourceIndex.loadShared(
-            FlyGameModule.class, this, "Can't load fly game word lists")
-        .forEach(d -> this.listModel.addElement(new DialogListEntry(d, false)));
+    this.classpathResourceTree =
+        ClasspathLangResourceIndex.loadSharedTree(
+            FlyGameModule.class, this, "Can't load fly game word lists");
+    this.rebuildFlyResourceListModel();
     this.rootPanel.add(this.makeSelectPanel(), CARD_SELECT);
     this.rootPanel.add(this.gameBoard, CARD_GAME);
     this.showCard(CARD_SELECT);
+  }
+
+  private void rebuildFlyResourceListModel() {
+    this.listModel.clear();
+    this.classpathResourceTree.materializeInto(this.listModel, this.expandedClasspathFolders);
+    for (final DialogListEntry.DialogResourceRow row : this.externalClasspathResourceRows) {
+      this.listModel.addElement(row);
+    }
+  }
+
+  private void onClasspathFolderRowClicked(final DialogListEntry.DialogFolderRow folder) {
+    final String key = folder.pathKey();
+    if (this.expandedClasspathFolders.contains(key)) {
+      this.expandedClasspathFolders.remove(key);
+    } else {
+      this.expandedClasspathFolders.add(key);
+    }
+    this.rebuildFlyResourceListModel();
+    final int rowIndex = DialogListEntry.indexOfFolderPathKey(this.listModel, key);
+    if (this.selectionList != null && rowIndex >= 0) {
+      this.selectionList.setSelectedIndex(rowIndex);
+    }
   }
 
   @Override
@@ -195,7 +220,8 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         "Choose language and play",
         "Open from file",
         this::chooseLanguage,
-        this::openFromFile);
+        this::openFromFile,
+        this::onClasspathFolderRowClicked);
     this.selectionList = view.list();
     return view.panel();
   }
@@ -216,9 +242,14 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     }
     try {
       final DialogDefinition loaded = LangResourceJson.parseFromPath(file.toPath());
-      final int index = DialogListEntry.addOrReplaceByMenuTitle(
-          this.listModel, new DialogListEntry(loaded, true));
-      list.setSelectedIndex(index);
+      DialogListEntry.mergeExternalResourceRow(
+          this.externalClasspathResourceRows, DialogListEntry.externalResourceRow(loaded));
+      this.rebuildFlyResourceListModel();
+      final int index =
+          DialogListEntry.indexOfExternalResourceMenuName(this.listModel, loaded.menuName());
+      if (index >= 0) {
+        list.setSelectedIndex(index);
+      }
       final File parent = file.getParentFile();
       if (parent != null) {
         this.lastOpenDir = parent;

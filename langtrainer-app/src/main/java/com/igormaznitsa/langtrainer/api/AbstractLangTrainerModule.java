@@ -37,9 +37,10 @@ public abstract class AbstractLangTrainerModule {
   }
 
   /**
-   * Whether a shared classpath JSON entry (from {@code /common/jsons/index.json}) may appear in
-   * this module’s resource list. The {@link JsonObject} is one element of the {@code resources}
-   * array; it at least includes {@code "resource": "/path/…"}.
+   * Whether a shared classpath JSON <em>leaf</em> (from {@code /common/jsons/index.json}) may
+   * appear in this module’s resource list. The {@link JsonObject} is a leaf element of the {@code
+   * resources} tree: it includes {@code "resource": "/path/…"} (and optionally {@code "modules"}).
+   * Folder nodes ({@code "name"} + {@code "children"}) are not passed here.
    */
   public boolean isResourceAllowed(final JsonObject resourceDescription) {
     return true;

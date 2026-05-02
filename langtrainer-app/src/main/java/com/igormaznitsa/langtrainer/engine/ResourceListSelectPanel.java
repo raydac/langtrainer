@@ -12,6 +12,7 @@ import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -19,12 +20,16 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.ListCellRenderer;
 import javax.swing.SwingConstants;
+import javax.swing.UIManager;
 
 /**
  * Resource selection for modules that list {@link DialogListEntry} items, open JSON from file, and
- * start a session. Double-clicking a row starts the same way as the primary start button.
+ * start a session. Double-clicking a resource row starts the same way as the primary start button.
+ * Single-clicking a folder row invokes {@code onFolderRowSingleClick} (expand/collapse).
  */
 public final class ResourceListSelectPanel {
+
+  private static final int INDENT_PER_LEVEL = 14;
 
   private ResourceListSelectPanel() {
   }
@@ -36,7 +41,8 @@ public final class ResourceListSelectPanel {
       final String startButtonLabel,
       final String openFromFileLabel,
       final Consumer<DialogDefinition> onStart,
-      final Consumer<JList<DialogListEntry>> onOpenFromFile) {
+      final Consumer<JList<DialogListEntry>> onOpenFromFile,
+      final Consumer<DialogListEntry.DialogFolderRow> onFolderRowSingleClick) {
     final JPanel panel = new JPanel(new BorderLayout(12, 14));
     final Color panelBg = appearance == Appearance.DIALOG
         ? new Color(236, 242, 249)
@@ -61,10 +67,14 @@ public final class ResourceListSelectPanel {
     } else {
       applyFlyListLook(list);
     }
-    if (model.getSize() > 0) {
-      list.setSelectedIndex(0);
+    final int firstResource = DialogListEntry.indexOfFirstResourceRow(model);
+    if (firstResource >= 0) {
+      list.setSelectedIndex(firstResource);
     }
     bindDoubleClickToStart(list, onStart);
+    if (onFolderRowSingleClick != null) {
+      bindFolderRowSingleClick(list, onFolderRowSingleClick);
+    }
 
     final JScrollPane scroll = new JScrollPane(list);
     if (appearance == Appearance.DIALOG) {
@@ -91,6 +101,14 @@ public final class ResourceListSelectPanel {
     return new Result(panel, list);
   }
 
+  private static Icon folderRowIcon() {
+    Icon icon = UIManager.getIcon("FileView.directoryIcon");
+    if (icon != null) {
+      return icon;
+    }
+    return UIManager.getIcon("Tree.closedIcon");
+  }
+
   private static void addDialogSouth(
       final JPanel panel,
       final Color panelBg,
@@ -114,8 +132,8 @@ public final class ResourceListSelectPanel {
     start.addActionListener(
         event -> {
           final DialogListEntry selected = list.getSelectedValue();
-          if (selected != null) {
-            onStart.accept(selected.definition());
+          if (selected instanceof final DialogListEntry.DialogResourceRow row) {
+            onStart.accept(row.definition());
           }
         });
 
@@ -161,8 +179,8 @@ public final class ResourceListSelectPanel {
     start.addActionListener(
         e -> {
           final DialogListEntry entry = list.getSelectedValue();
-          if (entry != null) {
-            onStart.accept(entry.definition());
+          if (entry instanceof final DialogListEntry.DialogResourceRow row) {
+            onStart.accept(row.definition());
           }
         });
     south.add(open);
@@ -198,25 +216,53 @@ public final class ResourceListSelectPanel {
       final Color selectedBg,
       final Color unselectedBg,
       final Color unselectedFg) {
+    final Icon folderIcon = folderRowIcon();
     return (jList, value, index, isSelected, cellHasFocus) -> {
-      final String rowTitle =
-          (value.fromExternalFile() ? "* " : "") + value.definition().menuName();
-      final JLabel label = new JLabel(rowTitle);
+      final JLabel label = new JLabel();
       label.setOpaque(true);
       label.setFont(label.getFont().deriveFont(Font.BOLD, 19f));
-      label.setBorder(
-          BorderFactory.createCompoundBorder(
-              BorderFactory.createMatteBorder(0, 0, 1, 0, rowDivider),
-              BorderFactory.createEmptyBorder(12, 18, 12, 18)));
-      label.setToolTipText(
-          "<html><body style='width:280px;'>%s</body></html>".formatted(
-              value.definition().description()));
-      if (isSelected) {
-        label.setBackground(selectedBg);
-        label.setForeground(Color.WHITE);
-      } else {
-        label.setBackground(unselectedBg);
-        label.setForeground(unselectedFg);
+      label.setHorizontalAlignment(SwingConstants.LEFT);
+      label.setVerticalAlignment(SwingConstants.CENTER);
+      label.setIconTextGap(8);
+      if (value instanceof final DialogListEntry.DialogResourceRow row) {
+        final int left = 18 + row.indentLevel() * INDENT_PER_LEVEL;
+        final String rowTitle =
+            (row.fromExternalFile() ? "* " : "") + row.definition().menuName();
+        label.setIcon(null);
+        label.setText(rowTitle);
+        label.setCursor(Cursor.getDefaultCursor());
+        label.setToolTipText(
+            "<html><body style='width:280px;'>%s</body></html>".formatted(
+                row.definition().description()));
+        label.setBorder(
+            BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, rowDivider),
+                BorderFactory.createEmptyBorder(12, left, 12, 18)));
+        if (isSelected) {
+          label.setBackground(selectedBg);
+          label.setForeground(Color.WHITE);
+        } else {
+          label.setBackground(unselectedBg);
+          label.setForeground(unselectedFg);
+        }
+      } else if (value instanceof final DialogListEntry.DialogFolderRow folder) {
+        final int left = 18 + folder.depth() * INDENT_PER_LEVEL;
+        label.setIcon(folderIcon);
+        final String chevron = folder.expanded() ? "\u25bc " : "\u25b6 ";
+        label.setText(chevron + folder.title());
+        label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        label.setToolTipText(null);
+        label.setBorder(
+            BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, rowDivider),
+                BorderFactory.createEmptyBorder(12, left, 12, 18)));
+        if (isSelected) {
+          label.setBackground(selectedBg);
+          label.setForeground(Color.WHITE);
+        } else {
+          label.setBackground(new Color(245, 248, 252));
+          label.setForeground(new Color(55, 71, 79));
+        }
       }
       return label;
     };
@@ -225,23 +271,75 @@ public final class ResourceListSelectPanel {
   private static void applyFlyListLook(final JList<DialogListEntry> list) {
     list.setFont(list.getFont().deriveFont(18f));
     list.setFixedCellHeight(48);
+    final Icon folderIcon = folderRowIcon();
     list.setCellRenderer(
         (jList, value, index, isSelected, cellHasFocus) -> {
-          final String rowTitle =
-              (value.fromExternalFile() ? "* " : "") + value.definition().menuName();
-          final JLabel cell = new JLabel(rowTitle);
+          final JLabel cell = new JLabel();
           cell.setOpaque(true);
-          cell.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
-          cell.setFont(cell.getFont().deriveFont(Font.BOLD, 17f));
-          if (isSelected) {
-            cell.setBackground(new Color(25, 118, 210));
-            cell.setForeground(Color.WHITE);
-          } else {
-            cell.setBackground(Color.WHITE);
-            cell.setForeground(new Color(40, 50, 70));
+          cell.setHorizontalAlignment(SwingConstants.LEFT);
+          cell.setVerticalAlignment(SwingConstants.CENTER);
+          cell.setIconTextGap(8);
+          if (value instanceof final DialogListEntry.DialogResourceRow row) {
+            final int left = 14 + row.indentLevel() * INDENT_PER_LEVEL;
+            final String rowTitle =
+                (row.fromExternalFile() ? "* " : "") + row.definition().menuName();
+            cell.setIcon(null);
+            cell.setText(rowTitle);
+            cell.setCursor(Cursor.getDefaultCursor());
+            cell.setToolTipText(row.definition().description());
+            cell.setBorder(BorderFactory.createEmptyBorder(10, left, 10, 14));
+            cell.setFont(cell.getFont().deriveFont(Font.BOLD, 17f));
+            if (isSelected) {
+              cell.setBackground(new Color(25, 118, 210));
+              cell.setForeground(Color.WHITE);
+            } else {
+              cell.setBackground(Color.WHITE);
+              cell.setForeground(new Color(40, 50, 70));
+            }
+          } else if (value instanceof final DialogListEntry.DialogFolderRow folder) {
+            final int left = 14 + folder.depth() * INDENT_PER_LEVEL;
+            cell.setIcon(folderIcon);
+            final String chevron = folder.expanded() ? "\u25bc " : "\u25b6 ";
+            cell.setText(chevron + folder.title());
+            cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            cell.setToolTipText(null);
+            cell.setBorder(BorderFactory.createEmptyBorder(10, left, 10, 14));
+            cell.setFont(cell.getFont().deriveFont(Font.BOLD, 17f));
+            if (isSelected) {
+              cell.setBackground(new Color(25, 118, 210));
+              cell.setForeground(Color.WHITE);
+            } else {
+              cell.setBackground(new Color(245, 248, 252));
+              cell.setForeground(new Color(55, 71, 79));
+            }
           }
-          cell.setToolTipText(value.definition().description());
           return cell;
+        });
+  }
+
+  private static void bindFolderRowSingleClick(
+      final JList<DialogListEntry> list,
+      final Consumer<DialogListEntry.DialogFolderRow> onFolderRowSingleClick) {
+    list.addMouseListener(
+        new MouseAdapter() {
+          @Override
+          public void mouseClicked(final MouseEvent e) {
+            if (e.getClickCount() != 1) {
+              return;
+            }
+            final int index = list.locationToIndex(e.getPoint());
+            if (index < 0) {
+              return;
+            }
+            final Rectangle cell = list.getCellBounds(index, index);
+            if (cell != null && !cell.contains(e.getPoint())) {
+              return;
+            }
+            final DialogListEntry entry = list.getModel().getElementAt(index);
+            if (entry instanceof final DialogListEntry.DialogFolderRow folder) {
+              onFolderRowSingleClick.accept(folder);
+            }
+          }
         });
   }
 
@@ -263,7 +361,9 @@ public final class ResourceListSelectPanel {
               return;
             }
             final DialogListEntry entry = list.getModel().getElementAt(index);
-            onStart.accept(entry.definition());
+            if (entry instanceof final DialogListEntry.DialogResourceRow row) {
+              onStart.accept(row.definition());
+            }
           }
         });
   }

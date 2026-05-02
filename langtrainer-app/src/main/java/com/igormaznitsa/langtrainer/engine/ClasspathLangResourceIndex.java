@@ -1,13 +1,14 @@
 package com.igormaznitsa.langtrainer.engine;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -21,19 +22,18 @@ public final class ClasspathLangResourceIndex {
   private ClasspathLangResourceIndex() {
   }
 
-  public static List<DialogDefinition> loadShared(
+  public static ClasspathResourceIndexTree loadSharedTree(
       final Class<?> anchor, final AbstractLangTrainerModule module, final String failureMessage) {
-    return loadShared(anchor, module, SHARED_INDEX, failureMessage);
+    return loadSharedTree(anchor, module, SHARED_INDEX, failureMessage);
   }
 
-  public static List<DialogDefinition> loadShared(
+  public static ClasspathResourceIndexTree loadSharedTree(
       final Class<?> anchor,
       final AbstractLangTrainerModule module,
       final String indexResourcePath,
       final String failureMessage) {
-    try (InputStream indexStream =
-             openClasspathStreamOrThrow(anchor, indexResourcePath)) {
-      return sortedDialogDefinitionsFromIndex(
+    try (InputStream indexStream = openClasspathStreamOrThrow(anchor, indexResourcePath)) {
+      return classpathResourceTreeFromIndex(
           anchor,
           module,
           readUtf8(indexStream),
@@ -44,7 +44,7 @@ public final class ClasspathLangResourceIndex {
     }
   }
 
-  private static List<DialogDefinition> sortedDialogDefinitionsFromIndex(
+  private static ClasspathResourceIndexTree classpathResourceTreeFromIndex(
       final Class<?> anchor,
       final AbstractLangTrainerModule module,
       final String indexText,
@@ -54,21 +54,117 @@ public final class ClasspathLangResourceIndex {
         requireIndexWithResourcesArray(
             GSON.fromJson(indexText, JsonObject.class),
             indexResourcePath);
-    return root.get("resources")
-        .getAsJsonArray()
-        .asList()
-        .stream()
-        .map(JsonElement::getAsJsonObject)
-        .filter(
-            entry ->
-                isIndexEntryOnClasspath(entry)
-                    && module.isResourceAllowed(entry))
-        .map(
-            entry ->
-                loadDialogFromResourcePath(
-                    anchor, entry.get("resource").getAsString(), perEntryFailureContext))
-        .sorted(Comparator.comparing(DialogDefinition::menuName))
-        .toList();
+    final List<ClasspathResourceIndexTree.IndexedClasspathNode> roots = new ArrayList<>();
+    for (final JsonElement el : root.get("resources").getAsJsonArray()) {
+      if (!el.isJsonObject()) {
+        continue;
+      }
+      final ClasspathResourceIndexTree.IndexedClasspathNode built =
+          tryBuildTreeNode(
+              anchor,
+              module,
+              el.getAsJsonObject(),
+              "",
+              indexResourcePath,
+              perEntryFailureContext);
+      if (built != null) {
+        roots.add(built);
+      }
+    }
+    return new ClasspathResourceIndexTree(List.copyOf(roots));
+  }
+
+  private static ClasspathResourceIndexTree.IndexedClasspathNode tryBuildTreeNode(
+      final Class<?> anchor,
+      final AbstractLangTrainerModule module,
+      final JsonObject node,
+      final String parentPathKey,
+      final String indexResourcePath,
+      final String perEntryFailureContext) {
+    if (isFolderNode(node)) {
+      if (node.has("resource")) {
+        throw new IllegalStateException(
+            "index.json folder must not contain \"resource\" alongside \"children\" ("
+                + indexResourcePath
+                + "): "
+                + node);
+      }
+      if (!node.has("name") || !node.get("name").isJsonPrimitive()) {
+        throw new IllegalStateException(
+            "index.json folder requires string \"name\" (" + indexResourcePath + "): " + node);
+      }
+      if (!subtreeHasVisibleResource(anchor, module, node)) {
+        return null;
+      }
+      final String name = node.get("name").getAsString();
+      final String pathKey = ClasspathResourceIndexTree.childFolderPathKey(parentPathKey, name);
+      final List<ClasspathResourceIndexTree.IndexedClasspathNode> childNodes = new ArrayList<>();
+      for (final JsonElement child : node.getAsJsonArray("children")) {
+        if (!child.isJsonObject()) {
+          continue;
+        }
+        final ClasspathResourceIndexTree.IndexedClasspathNode built =
+            tryBuildTreeNode(
+                anchor,
+                module,
+                child.getAsJsonObject(),
+                pathKey,
+                indexResourcePath,
+                perEntryFailureContext);
+        if (built != null) {
+          childNodes.add(built);
+        }
+      }
+      if (childNodes.isEmpty()) {
+        return null;
+      }
+      return new ClasspathResourceIndexTree.IndexedClasspathNode.IndexedFolder(
+          name, pathKey, List.copyOf(childNodes));
+    }
+    if (isLeafNode(node)) {
+      if (!isIndexEntryOnClasspath(node) || !module.isResourceAllowed(node)) {
+        return null;
+      }
+      final DialogDefinition loaded =
+          loadDialogFromResourcePath(
+              anchor, node.get("resource").getAsString(), perEntryFailureContext);
+      return new ClasspathResourceIndexTree.IndexedClasspathNode.IndexedLeaf(loaded);
+    }
+    throw new IllegalStateException(
+        "index.json entry must be a leaf with \"resource\" or a folder with \"name\" and"
+            + " \"children\" ("
+            + indexResourcePath
+            + "): "
+            + node);
+  }
+
+  private static boolean isFolderNode(final JsonObject node) {
+    return node.has("children") && node.get("children").isJsonArray();
+  }
+
+  private static boolean isLeafNode(final JsonObject node) {
+    return node.has("resource") && node.get("resource").isJsonPrimitive();
+  }
+
+  private static boolean subtreeHasVisibleResource(
+      final Class<?> anchor, final AbstractLangTrainerModule module, final JsonObject folderNode) {
+    final JsonArray children = folderNode.getAsJsonArray("children");
+    for (final JsonElement el : children) {
+      if (!el.isJsonObject()) {
+        continue;
+      }
+      final JsonObject ch = el.getAsJsonObject();
+      if (isFolderNode(ch)) {
+        if (subtreeHasVisibleResource(anchor, module, ch)) {
+          return true;
+        }
+      } else if (isLeafNode(ch)
+          && isIndexEntryOnClasspath(ch)
+          && module.isResourceAllowed(ch)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static InputStream openClasspathStreamOrThrow(final Class<?> anchor, final String path)
@@ -109,13 +205,11 @@ public final class ClasspathLangResourceIndex {
       throw new IllegalStateException("Missing resource path (" + loadFailureContext + ")");
     }
     final String normalized = resourcePath.startsWith("/") ? resourcePath : "/" + resourcePath;
-    try (InputStream stream =
-             openClasspathStreamOrThrow(anchor, normalized)) {
+    try (InputStream stream = openClasspathStreamOrThrow(anchor, normalized)) {
       return LangResourceJson.parse(
           new String(stream.readAllBytes(), StandardCharsets.UTF_8));
     } catch (final Exception ex) {
-      throw wrapUnlessAlreadyIllegalState(
-          ex, "Can't load " + normalized);
+      throw wrapUnlessAlreadyIllegalState(ex, "Can't load " + normalized);
     }
   }
 

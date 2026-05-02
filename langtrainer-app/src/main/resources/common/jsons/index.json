@@ -7,46 +7,66 @@
       ]
     },
     {
-      "resource": "/common/jsons/en-ru-100-literature-1.json",
-      "modules": [
-        "DIALOG"
+      "name": "By size",
+      "children": [
+        {
+          "name": "50 terms",
+          "children": [
+            {
+              "resource": "/common/jsons/en-ru-50-agatha-christie-1.json",
+              "modules": [
+                "DIALOG"
+              ]
+            },
+            {
+              "resource": "/common/jsons/en-ru-50-nyt-1.json",
+              "modules": [
+                "DIALOG"
+              ]
+            },
+            {
+              "resource": "/common/jsons/en-ru-50-stock-1.json",
+              "modules": [
+                "DIALOG"
+              ]
+            },
+            {
+              "resource": "/common/jsons/en-ru-50-idioms-1.json",
+              "modules": [
+                "DIALOG"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "100 terms",
+          "children": [
+            {
+              "resource": "/common/jsons/en-ru-100-literature-1.json",
+              "modules": [
+                "DIALOG"
+              ]
+            },
+            {
+              "resource": "/common/jsons/en-ru-100-words-c1-1.json",
+              "modules": [
+                "DIALOG"
+              ]
+            }
+          ]
+        }
       ]
     },
     {
-      "resource": "/common/jsons/en-ru-50-agatha-christie-1.json",
-      "modules": [
-        "DIALOG"
-      ]
-    },
-    {
-      "resource": "/common/jsons/en-ru-50-nyt-1.json",
-      "modules": [
-        "DIALOG"
-      ]
-    },
-    {
-      "resource": "/common/jsons/en-ru-50-stock-1.json",
-      "modules": [
-        "DIALOG"
-      ]
-    },
-    {
-      "resource": "/common/jsons/en-ru-50-idioms-1.json",
-      "modules": [
-        "DIALOG"
-      ]
-    },
-    {
-      "resource": "/common/jsons/en-ru-100-words-c1-1.json",
-      "modules": [
-        "DIALOG"
-      ]
-    },
-    {
-      "resource": "/common/jsons/sw-rus-travel-phrases.json",
-      "modules": [
-        "DIALOG",
-        "FLY_GAME"
+      "name": "Travel",
+      "children": [
+        {
+          "resource": "/common/jsons/sw-rus-travel-phrases.json",
+          "modules": [
+            "DIALOG",
+            "FLY_GAME"
+          ]
+        }
       ]
     },
     {

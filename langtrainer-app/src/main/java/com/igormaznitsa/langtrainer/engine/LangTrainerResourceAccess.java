@@ -5,9 +5,10 @@ import com.igormaznitsa.langtrainer.api.LangTrainerModuleId;
 import java.util.stream.StreamSupport;
 
 /**
- * How shared entries in {@code /common/jsons/index.json} are visible to a module. If a resource
- * entry has a {@code modules} array, it is shown only to modules named there; if {@code modules} is
- * absent, the entry is available to all modules.
+ * How shared <em>leaf</em> entries in {@code /common/jsons/index.json} are visible to a module.
+ * Folder nodes in the index are handled separately; this applies only to objects with {@code
+ * "resource"}. If a leaf has a {@code modules} array, it is shown only to modules named there; if
+ * {@code modules} is absent, the entry is available to all modules.
  */
 public final class LangTrainerResourceAccess {
 
