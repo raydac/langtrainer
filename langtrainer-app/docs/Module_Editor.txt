@@ -1,0 +1,8 @@
+Module EDITOR
+--------------
+
+1. Child of AbstractLangTrainerModule; listed in Modules enum as EDITOR.
+2. Swing UI to create and edit DialogDefinition-compatible JSON: metadata fields (title, description, languages), a table of A/B line pairs, and optional input equivalence rows (same semantics as JSON_format.txt).
+3. Load / save via file chooser (JSON). Not tied to index.json — it edits arbitrary paths the user picks; index.json remains the catalogue for bundled runtime lists in other modules.
+4. Supports new document, font size controls for editor areas, and optional presets for English-style equivalence rows (see InputEquivalenceEnglishPresets in code).
+5. Keyboard support follows AbstractLangTrainerModule#getSupportedLanguages (editor uses the same full virtual keyboard set as typing modules where applicable).
