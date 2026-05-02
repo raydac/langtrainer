@@ -49,6 +49,7 @@ Module id values (enum LangTrainerModuleId, must match exactly):
   DIALOG
   FLY_GAME
   CROSSWORD
+  BRICKS
 
 Example — dialog only:
 

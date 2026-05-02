@@ -1,0 +1,33 @@
+Module Bricks
+------------------
+
+1. It is a child of AbstractLangTrainerModule
+2. The module allows to select working resource as in Fly and Dialog module
+3. User selects target language.
+4. From selected resource we extract only sentences with more than one word.
+5. Use see translation of the word on top of module work zone,
+6. He see set of "bricks", words of next sentence where one word as a brick.
+7. User with mouse drag and drop should place bricks into correct phrase.
+8. Placed bricks are light red if all used but not correct.
+9. Placed bricks are light yellow if not all bricks used.
+10. Placed bricks are light green if all used and correct.
+11. After full correct phrase build it is moved down and we start next phrase.
+12. Example of screen:
+
++--------------------------------------------+
+|          Hello my world!                   |
+|                                            |
+|  /----------\/----\                        |<-- zone to build phrase
+|  |Здравствуй||мир!|                        |
+|  \----------/\----/                        |
+|           /---\                            |
+|           |мой|                            |<--zone of randomly unordered bricks
+|           \---/                            |
+|                                            |
+|  Вселенная большая                         |<-- zone where we see last previous sentences
+|  Океаны глубокие и широкие                 |
++--------------------------------------------+
+
+13. Non placed bricks should have light blue background.
+14. Placed bricks must allow change order through mouse drag and drop.
+15. We don't need show all previous sentences, it is enough to show only these sentences which can be placed on module window part, like queue

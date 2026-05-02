@@ -20,6 +20,14 @@ public abstract class AbstractLangTrainerModule {
     return List.of(KeyboardLanguage.ENG);
   }
 
+  /**
+   * When {@code false}, the main window omits the virtual-keyboard toolbar control for this
+   * module (and opening the keyboard via client property is ignored).
+   */
+  public boolean isVirtualKeyboardToolbarButtonShown() {
+    return true;
+  }
+
   public void onCharClick(final char symbol) {
   }
 

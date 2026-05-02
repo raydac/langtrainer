@@ -7,5 +7,6 @@ package com.igormaznitsa.langtrainer.api;
 public enum LangTrainerModuleId {
   DIALOG,
   FLY_GAME,
-  CROSSWORD
+  CROSSWORD,
+  BRICKS
 }

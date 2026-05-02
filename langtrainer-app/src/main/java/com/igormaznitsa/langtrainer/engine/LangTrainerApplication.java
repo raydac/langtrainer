@@ -120,13 +120,18 @@ public final class LangTrainerApplication {
     this.moduleToolbarPanel = topPanel;
     topPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
     final JPanel rightButtons = new JPanel();
-    this.keyboardButton = new JButton();
-    this.keyboardButton.setIcon(ImageResourceLoader.loadIcon("/images/keyboard.svg", 24, 24));
-    this.keyboardButton.setToolTipText("Show virtual keyboard");
-    this.keyboardButton.setFont(this.keyboardButton.getFont().deriveFont(Font.BOLD, 24.0f));
-    this.keyboardButton.setFocusPainted(false);
-    this.keyboardButton.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
-    this.keyboardButton.addActionListener(event -> this.showVirtualKeyboard());
+    if (this.activeModule.isVirtualKeyboardToolbarButtonShown()) {
+      this.keyboardButton = new JButton();
+      this.keyboardButton.setIcon(ImageResourceLoader.loadIcon("/images/keyboard.svg", 24, 24));
+      this.keyboardButton.setToolTipText("Show virtual keyboard");
+      this.keyboardButton.setFont(this.keyboardButton.getFont().deriveFont(Font.BOLD, 24.0f));
+      this.keyboardButton.setFocusPainted(false);
+      this.keyboardButton.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+      this.keyboardButton.addActionListener(event -> this.showVirtualKeyboard());
+      rightButtons.add(this.keyboardButton);
+    } else {
+      this.keyboardButton = null;
+    }
     final JButton closeButton = new JButton("X");
     closeButton.setHorizontalAlignment(SwingConstants.CENTER);
     closeButton.setForeground(Color.WHITE);
@@ -135,7 +140,6 @@ public final class LangTrainerApplication {
     closeButton.setFocusPainted(false);
     closeButton.setFont(closeButton.getFont().deriveFont(Font.BOLD, 24.0f));
     closeButton.addActionListener(event -> this.closeActiveModule());
-    rightButtons.add(this.keyboardButton);
     if (this.activeModule != null) {
       this.activeModule.populateMainToolbar(rightButtons);
     }
@@ -246,24 +250,27 @@ public final class LangTrainerApplication {
   }
 
   private void showVirtualKeyboard() {
-    if (this.activeModule != null) {
-      if (this.virtualKeyboardWindow == null) {
-        final List<KeyboardLanguage> supported = this.activeModule.getSupportedLanguages();
-        this.virtualKeyboardWindow = new VirtualKeyboardWindow(
-            this.mainFrame,
-            supported,
-            this::onCharInput,
-            this::onVirtualKeyboardHidden);
-      }
-      this.virtualKeyboardWindow.show();
-      if (this.keyboardButton != null) {
-        this.keyboardButton.setVisible(false);
-      }
+    if (this.activeModule == null || !this.activeModule.isVirtualKeyboardToolbarButtonShown()) {
+      return;
+    }
+    if (this.virtualKeyboardWindow == null) {
+      final List<KeyboardLanguage> supported = this.activeModule.getSupportedLanguages();
+      this.virtualKeyboardWindow =
+          new VirtualKeyboardWindow(
+              this.mainFrame,
+              supported,
+              this::onCharInput,
+              this::onVirtualKeyboardHidden);
+    }
+    this.virtualKeyboardWindow.show();
+    if (this.keyboardButton != null) {
+      this.keyboardButton.setVisible(false);
     }
   }
 
   private void onVirtualKeyboardHidden() {
-    if (this.keyboardButton != null) {
+    if (this.keyboardButton != null && this.activeModule != null
+        && this.activeModule.isVirtualKeyboardToolbarButtonShown()) {
       this.keyboardButton.setVisible(true);
     }
   }
@@ -273,7 +280,8 @@ public final class LangTrainerApplication {
       this.virtualKeyboardWindow.dispose();
       this.virtualKeyboardWindow = null;
     }
-    if (this.keyboardButton != null) {
+    if (this.keyboardButton != null && this.activeModule != null
+        && this.activeModule.isVirtualKeyboardToolbarButtonShown()) {
       this.keyboardButton.setVisible(true);
     }
   }
