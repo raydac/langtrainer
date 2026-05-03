@@ -15,7 +15,7 @@ Module Bricks
 12. Example of screen:
 
 +--------------------------------------------+
-|          Hello my world!                   |
+|          **Hello my world!**               |
 |                                            |
 |  /----------\/----\                        |<-- zone to build phrase
 |  |Здравствуй||мир!|                        |

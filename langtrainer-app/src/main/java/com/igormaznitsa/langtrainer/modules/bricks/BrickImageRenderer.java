@@ -10,9 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.swing.ImageIcon;
 
-/**
- * Raster brick chips for pool/build/history (rounded rect + label).
- */
 final class BrickImageRenderer {
 
   static final int BRICK_PAD_X = 12;
@@ -27,22 +24,26 @@ final class BrickImageRenderer {
   static int measureBrickWidthPx(final String word, final Font font) {
     final BufferedImage scratch =
         new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-    final Graphics2D g0 = scratch.createGraphics();
-    g0.setFont(font);
-    final FontMetrics fm = g0.getFontMetrics();
-    final int w = fm.stringWidth(word) + 2 * BRICK_PAD_X + 4;
-    g0.dispose();
-    return w;
+    final Graphics2D gfx = scratch.createGraphics();
+    try {
+      gfx.setFont(font);
+      final FontMetrics fm = gfx.getFontMetrics();
+      return fm.stringWidth(word) + 2 * BRICK_PAD_X + 4;
+    } finally {
+      gfx.dispose();
+    }
   }
 
   static int measureBrickHeightPx(final Font font) {
     final BufferedImage scratch =
         new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-    final Graphics2D g0 = scratch.createGraphics();
-    g0.setFont(font);
-    final int h = g0.getFontMetrics().getHeight() + 2 * BRICK_PAD_Y + 4;
-    g0.dispose();
-    return h;
+    final Graphics2D gfx = scratch.createGraphics();
+    try {
+      gfx.setFont(font);
+      return gfx.getFontMetrics().getHeight() + 2 * BRICK_PAD_Y + 4;
+    } finally {
+      gfx.dispose();
+    }
   }
 
   static BufferedImage renderBrickImage(final String word, final Color fill, final Font font) {
@@ -93,14 +94,20 @@ final class BrickImageRenderer {
     totalW += BRICK_FLOW_H_GAP * (words.size() - 1);
     final BufferedImage row =
         new BufferedImage(totalW, maxH, BufferedImage.TYPE_INT_ARGB);
-    final Graphics2D g2 = row.createGraphics();
-    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-    int x = 0;
-    for (final ImageIcon ic : icons) {
-      ic.paintIcon(null, g2, x, (maxH - ic.getIconHeight()) / 2);
-      x += ic.getIconWidth() + BRICK_FLOW_H_GAP;
+    final Graphics2D gfx = row.createGraphics();
+    try {
+      gfx.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+      gfx.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+          RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+      gfx.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+      int x = 0;
+      for (final ImageIcon ic : icons) {
+        ic.paintIcon(null, gfx, x, (maxH - ic.getIconHeight()) / 2);
+        x += ic.getIconWidth() + BRICK_FLOW_H_GAP;
+      }
+      return new ImageIcon(row);
+    } finally {
+      gfx.dispose();
     }
-    g2.dispose();
-    return new ImageIcon(row);
   }
 }

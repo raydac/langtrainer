@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
-        xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-        xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
         width="128"
         height="128"
         viewBox="0 0 128 128"
@@ -9,6 +7,8 @@
         id="svg6"
         sodipodi:docname="module-bricks.svg"
         inkscape:version="1.4.2 (ebf0e94, 2025-05-08)"
+        xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+        xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
         xmlns="http://www.w3.org/2000/svg">
     <defs
             id="defs6"/>
@@ -23,11 +23,11 @@
             inkscape:deskcolor="#d1d1d1"
             showgrid="false"
             inkscape:zoom="4.9296875"
-            inkscape:cx="59.638669"
+            inkscape:cx="59.740095"
             inkscape:cy="64"
-            inkscape:window-width="1600"
-            inkscape:window-height="836"
-            inkscape:window-x="0"
+            inkscape:window-width="1920"
+            inkscape:window-height="1016"
+            inkscape:window-x="1305"
             inkscape:window-y="27"
             inkscape:window-maximized="1"
             inkscape:current-layer="svg6"/>
@@ -38,10 +38,13 @@
             fill="#37474f"
             id="rect1"/>
     <g
-            id="g9"
-            transform="matrix(0.92880846,0,0,0.93639996,7.3426826,4.0704026)">
+            id="g1"
+            transform="translate(2.5356578,3.0427891)"
+            style="stroke:#1a1a1a">
         <g
-                id="g7">
+                id="g7"
+                transform="matrix(0.92880846,0,0,0.93639996,-0.56856938,18.675791)"
+                style="stroke:#1a1a1a">
             <rect
                     x="13.507129"
                     y="14.027733"
@@ -52,7 +55,7 @@
                     stroke="#1565c0"
                     stroke-width="2"
                     id="rect2"
-                    style="fill:#00ffff;stroke:#0000ff"/>
+                    style="fill:#00ffff;stroke:#1a1a1a"/>
             <rect
                     x="64.492874"
                     y="14.027733"
@@ -63,36 +66,12 @@
                     stroke="#f9a825"
                     stroke-width="2"
                     id="rect3"
-                    style="fill:#00ffff;stroke:#0000ff"/>
+                    style="fill:#00ffff;stroke:#1a1a1a"/>
         </g>
         <g
-                id="g6"
-                transform="translate(-2.1295676)">
-            <rect
-                    x="23.587793"
-                    y="52.481503"
-                    width="36.633671"
-                    height="22.654949"
-                    rx="3.3303337"
-                    fill="#90caf9"
-                    stroke="#1565c0"
-                    stroke-width="1.64153"
-                    id="rect2-9"
-                    style="fill:#ffff00;stroke:#d4aa00"/>
-            <rect
-                    x="66.037674"
-                    y="52.481503"
-                    width="36.633671"
-                    height="22.654949"
-                    rx="3.3303337"
-                    fill="#fff59d"
-                    stroke="#f9a825"
-                    stroke-width="1.64153"
-                    id="rect3-1"
-                    style="fill:#ffff00;stroke:#d4aa00"/>
-        </g>
-        <g
-                id="g8">
+                id="g8"
+                transform="matrix(0.92880846,0,0,0.93639996,10.182619,-16.620564)"
+                style="stroke:#1a1a1a">
             <rect
                     x="13.507129"
                     y="85.972267"
@@ -103,7 +82,7 @@
                     stroke="#1565c0"
                     stroke-width="2"
                     id="rect2-0"
-                    style="fill:#00ff00;stroke:#008000"/>
+                    style="fill:#00ff00;stroke:#1a1a1a"/>
             <rect
                     x="64.492874"
                     y="85.972267"
@@ -114,7 +93,7 @@
                     stroke="#f9a825"
                     stroke-width="2"
                     id="rect3-9"
-                    style="fill:#00ff00;stroke:#008000"/>
+                    style="fill:#00ff00;stroke:#1a1a1a"/>
         </g>
     </g>
 </svg>

@@ -49,9 +49,6 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-/**
- * Phrase builder: cue line on top, canvas pool/build (two rows each, scaled), history list below.
- */
 final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHost {
 
   private static final Color POOL_BRICK_BG = new Color(173, 216, 230);
@@ -60,33 +57,20 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   private static final Color BUILD_CORRECT_BG = new Color(165, 214, 167);
   private static final Color ZONE_BORDER = new Color(90, 90, 120);
   private static final Color CANVAS_BG = new Color(248, 250, 252);
-  /**
-   * Active phrase (build strip) — very light orange fill.
-   */
   private static final Color BUILD_ZONE_BG = new Color(255, 244, 232);
   private static final Color BUILD_ZONE_LINE = new Color(210, 175, 130);
-  /**
-   * Working bricks (pool) — very light blue fill.
-   */
   private static final Color POOL_ZONE_BG = new Color(234, 244, 255);
   private static final Color POOL_ZONE_LINE = new Color(150, 185, 218);
-  /**
-   * Completed phrases list — very light green fill.
-   */
   private static final Color HISTORY_ZONE_BG = new Color(234, 246, 235);
   private static final Color HISTORY_ZONE_LINE = new Color(145, 188, 155);
   private static final Color BRICK_STROKE = new Color(70, 100, 130);
   private static final float BRICK_FONT_PT = 19f;
+  private static final float CUE_LABEL_FONT_PT = 22f;
   private static final int MAX_HISTORY_LINES = 40;
+  private static final int HISTORY_LINE_VERTICAL_GAP_PX = 6;
   private static final int DRAG_THRESHOLD_PX = 8;
-  /**
-   * Phase 1: empty row at top grows so existing history shifts down.
-   */
   private static final int COMPLETION_OPEN_SLOT_STEPS = 16;
   private static final int COMPLETION_OPEN_SLOT_TICK_MS = 14;
-  /**
-   * Phase 2: snapshot flies from build strip into that top slot.
-   */
   private static final int COMPLETION_FLY_STEPS = 22;
   private static final int COMPLETION_FLY_TICK_MS = 16;
   private static final int BRICK_FLOW_H_GAP = BrickImageRenderer.BRICK_FLOW_H_GAP;
@@ -95,19 +79,10 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
 
   private final Runnable onExitToSelect;
   private final JLabel cueLabel = new JLabel(" ", SwingConstants.CENTER);
-  /**
-   * Pool (north) + build (south) on one raster canvas; drop targets use {@link #fieldCanvas}.
-   */
   private final JPanel dropCanvas;
   private final JPanel poolBuildStack;
   private final JPanel historyZone;
-  /**
-   * One row of green “correct” bricks per completed phrase.
-   */
   private final JPanel historyBrickList = new JPanel();
-  /**
-   * Clips tall history; {@link #historyBottomFade} draws a bottom alpha ramp over oldest rows.
-   */
   private final JLayeredPane historyStackLayered = new JLayeredPane();
   private final HistoryBottomFadeOverlay historyBottomFade;
   private final JLayeredPane layered = new JLayeredPane();
@@ -121,9 +96,6 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   private final List<Integer> poolIds = new ArrayList<>();
   private final Deque<String> historyLines = new ArrayDeque<>();
   private Timer completionFlyTimer;
-  /**
-   * Grows at top during completion phase 1; removed when {@link #rebuildHistoryBrickList()} runs.
-   */
   private JPanel completionAnimTopSpacer;
   private DialogDefinition definition;
   private boolean userBuildsSideA;
@@ -132,26 +104,14 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   private List<String> wordTokens = List.of();
   private String cueLineText = "";
   private String targetLineText = "";
-  /**
-   * {@code -1} = none; otherwise mouse pressed on brick but movement below threshold.
-   */
   private int pendingBrickId = -1;
 
   private Point pendingPressScreen;
   private float pendingGrabFracX;
   private float pendingGrabFracY;
   private int draggingId = -1;
-  /**
-   * Defers {@link #promotePendingToDrag()} so the drag gesture survives removing the source tile.
-   */
   private boolean pendingPromotePosted;  private final AWTEventListener globalDragMouseListener = this::onGlobalMouseWhileDragging;
-  /**
-   * Fallback when the platform stops delivering {@code MOUSE_DRAGGED} after the source component is removed.
-   */
   private Timer dragGhostPollTimer;
-  /**
-   * During active drag: captures move/release above the whole frame (AWT alone misses many releases).
-   */
   private JPanel dragRootGlass;
   private Component savedGlassPane;
   private boolean savedGlassWasVisible;
@@ -163,7 +123,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     this.cueLabel.setOpaque(true);
     this.cueLabel.setBackground(new Color(245, 248, 252));
     this.cueLabel.setForeground(new Color(25, 45, 85));
-    this.cueLabel.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(22f));
+    this.cueLabel.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(CUE_LABEL_FONT_PT));
     this.cueLabel.setBorder(BorderFactory.createCompoundBorder(
         BorderFactory.createLineBorder(ZONE_BORDER, 1, true),
         BorderFactory.createEmptyBorder(12, 14, 12, 14)));
@@ -275,6 +235,18 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   }
 
   /**
+   * {@link JLabel} HTML ignores the component {@link Font}; embed the JetBrains face and weight so
+   * the cue line (text to translate) actually renders bold.
+   */
+  private static String formatCueLabelHtml(final String escapedCueLine) {
+    final Font f = LangTrainerFonts.MONO_NL_BOLD.atPoints(CUE_LABEL_FONT_PT);
+    final String family = f.getFamily();
+    final String familyCss = family.indexOf(' ') >= 0 ? "'%s'".formatted(family) : family;
+    return "<html><div style=\"text-align:center;font-family:%s;font-size:%spt;font-weight:bold\">%s</div></html>"
+        .formatted(familyCss, Float.toString(CUE_LABEL_FONT_PT), escapedCueLine);
+  }
+
+  /**
    * Primary-button release for ending drag or cancelling pending pick. Accepts {@link
    * MouseEvent#NOBUTTON} because some pipelines (including global AWT) clear {@code getButton()}
    * on release.
@@ -347,7 +319,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   }
 
   private Font brickFont() {
-    return LangTrainerFonts.MONO_NL_BOLD.atPoints(BRICK_FONT_PT);
+    return LangTrainerFonts.MONO_NL_REGULAR.atPoints(BRICK_FONT_PT);
   }
 
   private void layoutHistoryStackArea() {
@@ -371,8 +343,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     this.cueLineText = this.userBuildsSideA ? line.b() : line.a();
     this.targetLineText = this.userBuildsSideA ? line.a() : line.b();
     this.wordTokens = splitWords(this.targetLineText);
-    this.cueLabel.setText("<html><div style='text-align:center'>%s</div></html>".formatted(
-        escapeHtml(this.cueLineText)));
+    this.cueLabel.setText(formatCueLabelHtml(escapeHtml(this.cueLineText)));
     this.buildIds.clear();
     this.poolIds.clear();
     final List<Integer> ids = new ArrayList<>();
@@ -430,7 +401,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     while (it.hasNext()) {
       final String phrase = it.next();
       if (!first) {
-        this.historyBrickList.add(Box.createVerticalStrut(2));
+        this.historyBrickList.add(Box.createVerticalStrut(HISTORY_LINE_VERTICAL_GAP_PX));
       }
       first = false;
       this.historyBrickList.add(this.newHistoryRowFromPhrase(font, phrase));

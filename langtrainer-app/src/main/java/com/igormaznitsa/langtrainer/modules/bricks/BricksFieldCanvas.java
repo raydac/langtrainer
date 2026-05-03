@@ -18,10 +18,6 @@ import java.util.Objects;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
-/**
- * Non-scrollable pool + build surface: exactly two brick rows per zone, flow wrap, uniform scale
- * when needed. Bricks are drawn from cached raster images; drag ghost is painted on this canvas.
- */
 final class BricksFieldCanvas extends JPanel {
 
   private static final float BRICK_FONT_PT = 19f;
@@ -156,7 +152,7 @@ final class BricksFieldCanvas extends JPanel {
   }
 
   Font layoutFont() {
-    return LangTrainerFonts.MONO_NL_BOLD.atPoints(BRICK_FONT_PT * this.brickScale);
+    return LangTrainerFonts.MONO_NL_REGULAR.atPoints(BRICK_FONT_PT * this.brickScale);
   }
 
   Rectangle buildBricksUnionInCanvas() {
@@ -229,7 +225,7 @@ final class BricksFieldCanvas extends JPanel {
   }
 
   private void ensureBaseMeasures() {
-    this.baseBrickFont = LangTrainerFonts.MONO_NL_BOLD.atPoints(BRICK_FONT_PT);
+    this.baseBrickFont = LangTrainerFonts.MONO_NL_REGULAR.atPoints(BRICK_FONT_PT);
     this.baseBrickH = BrickImageRenderer.measureBrickHeightPx(this.baseBrickFont);
     final int n = this.wordTokens.size();
     this.baseBrickW = new int[n];
@@ -385,43 +381,50 @@ final class BricksFieldCanvas extends JPanel {
   protected void paintComponent(final Graphics g) {
     super.paintComponent(g);
     final Graphics2D g2 = (Graphics2D) g.create();
-    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-    this.paintZone(
-        g2,
-        0,
-        this.poolZoneTop,
-        this.getWidth(),
-        this.poolZoneH,
-        this.poolZoneBg,
-        this.poolZoneLine);
-    this.paintZone(
-        g2,
-        0,
-        this.buildZoneTop,
-        this.getWidth(),
-        this.buildZoneH,
-        this.buildZoneBg,
-        this.buildZoneLine);
-    int i = 0;
-    for (final PlacedBrick p : this.poolPlaced) {
-      if (i < this.poolRaster.size()) {
-        this.paintScaledRaster(g2, this.poolRaster.get(i), p);
+    try {
+      g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+      g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+          RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+      g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+
+      this.paintZone(
+          g2,
+          0,
+          this.poolZoneTop,
+          this.getWidth(),
+          this.poolZoneH,
+          this.poolZoneBg,
+          this.poolZoneLine);
+      this.paintZone(
+          g2,
+          0,
+          this.buildZoneTop,
+          this.getWidth(),
+          this.buildZoneH,
+          this.buildZoneBg,
+          this.buildZoneLine);
+      int i = 0;
+      for (final PlacedBrick p : this.poolPlaced) {
+        if (i < this.poolRaster.size()) {
+          this.paintScaledRaster(g2, this.poolRaster.get(i), p);
+        }
+        i++;
       }
-      i++;
-    }
-    i = 0;
-    for (final PlacedBrick p : this.buildPlaced) {
-      if (i < this.buildRaster.size()) {
-        this.paintScaledRaster(g2, this.buildRaster.get(i), p);
+      i = 0;
+      for (final PlacedBrick p : this.buildPlaced) {
+        if (i < this.buildRaster.size()) {
+          this.paintScaledRaster(g2, this.buildRaster.get(i), p);
+        }
+        i++;
       }
-      i++;
+      if (this.draggingId >= 0 && this.dragGhostRaster != null) {
+        final int gx = this.dragPointerX - this.dragOffsetX;
+        final int gy = this.dragPointerY - this.dragOffsetY;
+        g2.drawImage(this.dragGhostRaster, gx, gy, this.dragGhostW, this.dragGhostH, null);
+      }
+    } finally {
+      g2.dispose();
     }
-    if (this.draggingId >= 0 && this.dragGhostRaster != null) {
-      final int gx = this.dragPointerX - this.dragOffsetX;
-      final int gy = this.dragPointerY - this.dragOffsetY;
-      g2.drawImage(this.dragGhostRaster, gx, gy, this.dragGhostW, this.dragGhostH, null);
-    }
-    g2.dispose();
   }
 
   private void paintScaledRaster(
