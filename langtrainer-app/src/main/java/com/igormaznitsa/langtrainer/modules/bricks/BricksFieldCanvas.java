@@ -36,10 +36,16 @@ final class BricksFieldCanvas extends JPanel {
   private final List<PlacedBrick> buildPlaced = new ArrayList<>();
   private final List<BufferedImage> poolRaster = new ArrayList<>();
   private final List<BufferedImage> buildRaster = new ArrayList<>();
+  private BufferedImage buildSuffixRaster;
   private Color buildBrickFill;
   private List<String> wordTokens = List.of();
+  private String fixedEndSuffix;
   private List<Integer> poolIds;
   private List<Integer> buildIds;
+  private int buildSuffixX;
+  private int buildSuffixY;
+  private int buildSuffixW;
+  private int buildSuffixH;
   private int[] baseBrickW;
   private int baseBrickH;
   private Font baseBrickFont;
@@ -93,11 +99,16 @@ final class BricksFieldCanvas extends JPanel {
     this.host = Objects.requireNonNull(host, "host");
   }
 
-  void bindLists(final List<Integer> poolIds, final List<Integer> buildIds,
-                 final List<String> wordTokens) {
+  void bindLists(
+      final List<Integer> poolIds,
+      final List<Integer> buildIds,
+      final List<String> wordTokens,
+      final String fixedEndSuffix) {
     this.poolIds = Objects.requireNonNull(poolIds);
     this.buildIds = Objects.requireNonNull(buildIds);
     this.wordTokens = List.copyOf(Objects.requireNonNull(wordTokens));
+    this.fixedEndSuffix =
+        fixedEndSuffix == null || fixedEndSuffix.isEmpty() ? null : fixedEndSuffix;
     this.ensureBaseMeasures();
     this.recomputeLayoutAndRepaint();
   }
@@ -167,11 +178,21 @@ final class BricksFieldCanvas extends JPanel {
       maxY = Math.max(maxY, p.y + p.h);
     }
     if (minX > maxX) {
+      if (this.fixedEndSuffix != null && this.buildSuffixW > 0) {
+        return new Rectangle(
+            this.buildSuffixX, this.buildSuffixY, this.buildSuffixW, this.buildSuffixH);
+      }
       return new Rectangle(
           INNER_PAD + ZONE_LINE,
           this.buildZoneTop + INNER_PAD + ZONE_LINE,
           Math.max(1, this.getWidth() - 2 * (INNER_PAD + ZONE_LINE)),
           Math.max(1, this.buildZoneH - 2 * (INNER_PAD + ZONE_LINE)));
+    }
+    if (this.fixedEndSuffix != null && this.buildSuffixW > 0) {
+      minX = Math.min(minX, this.buildSuffixX);
+      minY = Math.min(minY, this.buildSuffixY);
+      maxX = Math.max(maxX, this.buildSuffixX + this.buildSuffixW);
+      maxY = Math.max(maxY, this.buildSuffixY + this.buildSuffixH);
     }
     return new Rectangle(minX, minY, maxX - minX, maxY - minY);
   }
@@ -277,12 +298,16 @@ final class BricksFieldCanvas extends JPanel {
         INNER_PAD + ZONE_LINE,
         this.poolZoneTop + INNER_PAD + ZONE_LINE,
         this.draggingId);
-    this.flowPlace(
-        this.buildIds,
-        this.buildPlaced,
-        INNER_PAD + ZONE_LINE,
-        this.buildZoneTop + INNER_PAD + ZONE_LINE,
-        this.draggingId);
+    final int buildOriginX = INNER_PAD + ZONE_LINE;
+    final int buildOriginY = this.buildZoneTop + INNER_PAD + ZONE_LINE;
+    final FlowEnd buildEnd =
+        this.flowPlace(
+            this.buildIds,
+            this.buildPlaced,
+            buildOriginX,
+            buildOriginY,
+            this.draggingId);
+    this.layoutBuildFixedSuffix(buildOriginX, buildOriginY, buildEnd);
     final int totalH = this.buildZoneTop + this.buildZoneH;
     this.setPreferredSize(new Dimension(w, totalH));
   }
@@ -290,22 +315,23 @@ final class BricksFieldCanvas extends JPanel {
   private float resolveScaleForTwoRows(final int innerW) {
     float s = 1f;
     while (s >= SCALE_MIN
-        && !(this.fitsTwoRows(innerW, s, this.poolIds, this.draggingId)
-        && this.fitsTwoRows(innerW, s, this.buildIds, this.draggingId))) {
+        && !(this.fitsTwoRows(innerW, s, this.poolIds, this.draggingId, 0)
+        && this.fitsTwoRows(
+        innerW, s, this.buildIds, this.draggingId, this.suffixTailWidthPx(s)))) {
       s -= 0.018f;
     }
     return Math.max(SCALE_MIN, s);
   }
 
   private boolean fitsTwoRows(
-      final int innerW, final float scale, final List<Integer> ids, final int excludeId) {
-    if (ids.isEmpty()) {
-      return true;
-    }
+      final int innerW,
+      final float scale,
+      final List<Integer> ids,
+      final int excludeId,
+      final int extraTailWidth) {
     int row = 0;
     int x = 0;
     final int hgap = Math.max(1, Math.round(BrickImageRenderer.BRICK_FLOW_H_GAP * scale));
-    final int brickH = Math.max(1, Math.round(this.baseBrickH * scale));
     for (final Integer idObj : ids) {
       final int id = idObj;
       if (id == excludeId) {
@@ -321,10 +347,29 @@ final class BricksFieldCanvas extends JPanel {
       }
       x += bw + hgap;
     }
-    return true;
+    if (row > 1) {
+      return false;
+    }
+    return x + extraTailWidth <= innerW;
   }
 
-  private void flowPlace(
+  private int suffixTailWidthPx(final float scale) {
+    if (this.fixedEndSuffix == null) {
+      return 0;
+    }
+    final int hgap = Math.max(1, Math.round(BrickImageRenderer.BRICK_FLOW_H_GAP * scale));
+    final int textW =
+        Math.max(
+            1,
+            Math.round(
+                BrickImageRenderer.measureBrickWidthPx(this.fixedEndSuffix, this.layoutFont())
+                    * scale));
+    final boolean hasBricks =
+        this.buildIds.stream().anyMatch(id -> id != this.draggingId);
+    return textW + (hasBricks ? hgap : 0);
+  }
+
+  private FlowEnd flowPlace(
       final List<Integer> ids,
       final List<PlacedBrick> out,
       final int originX,
@@ -349,6 +394,52 @@ final class BricksFieldCanvas extends JPanel {
       out.add(new PlacedBrick(id, originX + x, originY + y, bw, brickDrawH));
       x += bw + hgap;
     }
+    return new FlowEnd(originX + x, originY + y, row, brickDrawH);
+  }
+
+  private void layoutBuildFixedSuffix(
+      final int buildOriginX, final int buildOriginY, final FlowEnd buildEnd) {
+    if (this.fixedEndSuffix == null) {
+      this.buildSuffixW = 0;
+      this.buildSuffixH = 0;
+      return;
+    }
+    final Font font = this.layoutFont();
+    this.buildSuffixW =
+        Math.max(
+            1,
+            Math.round(
+                BrickImageRenderer.measureBrickWidthPx(this.fixedEndSuffix, font)
+                    * this.brickScale));
+    this.buildSuffixH = Math.max(1, Math.round(this.baseBrickH * this.brickScale));
+    int x;
+    int y;
+    if (this.buildPlaced.isEmpty()) {
+      x = buildOriginX;
+      y = buildOriginY;
+    } else {
+      x = buildEnd.nextX();
+      y = buildEnd.y();
+      if (x + this.buildSuffixW > buildOriginX + this.contentInnerW) {
+        y += buildEnd.brickDrawH() + ROW_V_GAP;
+        x = buildOriginX;
+      }
+    }
+    this.buildSuffixX = x;
+    this.buildSuffixY = y + Math.max(0, (buildEnd.brickDrawH() - this.buildSuffixH) / 2);
+  }
+
+  private void paintBuildFixedSuffix(final Graphics2D g2) {
+    if (this.buildSuffixRaster == null || this.buildSuffixW <= 0) {
+      return;
+    }
+    g2.drawImage(
+        this.buildSuffixRaster,
+        this.buildSuffixX,
+        this.buildSuffixY,
+        this.buildSuffixW,
+        this.buildSuffixH,
+        null);
   }
 
   private void refreshRasters() {
@@ -369,6 +460,11 @@ final class BricksFieldCanvas extends JPanel {
       this.buildRaster.add(
           BrickImageRenderer.renderBrickImage(this.wordTokens.get(id), this.buildBrickFill, f));
     }
+    this.buildSuffixRaster =
+        this.fixedEndSuffix == null
+            ? null
+            : BrickImageRenderer.renderBrickImage(
+            this.fixedEndSuffix, BrickImageRenderer.SUFFIX_BRICK_FILL, f);
   }
 
   @Override
@@ -417,6 +513,7 @@ final class BricksFieldCanvas extends JPanel {
         }
         i++;
       }
+      this.paintBuildFixedSuffix(g2);
       if (this.draggingId >= 0 && this.dragGhostRaster != null) {
         final int gx = this.dragPointerX - this.dragOffsetX;
         final int gy = this.dragPointerY - this.dragOffsetY;
@@ -516,5 +613,8 @@ final class BricksFieldCanvas extends JPanel {
     boolean contains(final Point p) {
       return p.x >= this.x && p.x < this.x + this.w && p.y >= this.y && p.y < this.y + this.h;
     }
+  }
+
+  private record FlowEnd(int nextX, int y, int row, int brickDrawH) {
   }
 }

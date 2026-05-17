@@ -1,6 +1,7 @@
 package com.igormaznitsa.langtrainer.modules.dialog;
 
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
+import com.igormaznitsa.langtrainer.text.PhraseWordSupport;
 import java.util.List;
 import java.util.Optional;
 import javax.swing.text.AbstractDocument;
@@ -24,7 +25,7 @@ public final class InputEquivalenceSupport {
   }
 
   public static boolean isSkippableSeparatorInExpected(final int cp) {
-    return cp == ',' || cp == ';' || cp == ':' || cp == '.' || cp == '!' || cp == '?' || cp == '…';
+    return PhraseWordSupport.isAutoInsertedInExpected(cp);
   }
 
   public static int expectedOffsetForDocumentIndex(
@@ -39,6 +40,14 @@ public final class InputEquivalenceSupport {
       final int ej = Character.charCount(cpe);
       if (codePointsMatchForTip(cpd, cpe)) {
         i += di;
+        j += ej;
+        continue;
+      }
+      if (PhraseWordSupport.isIntraWordJoiner(cpd)
+          && PhraseWordSupport.isIntraWordJoiner(cpe)) {
+        while (i < target && PhraseWordSupport.isIntraWordJoiner(doc.codePointAt(i))) {
+          i += Character.charCount(doc.codePointAt(i));
+        }
         j += ej;
         continue;
       }

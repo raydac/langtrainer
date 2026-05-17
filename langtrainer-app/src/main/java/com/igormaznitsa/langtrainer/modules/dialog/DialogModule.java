@@ -16,7 +16,8 @@ import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
 import com.igormaznitsa.langtrainer.engine.LangResourceJson;
 import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
-import com.igormaznitsa.langtrainer.text.TypingComparisonUtils;
+import com.igormaznitsa.langtrainer.text.PhraseWordSupport;
+import com.igormaznitsa.langtrainer.text.TypingPhraseFormatter;
 import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
 import com.igormaznitsa.langtrainer.ui.PhraseFlashBanner;
 import java.awt.BorderLayout;
@@ -137,6 +138,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private Timer completionDismissTimer;
   private final PhraseFlashBanner phraseFlashBanner = new PhraseFlashBanner();
   private boolean applyingInputEquivalence;
+  private boolean applyingDialogPhraseNormalization;
 
   public DialogModule() {
     this.classpathResourceTree =
@@ -221,63 +223,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
     return area;
   }
 
-  private static String computeTypingTip(final String entered, final String expected) {
-    if (expected == null || expected.isEmpty()) {
-      return "";
-    }
-    int ei = 0;
-    int ej = 0;
-    final int enteredLen = entered.length();
-    final int expectedLen = expected.length();
-    while (true) {
-      while (ei < enteredLen && Character.isWhitespace(entered.charAt(ei))) {
-        ei++;
-      }
-      while (ej < expectedLen && Character.isWhitespace(expected.charAt(ej))) {
-        ej++;
-      }
-      if (ej >= expectedLen) {
-        return "";
-      }
-      final int wordStartExpected = ej;
-      while (ej < expectedLen && !Character.isWhitespace(expected.charAt(ej))) {
-        ej++;
-      }
-      final String expectedWord = expected.substring(wordStartExpected, ej);
-      if (expectedWord.isEmpty()) {
-        continue;
-      }
-      final int wordStartEntered = ei;
-      while (ei < enteredLen && !Character.isWhitespace(entered.charAt(ei))) {
-        ei++;
-      }
-      final String enteredWord = entered.substring(wordStartEntered, ei);
-      int eiW = 0;
-      int ejW = 0;
-      while (eiW < enteredWord.length() && ejW < expectedWord.length()) {
-        final int cpa = enteredWord.codePointAt(eiW);
-        final int cpb = expectedWord.codePointAt(ejW);
-        if (!InputEquivalenceSupport.codePointsMatchForTip(cpa, cpb)) {
-          break;
-        }
-        eiW += Character.charCount(cpa);
-        ejW += Character.charCount(cpb);
-      }
-      if (eiW < enteredWord.length()) {
-        if (ejW < expectedWord.length()) {
-          return formatWordTipWithLetterDots(expectedWord, ejW);
-        }
-        return expectedWord;
-      }
-      if (ejW < expectedWord.length()) {
-        if (onlyNonLettersFrom(expectedWord, ejW)) {
-          continue;
-        }
-        return formatWordTipWithLetterDots(expectedWord, ejW);
-      }
-    }
-  }
-
   @Override
   public String getName() {
     return "Dialogs";
@@ -328,69 +273,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
   @Override
   public Icon getImage() {
     return ImageResourceLoader.loadIcon("/dialogs/images/module-dialog.svg", 128, 128);
-  }
-
-  private static boolean onlyNonLettersFrom(final String word, final int from) {
-    int i = from;
-    while (i < word.length()) {
-      final int cp = word.codePointAt(i);
-      if (Character.isLetter(cp)) {
-        return false;
-      }
-      i += Character.charCount(cp);
-    }
-    return true;
-  }
-
-  private static int indexOfLastLetterStart(final String word) {
-    int last = -1;
-    for (int i = 0; i < word.length(); ) {
-      final int cp = word.codePointAt(i);
-      if (Character.isLetter(cp)) {
-        last = i;
-      }
-      i += Character.charCount(cp);
-    }
-    return last;
-  }
-
-  private static String substringOneCodePoint(final String word, final int start) {
-    final int cp = word.codePointAt(start);
-    return new String(Character.toChars(cp));
-  }
-
-  private static String formatWordTipWithLetterDots(final String word, final int correctPrefixLen) {
-    if (word.isEmpty() || correctPrefixLen > word.length()) {
-      return "";
-    }
-    if (correctPrefixLen == word.length()) {
-      return "";
-    }
-    final int lastLetterStart = indexOfLastLetterStart(word);
-    if (lastLetterStart < 0) {
-      if (correctPrefixLen == 0) {
-        final int dots = Math.max(0, word.length() - 2);
-        return word.charAt(0) + ".".repeat(dots) + word.charAt(word.length() - 1);
-      }
-      final int dots = Math.max(0, word.length() - correctPrefixLen - 1);
-      return word.substring(0, correctPrefixLen) + ".".repeat(dots) +
-          word.charAt(word.length() - 1);
-    }
-    final String lastLetter = substringOneCodePoint(word, lastLetterStart);
-    if (lastLetterStart == 0) {
-      return lastLetter;
-    }
-    if (correctPrefixLen > lastLetterStart) {
-      final int dots = word.length() - correctPrefixLen - 1;
-      return word.substring(0, correctPrefixLen) + ".".repeat(dots) +
-          word.charAt(word.length() - 1);
-    }
-    if (correctPrefixLen == 0) {
-      final int dots = Math.max(0, lastLetterStart - 1);
-      return word.charAt(0) + ".".repeat(dots) + lastLetter;
-    }
-    final int dots = Math.max(0, lastLetterStart - correctPrefixLen);
-    return word.substring(0, correctPrefixLen) + ".".repeat(dots) + lastLetter;
   }
 
   private JTextArea makeInputArea() {
@@ -733,13 +615,15 @@ public final class DialogModule extends AbstractLangTrainerModule {
     area.getDocument().addDocumentListener(new DocumentListener() {
       @Override
       public void insertUpdate(final DocumentEvent event) {
-        if (DialogModule.this.applyingInputEquivalence) {
+        if (DialogModule.this.applyingInputEquivalence
+            || DialogModule.this.applyingDialogPhraseNormalization) {
           return;
         }
         final int start = event.getOffset();
         final int insertLen = event.getLength();
         SwingUtilities.invokeLater(() -> {
           try {
+            DialogModule.this.normalizeDialogInput(area);
             DialogModule.this.applyingInputEquivalence = true;
             DialogModule.this.applyInputEquivalence(area, start, insertLen);
           } finally {
@@ -761,6 +645,33 @@ public final class DialogModule extends AbstractLangTrainerModule {
     });
   }
 
+  private void normalizeDialogInput(final JTextArea area) {
+    if (!this.workRoundActive || this.activeDialog == null || area != this.focusedInput()) {
+      return;
+    }
+    if (this.remainingLineIndices.isEmpty()) {
+      return;
+    }
+    final DialogLine line = this.activeDialog.lines().get(this.currentLineOrdinal);
+    final String expected = this.userWritesToA ? line.a() : line.b();
+    final String raw = extractDocumentText(area.getDocument());
+    final int caret = Math.min(area.getCaretPosition(), raw.length());
+    final int lettersBefore = TypingPhraseFormatter.countLetterDigitsBefore(raw, caret);
+    final String merged = DialogPhraseInputSupport.normalizeWorkInput(raw, expected);
+    if (merged.equals(raw)) {
+      return;
+    }
+    this.applyingDialogPhraseNormalization = true;
+    try {
+      area.setText(merged);
+      int newCaret = TypingPhraseFormatter.caretAfterNthLetterSlot(merged, lettersBefore);
+      newCaret = Math.max(0, Math.min(newCaret, merged.length()));
+      area.setCaretPosition(newCaret);
+    } finally {
+      this.applyingDialogPhraseNormalization = false;
+    }
+  }
+
   private void applyInputEquivalence(final JTextArea area, final int start, final int insertLen) {
     if (!this.workRoundActive || this.activeDialog == null || area != this.focusedInput()) {
       return;
@@ -774,7 +685,11 @@ public final class DialogModule extends AbstractLangTrainerModule {
     }
     final DialogLine line = this.activeDialog.lines().get(this.currentLineOrdinal);
     final String expectedFull = this.userWritesToA ? line.a() : line.b();
-    InputEquivalenceSupport.applyAfterInsert(area, expectedFull, rules, start, insertLen);
+    final String doc = extractDocumentText(area.getDocument());
+    if (doc.isEmpty()) {
+      return;
+    }
+    InputEquivalenceSupport.applyAfterInsert(area, expectedFull, rules, 0, doc.length());
   }
 
   private void scheduleTipRefreshAfterInputMutation() {
@@ -833,7 +748,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
         enteredOverride != null
             ? enteredOverride
             : extractDocumentText(this.focusedInput().getDocument());
-    final String snippet = computeTypingTip(entered, expected);
+    final String snippet = PhraseWordSupport.computeTypingTip(entered, expected);
     if (snippet.isEmpty()) {
       this.tipZone.setText("—");
     } else {
@@ -1048,7 +963,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
       final DialogLine line = this.activeDialog.lines().get(this.currentLineOrdinal);
       final String expected = this.userWritesToA ? line.a() : line.b();
       final String entered = this.focusedInput().getText();
-      if (this.isCloseEnough(entered, expected)) {
+      if (DialogPhraseInputSupport.isAnswerAccepted(entered, expected)) {
         this.historyA.add(line.a());
         this.historyB.add(line.b());
         this.showA.setText(String.join("\n", this.historyA));
@@ -1146,10 +1061,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
 
   private JTextArea focusedInput() {
     return this.userWritesToA ? this.inputA : this.inputB;
-  }
-
-  private boolean isCloseEnough(final String actual, final String expected) {
-    return TypingComparisonUtils.isCloseEnough(actual, expected);
   }
 
   private void showCard(final String card) {

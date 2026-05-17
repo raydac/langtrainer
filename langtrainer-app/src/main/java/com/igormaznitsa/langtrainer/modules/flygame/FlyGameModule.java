@@ -275,7 +275,28 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     if (opt == JOptionPane.OK_OPTION) {
       final String pick = (String) combo.getSelectedItem();
       final boolean userTypesA = definition.langA().equals(pick);
-      this.enterGame(definition, userTypesA);
+      final List<DialogLine> playable =
+          FlyPhraseSupport.playableLines(definition.lines(), userTypesA);
+      if (playable.isEmpty()) {
+        JOptionPane.showMessageDialog(
+            this.rootPanel,
+            "This resource has no sentences with at most "
+                + FlyPhraseSupport.MAX_TYPING_WORDS
+                + " words on the chosen side.",
+            "Nothing to practice",
+            JOptionPane.INFORMATION_MESSAGE);
+        return;
+      }
+      final DialogDefinition sessionDef =
+          new DialogDefinition(
+              definition.menuName(),
+              definition.description(),
+              definition.langA(),
+              definition.langB(),
+              playable,
+              definition.inputEqu(),
+              definition.shuffled());
+      this.enterGame(sessionDef, userTypesA);
     }
   }
 

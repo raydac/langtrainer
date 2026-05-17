@@ -8,6 +8,20 @@
       ]
     },
     {
+      "name": "Test",
+      "children": [
+        {
+          "resource": "/common/jsons/en-ru-cardinal-directions-test.json",
+          "modules": [
+            "DIALOG",
+            "FLY_GAME",
+            "BRICKS",
+            "CROSSWORD"
+          ]
+        }
+      ]
+    },
+    {
       "name": "By size",
       "children": [
         {

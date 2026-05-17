@@ -16,6 +16,7 @@ final class BrickImageRenderer {
   static final int BRICK_PAD_Y = 8;
   static final int BRICK_CORNER_ARC = 14;
   static final int BRICK_FLOW_H_GAP = 8;
+  static final Color SUFFIX_BRICK_FILL = new Color(0, 229, 255);
   private static final Color BRICK_STROKE = new Color(70, 100, 130);
 
   private BrickImageRenderer() {
@@ -78,8 +79,9 @@ final class BrickImageRenderer {
     return new ImageIcon(renderBrickImage(word, fill, font));
   }
 
-  static ImageIcon renderRowIcon(final List<String> words, final Color fill, final Font font) {
-    if (words.isEmpty()) {
+  static ImageIcon renderRowIcon(
+      final List<String> words, final String fixedEndSuffix, final Color fill, final Font font) {
+    if (words.isEmpty() && (fixedEndSuffix == null || fixedEndSuffix.isEmpty())) {
       return new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
     }
     int totalW = 0;
@@ -91,9 +93,20 @@ final class BrickImageRenderer {
       totalW += ic.getIconWidth();
       maxH = Math.max(maxH, ic.getIconHeight());
     }
-    totalW += BRICK_FLOW_H_GAP * (words.size() - 1);
+    if (!icons.isEmpty()) {
+      totalW += BRICK_FLOW_H_GAP * (icons.size() - 1);
+    }
+    ImageIcon suffixIcon = null;
+    if (fixedEndSuffix != null && !fixedEndSuffix.isEmpty()) {
+      if (!icons.isEmpty()) {
+        totalW += BRICK_FLOW_H_GAP;
+      }
+      suffixIcon = renderIcon(fixedEndSuffix, SUFFIX_BRICK_FILL, font);
+      totalW += suffixIcon.getIconWidth();
+      maxH = Math.max(maxH, suffixIcon.getIconHeight());
+    }
     final BufferedImage row =
-        new BufferedImage(totalW, maxH, BufferedImage.TYPE_INT_ARGB);
+        new BufferedImage(Math.max(1, totalW), Math.max(1, maxH), BufferedImage.TYPE_INT_ARGB);
     final Graphics2D gfx = row.createGraphics();
     try {
       gfx.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -104,6 +117,9 @@ final class BrickImageRenderer {
       for (final ImageIcon ic : icons) {
         ic.paintIcon(null, gfx, x, (maxH - ic.getIconHeight()) / 2);
         x += ic.getIconWidth() + BRICK_FLOW_H_GAP;
+      }
+      if (suffixIcon != null) {
+        suffixIcon.paintIcon(null, gfx, x, (maxH - suffixIcon.getIconHeight()) / 2);
       }
       return new ImageIcon(row);
     } finally {

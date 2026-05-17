@@ -1,0 +1,86 @@
+{
+  "menuName": "EN-RU Cardinal Directions (test)",
+  "description": "Russian–English compass points and phrases with hyphens (north-west, северо-запад) for tip, auto-enter, and bricks",
+  "langA": "English",
+  "langB": "Russian",
+  "inputEqu": [
+    {
+      "key": [
+        "е",
+        "Е"
+      ],
+      "value": [
+        "ё",
+        "Ё"
+      ]
+    },
+    {
+      "key": [
+        "ё",
+        "Ё"
+      ],
+      "value": [
+        "е",
+        "Е"
+      ]
+    }
+  ],
+  "lines": [
+    {
+      "A": "north",
+      "B": "север"
+    },
+    {
+      "A": "south",
+      "B": "юг"
+    },
+    {
+      "A": "east",
+      "B": "восток"
+    },
+    {
+      "A": "west",
+      "B": "запад"
+    },
+    {
+      "A": "north-east",
+      "B": "северо-восток"
+    },
+    {
+      "A": "north-west",
+      "B": "северо-запад"
+    },
+    {
+      "A": "south-east",
+      "B": "юго-восток"
+    },
+    {
+      "A": "south-west",
+      "B": "юго-запад"
+    },
+    {
+      "A": "The wind comes from the north-west.",
+      "B": "Ветер дует с северо-запада."
+    },
+    {
+      "A": "We are walking to the south-east.",
+      "B": "Мы идём на юго-восток."
+    },
+    {
+      "A": "The village lies north-east of the city.",
+      "B": "Деревня лежит к северо-востоку от города."
+    },
+    {
+      "A": "Turn toward the north-west.",
+      "B": "Поверните на северо-запад."
+    },
+    {
+      "A": "The river flows from south-west to north-east.",
+      "B": "Река течёт с юго-запада на северо-восток."
+    },
+    {
+      "A": "Is the camp far to the south-west?",
+      "B": "Лагерь далеко на юго-западе?"
+    }
+  ]
+}

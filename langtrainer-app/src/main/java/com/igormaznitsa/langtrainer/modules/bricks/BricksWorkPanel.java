@@ -102,6 +102,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   private List<DialogLine> exercises = List.of();
   private int exerciseIndex;
   private List<String> wordTokens = List.of();
+  private String fixedEndSuffix;
   private String cueLineText = "";
   private String targetLineText = "";
   private int pendingBrickId = -1;
@@ -203,7 +204,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     final List<DialogLine> out = new ArrayList<>();
     for (final DialogLine line : lines) {
       final String target = targetIsSideA ? line.a() : line.b();
-      if (splitWords(target).size() > 1) {
+      if (BricksPhraseSupport.parsePhrase(target).wordTokens().size() > 1) {
         out.add(line);
       }
     }
@@ -211,17 +212,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   }
 
   static List<String> splitWords(final String line) {
-    if (line == null || line.isBlank()) {
-      return List.of();
-    }
-    final String[] parts = line.trim().split("\\s+");
-    final List<String> words = new ArrayList<>();
-    for (final String p : parts) {
-      if (!p.isEmpty()) {
-        words.add(p);
-      }
-    }
-    return List.copyOf(words);
+    return BricksPhraseSupport.parsePhrase(line).wordTokens();
   }
 
   private static String escapeHtml(final String raw) {
@@ -280,12 +271,13 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     this.exercises = List.of();
     this.exerciseIndex = 0;
     this.wordTokens = List.of();
+    this.fixedEndSuffix = null;
     this.buildIds.clear();
     this.poolIds.clear();
     this.historyLines.clear();
     this.cueLabel.setText(" ");
     this.rebuildHistoryBrickList();
-    this.fieldCanvas.bindLists(List.of(), List.of(), List.of());
+    this.fieldCanvas.bindLists(List.of(), List.of(), List.of(), null);
     this.fieldCanvas.setBuildBrickFill(BUILD_PARTIAL_BG);
     this.repaint();
   }
@@ -342,7 +334,9 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     final DialogLine line = this.exercises.get(this.exerciseIndex);
     this.cueLineText = this.userBuildsSideA ? line.b() : line.a();
     this.targetLineText = this.userBuildsSideA ? line.a() : line.b();
-    this.wordTokens = splitWords(this.targetLineText);
+    final BricksPhraseSupport.Parts parts = BricksPhraseSupport.parsePhrase(this.targetLineText);
+    this.wordTokens = parts.wordTokens();
+    this.fixedEndSuffix = parts.fixedEndSuffix();
     this.cueLabel.setText(formatCueLabelHtml(escapeHtml(this.cueLineText)));
     this.buildIds.clear();
     this.poolIds.clear();
@@ -356,18 +350,15 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   }
 
   /**
-   * Left-to-right pool order must not be {@code [0..n-1]} (target phrase order), otherwise the
-   * phrase is already “solved” in the source zone. Shuffles until different; then rotates if
-   * random kept landing on the canonical order.
+   * Pool left-to-right must not already read as the target phrase (by word text, not brick id).
    */
   private void shufflePoolIndicesUntilNotTargetOrder(final List<Integer> ids) {
     if (ids.size() <= 1) {
       return;
     }
-    final List<Integer> target = List.copyOf(ids);
     for (int attempt = 0; attempt < 200; attempt++) {
       Collections.shuffle(ids, this.random);
-      if (!ids.equals(target)) {
+      if (!BricksPhraseSupport.matchesTargetPhraseOrder(ids, this.wordTokens)) {
         return;
       }
     }
@@ -375,7 +366,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   }
 
   private void syncFieldCanvas() {
-    this.fieldCanvas.bindLists(this.poolIds, this.buildIds, this.wordTokens);
+    this.fieldCanvas.bindLists(this.poolIds, this.buildIds, this.wordTokens, this.fixedEndSuffix);
     this.fieldCanvas.setBuildBrickFill(this.buildTileFillColor());
   }
 
@@ -427,8 +418,15 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
         new JPanel(new FlowLayout(FlowLayout.LEFT, BRICK_FLOW_H_GAP, 0));
     row.setOpaque(false);
     row.setAlignmentX(Component.LEFT_ALIGNMENT);
-    for (final String word : splitWords(phrase)) {
+    final BricksPhraseSupport.Parts parts = BricksPhraseSupport.parsePhrase(phrase);
+    for (final String word : parts.wordTokens()) {
       row.add(new JLabel(BrickImageRenderer.renderIcon(word, BUILD_CORRECT_BG, font)));
+    }
+    if (parts.fixedEndSuffix() != null) {
+      row.add(
+          new JLabel(
+              BrickImageRenderer.renderIcon(
+                  parts.fixedEndSuffix(), BrickImageRenderer.SUFFIX_BRICK_FILL, font)));
     }
     this.applyHistoryRowHeightCap(row);
     return row;
@@ -440,15 +438,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   }
 
   private boolean isOrderCorrect() {
-    if (this.buildIds.size() != this.wordTokens.size()) {
-      return false;
-    }
-    for (int i = 0; i < this.buildIds.size(); i++) {
-      if (!this.buildIds.get(i).equals(i)) {
-        return false;
-      }
-    }
-    return true;
+    return BricksPhraseSupport.matchesTargetPhraseOrder(this.buildIds, this.wordTokens);
   }
 
   @Override
@@ -825,7 +815,8 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
       words.add(this.wordTokens.get(id));
     }
     final Font font = this.fieldCanvas.layoutFont();
-    final ImageIcon rowIcon = BrickImageRenderer.renderRowIcon(words, BUILD_CORRECT_BG, font);
+    final ImageIcon rowIcon =
+        BrickImageRenderer.renderRowIcon(words, this.fixedEndSuffix, BUILD_CORRECT_BG, font);
     final int iw = Math.max(1, rowIcon.getIconWidth());
     final int ih = Math.max(1, rowIcon.getIconHeight());
     final Point start = this.completionFlyStartTopLeftInLayered(iw, ih);
