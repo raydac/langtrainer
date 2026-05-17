@@ -11,8 +11,11 @@ import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
 import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
+import java.awt.SplashScreen;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,6 +32,8 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.WindowConstants;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.text.JTextComponent;
@@ -68,15 +73,48 @@ public final class LangTrainerApplication {
   public void start() {
     this.initMainFrame();
     this.mainFrame.setEnabled(false);
-    final SplashWindow splashWindow = new SplashWindow(this.mainFrame, this.resolveAppVersion());
-    splashWindow.showForMillis(
+    SwingUtilities.invokeLater(() -> this.mainFrame.setVisible(true));
+    this.dismissSplashAfterMillis(
         5000,
-        () -> this.mainFrame.setVisible(true),
         () -> {
           this.mainFrame.setEnabled(true);
           this.mainFrame.toFront();
           this.mainMenuPanel.focusList();
         });
+  }
+
+  private void dismissSplashAfterMillis(final int millis, final Runnable onDone) {
+    final SplashScreen splash = SplashScreen.getSplashScreen();
+    if (splash == null || !splash.isVisible()) {
+      onDone.run();
+      return;
+    }
+    this.paintAppVersionOnSplash(splash);
+    final Timer timer = new Timer(millis, event -> {
+      splash.close();
+      onDone.run();
+    });
+    timer.setRepeats(false);
+    timer.start();
+  }
+
+  private void paintAppVersionOnSplash(final SplashScreen splash) {
+    final Graphics2D graphics = splash.createGraphics();
+    if (graphics == null) {
+      return;
+    }
+    try {
+      final String versionText = "   Version: " + this.resolveAppVersion();
+      graphics.setColor(new Color(0, 0, 0, 230));
+      graphics.setFont(graphics.getFont().deriveFont(Font.BOLD, 14.0f));
+      final FontMetrics metrics = graphics.getFontMetrics();
+      final int x = splash.getSize().width - metrics.stringWidth(versionText) - 12;
+      final int y = splash.getSize().height - 12;
+      graphics.drawString(versionText, x, y);
+    } finally {
+      splash.update();
+      graphics.dispose();
+    }
   }
 
   private String resolveAppVersion() {

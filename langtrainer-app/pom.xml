@@ -702,6 +702,7 @@
                                     <mainClass>LangTrainer</mainClass>
                                     <manifestEntries>
                                         <Implementation-Version>${project.version}</Implementation-Version>
+                                        <SplashScreen-Image>images/splash.png</SplashScreen-Image>
                                     </manifestEntries>
                                 </transformer>
                             </transformers>
