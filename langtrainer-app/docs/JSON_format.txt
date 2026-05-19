@@ -4,7 +4,7 @@ Bundled files are normally registered in common/jsons/index.json (see index_json
 
     {
         "menuName" :  "Menu name of the dialog",
-        "path" : "Optional menu path for resource lists (e.g. travel/russian-english/50_words). Segments separated by /, \\, or whitespace. Omitted or at root when absent.",
+        "path" : "Optional menu path for resource lists (e.g. travel/russian-english/50 words). Segments separated by / or \\ only; spaces allowed inside a segment. Omitted or at root when absent.",
         "modules" : [ "DIALOG", "BRICKS" ],
         "description" : "Description of the dialog shown as tooltip",
         "langA" : human-readable name of language A as string,

@@ -11,9 +11,9 @@ import java.util.regex.Pattern;
 public final class ResourceMenuPath {
 
   /**
-   * Splits path segments on {@code /}, {@code \}, or whitespace only.
+   * Splits path segments on {@code /} or {@code \} only.
    */
-  private static final Pattern SEGMENT_DELIMITER = Pattern.compile("[/\\\\\\s]+");
+  private static final Pattern SEGMENT_DELIMITER = Pattern.compile("[/\\\\]+");
 
   private ResourceMenuPath() {
   }
@@ -25,28 +25,46 @@ public final class ResourceMenuPath {
     final String[] parts = SEGMENT_DELIMITER.split(rawPath.strip());
     final List<String> segments = new ArrayList<>();
     for (final String part : parts) {
-      if (!part.isEmpty()) {
-        segments.add(part);
+      final String trimmed = part.strip();
+      if (!trimmed.isEmpty()) {
+        segments.add(trimmed);
       }
     }
     return List.copyOf(segments);
   }
 
   public static String canonicalSegmentKey(final String segment) {
-    return segment.toLowerCase(Locale.ROOT);
+    return segment.strip().toLowerCase(Locale.ROOT);
   }
 
   /**
-   * First character uppercased, remainder lowercased (locale {@link Locale#ROOT}).
+   * Menu label: first alphabetic character uppercased, following letters lowercased; non-letters
+   * before the first letter are unchanged.
    */
   public static String displaySegment(final String segment) {
-    if (segment.isEmpty()) {
-      return segment;
+    final String trimmed = segment.strip();
+    if (trimmed.isEmpty()) {
+      return trimmed;
     }
-    if (segment.length() == 1) {
-      return segment.toUpperCase(Locale.ROOT);
+    final int firstLetter = indexOfFirstLetter(trimmed);
+    if (firstLetter < 0) {
+      return trimmed;
     }
-    return segment.substring(0, 1).toUpperCase(Locale.ROOT)
-        + segment.substring(1).toLowerCase(Locale.ROOT);
+    final StringBuilder label = new StringBuilder(trimmed.length());
+    label.append(trimmed, 0, firstLetter);
+    label.append(Character.toUpperCase(trimmed.charAt(firstLetter)));
+    if (firstLetter + 1 < trimmed.length()) {
+      label.append(trimmed.substring(firstLetter + 1).toLowerCase(Locale.ROOT));
+    }
+    return label.toString();
+  }
+
+  private static int indexOfFirstLetter(final String text) {
+    for (int i = 0; i < text.length(); i++) {
+      if (Character.isLetter(text.charAt(i))) {
+        return i;
+      }
+    }
+    return -1;
   }
 }

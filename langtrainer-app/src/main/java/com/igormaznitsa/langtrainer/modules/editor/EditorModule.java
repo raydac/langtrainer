@@ -123,8 +123,8 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
   public EditorModule() {
     this.fieldPath.setToolTipText(
-        "Optional menu path (JSON field \"path\"). Segments separated by /, \\, or whitespace"
-            + " (e.g. travel/russian-english/50_words). Omitted from saved JSON when empty.");
+        "Optional menu path (JSON field \"path\"). Segments separated by / or \\ only"
+            + " (e.g. travel/russian-english/50 words). Omitted from saved JSON when empty.");
     this.modulesChecksPanel.setOpaque(false);
     for (final LangTrainerModuleId moduleId : LangTrainerModuleId.values()) {
       final JCheckBox box = new JCheckBox(moduleId.name());
