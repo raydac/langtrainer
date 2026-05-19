@@ -1,6 +1,5 @@
 package com.igormaznitsa.langtrainer.modules.bricks;
 
-import com.google.gson.JsonObject;
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.LangTrainerModuleId;
 import com.igormaznitsa.langtrainer.engine.ClasspathLangResourceIndex;
@@ -194,9 +193,9 @@ public final class BricksModule extends AbstractLangTrainerModule {
   }
 
   @Override
-  public boolean isResourceAllowed(final JsonObject resourceDescription) {
+  public boolean isResourceAllowed(final DialogDefinition resourceDefinition) {
     return LangTrainerResourceAccess.visibleToModule(
-        resourceDescription, LangTrainerModuleId.BRICKS);
+        resourceDefinition, LangTrainerModuleId.BRICKS);
   }
 
   @Override

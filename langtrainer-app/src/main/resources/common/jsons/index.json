@@ -1,101 +1,34 @@
 {
   "resources": [
     {
-      "resource": "/common/jsons/en-ru-small.json",
-      "modules": [
-        "DIALOG",
-        "BRICKS"
-      ]
+      "resource": "/common/jsons/en-ru-small.json"
     },
     {
-      "name": "Test",
-      "children": [
-        {
-          "resource": "/common/jsons/en-ru-cardinal-directions-test.json",
-          "modules": [
-            "DIALOG",
-            "FLY_GAME",
-            "BRICKS",
-            "CROSSWORD"
-          ]
-        }
-      ]
+      "resource": "/common/jsons/en-ru-cardinal-directions-test.json"
     },
     {
-      "name": "By size",
-      "children": [
-        {
-          "name": "50 terms",
-          "children": [
-            {
-              "resource": "/common/jsons/en-ru-50-agatha-christie-1.json",
-              "modules": [
-                "DIALOG",
-                "BRICKS"
-              ]
-            },
-            {
-              "resource": "/common/jsons/en-ru-50-nyt-1.json",
-              "modules": [
-                "DIALOG",
-                "BRICKS"
-              ]
-            },
-            {
-              "resource": "/common/jsons/en-ru-50-stock-1.json",
-              "modules": [
-                "DIALOG",
-                "BRICKS"
-              ]
-            },
-            {
-              "resource": "/common/jsons/en-ru-50-idioms-1.json",
-              "modules": [
-                "DIALOG",
-                "BRICKS"
-              ]
-            }
-          ]
-        },
-        {
-          "name": "100 terms",
-          "children": [
-            {
-              "resource": "/common/jsons/en-ru-100-literature-1.json",
-              "modules": [
-                "DIALOG",
-                "BRICKS"
-              ]
-            },
-            {
-              "resource": "/common/jsons/en-ru-100-words-c1-1.json",
-              "modules": [
-                "DIALOG",
-                "BRICKS"
-              ]
-            }
-          ]
-        }
-      ]
+      "resource": "/common/jsons/en-ru-50-agatha-christie-1.json"
     },
     {
-      "name": "Travel",
-      "children": [
-        {
-          "resource": "/common/jsons/sw-rus-travel-phrases.json",
-          "modules": [
-            "DIALOG",
-            "FLY_GAME",
-            "BRICKS"
-          ]
-        }
-      ]
+      "resource": "/common/jsons/en-ru-50-nyt-1.json"
     },
     {
-      "resource": "/common/jsons/en-ru-crossword-small.json",
-      "modules": [
-        "CROSSWORD"
-      ]
+      "resource": "/common/jsons/en-ru-50-stock-1.json"
+    },
+    {
+      "resource": "/common/jsons/en-ru-50-idioms-1.json"
+    },
+    {
+      "resource": "/common/jsons/en-ru-100-literature-1.json"
+    },
+    {
+      "resource": "/common/jsons/en-ru-100-words-c1-1.json"
+    },
+    {
+      "resource": "/common/jsons/sw-rus-travel-phrases.json"
+    },
+    {
+      "resource": "/common/jsons/en-ru-crossword-small.json"
     }
   ]
 }

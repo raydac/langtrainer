@@ -1,6 +1,5 @@
 package com.igormaznitsa.langtrainer.modules.crossword;
 
-import com.google.gson.JsonObject;
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
 import com.igormaznitsa.langtrainer.api.LangTrainerModuleId;
@@ -262,9 +261,9 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   }
 
   @Override
-  public boolean isResourceAllowed(final JsonObject resourceDescription) {
+  public boolean isResourceAllowed(final DialogDefinition resourceDefinition) {
     return LangTrainerResourceAccess.visibleToModule(
-        resourceDescription, LangTrainerModuleId.CROSSWORD);
+        resourceDefinition, LangTrainerModuleId.CROSSWORD);
   }
 
   @Override

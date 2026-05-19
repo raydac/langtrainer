@@ -5,6 +5,7 @@ import static java.util.Optional.of;
 
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
+import com.igormaznitsa.langtrainer.api.LangTrainerModuleId;
 import com.igormaznitsa.langtrainer.engine.DialogDefinition;
 import com.igormaznitsa.langtrainer.engine.DialogLine;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
@@ -22,6 +23,7 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.Rectangle;
 import java.io.File;
@@ -30,8 +32,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultCellEditor;
@@ -77,6 +81,11 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private float editorFontSizePoints = -1f;
   private JButton newDocumentButton;
   private final JTextField fieldTitle = new JTextField();
+  private final JTextField fieldPath = new JTextField();
+  private final Map<LangTrainerModuleId, JCheckBox> moduleCheckboxes =
+      new EnumMap<>(LangTrainerModuleId.class);
+  private final JPanel modulesChecksPanel = new JPanel(new GridLayout(0, 2, 8, 4));
+  private final JPanel modulesBlock = new JPanel(new BorderLayout(0, 4));
   private final JTextArea fieldDescription = EditorModule.makeGrowingTextArea();
   private final JTextField fieldLangA = new JTextField();
   private final JTextField fieldLangB = new JTextField();
@@ -113,6 +122,22 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private Path currentFilePath;
 
   public EditorModule() {
+    this.fieldPath.setToolTipText(
+        "Optional menu path (JSON field \"path\"). Segments separated by /, \\, or whitespace"
+            + " (e.g. travel/russian-english/50_words). Omitted from saved JSON when empty.");
+    this.modulesChecksPanel.setOpaque(false);
+    for (final LangTrainerModuleId moduleId : LangTrainerModuleId.values()) {
+      final JCheckBox box = new JCheckBox(moduleId.name());
+      box.setOpaque(false);
+      this.moduleCheckboxes.put(moduleId, box);
+      this.modulesChecksPanel.add(box);
+    }
+    this.modulesBlock.setOpaque(false);
+    this.modulesBlock.add(EditorModule.label("Modules (optional)"), BorderLayout.NORTH);
+    this.modulesBlock.add(this.modulesChecksPanel, BorderLayout.CENTER);
+    this.modulesBlock.setToolTipText(
+        "Optional allowed modules (JSON field \"modules\"). Leave all unchecked to allow every"
+            + " module. Omitted from saved JSON when none are selected.");
     this.fieldDescription.setRows(2);
     this.fieldDescription.setColumns(40);
     this.fieldDescription.setLineWrap(true);
@@ -404,39 +429,58 @@ public final class EditorModule extends AbstractLangTrainerModule {
     gbc.weightx = 1.0;
     gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
-    generalBlock.add(EditorModule.label("Description"), gbc);
+    generalBlock.add(EditorModule.label("Menu path (optional)"), gbc);
 
     gbc.gridy = 3;
     gbc.weightx = 1.0;
-    gbc.weighty = 1.0;
-    gbc.fill = GridBagConstraints.BOTH;
-    generalBlock.add(descScroll, gbc);
+    gbc.weighty = 0.0;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    generalBlock.add(this.fieldPath, gbc);
 
     gbc.gridy = 4;
     gbc.weightx = 1.0;
     gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
-    generalBlock.add(EditorModule.label("Language A"), gbc);
+    gbc.anchor = GridBagConstraints.WEST;
+    generalBlock.add(this.modulesBlock, gbc);
 
     gbc.gridy = 5;
     gbc.weightx = 1.0;
     gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
-    generalBlock.add(this.fieldLangA, gbc);
+    generalBlock.add(EditorModule.label("Description"), gbc);
 
     gbc.gridy = 6;
     gbc.weightx = 1.0;
-    gbc.weighty = 0.0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    generalBlock.add(EditorModule.label("Language B"), gbc);
+    gbc.weighty = 1.0;
+    gbc.fill = GridBagConstraints.BOTH;
+    generalBlock.add(descScroll, gbc);
 
     gbc.gridy = 7;
     gbc.weightx = 1.0;
     gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
-    generalBlock.add(this.fieldLangB, gbc);
+    generalBlock.add(EditorModule.label("Language A"), gbc);
 
     gbc.gridy = 8;
+    gbc.weightx = 1.0;
+    gbc.weighty = 0.0;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    generalBlock.add(this.fieldLangA, gbc);
+
+    gbc.gridy = 9;
+    gbc.weightx = 1.0;
+    gbc.weighty = 0.0;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    generalBlock.add(EditorModule.label("Language B"), gbc);
+
+    gbc.gridy = 10;
+    gbc.weightx = 1.0;
+    gbc.weighty = 0.0;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    generalBlock.add(this.fieldLangB, gbc);
+
+    gbc.gridy = 11;
     gbc.weightx = 1.0;
     gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -719,6 +763,8 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private void newDocument() {
     this.currentFilePath = null;
     this.fieldTitle.setText("");
+    this.fieldPath.setText("");
+    this.clearModuleCheckboxes();
     this.fieldDescription.setText("");
     this.fieldLangA.setText("");
     this.fieldLangB.setText("");
@@ -738,6 +784,8 @@ public final class EditorModule extends AbstractLangTrainerModule {
 
   private void applyDefinition(final DialogDefinition def) {
     this.fieldTitle.setText(def.menuName());
+    this.fieldPath.setText(def.path() == null ? "" : def.path());
+    this.applyModulesToUi(def.modules());
     this.fieldDescription.setText(def.description());
     this.fieldLangA.setText(def.langA());
     this.fieldLangB.setText(def.langB());
@@ -772,6 +820,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
           : this.linesModel.getValueAt(i, 2));
       lines.add(new DialogLine(a, b));
     }
+    final String pathRaw = this.fieldPath.getText().strip();
     return new DialogDefinition(
         this.fieldTitle.getText().strip(),
         this.fieldDescription.getText().strip(),
@@ -779,7 +828,32 @@ public final class EditorModule extends AbstractLangTrainerModule {
         this.fieldLangB.getText().strip(),
         lines,
         this.inputEquivalenceRowsFromTable(),
-        this.checkShuffled.isSelected());
+        this.checkShuffled.isSelected(),
+        pathRaw.isEmpty() ? null : pathRaw,
+        this.modulesFromUi());
+  }
+
+  private void clearModuleCheckboxes() {
+    for (final JCheckBox box : this.moduleCheckboxes.values()) {
+      box.setSelected(false);
+    }
+  }
+
+  private void applyModulesToUi(final List<String> modules) {
+    final List<String> allowed = modules == null ? List.of() : modules;
+    for (final Map.Entry<LangTrainerModuleId, JCheckBox> entry : this.moduleCheckboxes.entrySet()) {
+      entry.getValue().setSelected(allowed.contains(entry.getKey().name()));
+    }
+  }
+
+  private List<String> modulesFromUi() {
+    final List<String> selected = new ArrayList<>();
+    for (final Map.Entry<LangTrainerModuleId, JCheckBox> entry : this.moduleCheckboxes.entrySet()) {
+      if (entry.getValue().isSelected()) {
+        selected.add(entry.getKey().name());
+      }
+    }
+    return selected.isEmpty() ? null : List.copyOf(selected);
   }
 
   private void loadFromUser() {

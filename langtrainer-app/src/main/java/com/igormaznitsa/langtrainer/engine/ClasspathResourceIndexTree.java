@@ -9,9 +9,8 @@ public record ClasspathResourceIndexTree(List<IndexedClasspathNode> roots) {
   private static final char PATH_SEP = '\u0001';
 
   public static String childFolderPathKey(final String parentPathKey, final String segmentName) {
-    return parentPathKey.isEmpty()
-        ? segmentName
-        : parentPathKey + PATH_SEP + segmentName;
+    final String key = ResourceMenuPath.canonicalSegmentKey(segmentName);
+    return parentPathKey.isEmpty() ? key : parentPathKey + PATH_SEP + key;
   }
 
   public void materializeInto(

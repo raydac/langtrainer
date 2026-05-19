@@ -1,4 +1,9 @@
 {
+  "path": "By size/50 terms",
+  "modules": [
+    "DIALOG",
+    "BRICKS"
+  ],
   "menuName": "Stock Market Advanced Phrases / Продвинутая биржевая терминология",
   "description": "50 advanced stock market phrases in English with Russian translations",
   "langA": "English",

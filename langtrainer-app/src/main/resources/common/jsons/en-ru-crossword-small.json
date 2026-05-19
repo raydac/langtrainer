@@ -3,6 +3,9 @@
   "description": "Expanded EN-RU vocabulary with longer, abstract, and academic terms for crossword training",
   "langA": "English",
   "langB": "Russian",
+  "modules": [
+    "CROSSWORD"
+  ],
   "lines": [
     {
       "A": "democracy",

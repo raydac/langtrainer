@@ -1,4 +1,9 @@
 {
+  "path": "By size/50 terms",
+  "modules": [
+    "DIALOG",
+    "BRICKS"
+  ],
   "menuName": "NYT Style Phrases / Фразы в стиле New York Times",
   "description": "50 advanced English phrases inspired by journalistic style (NYT-like), no names or places",
   "langA": "English",

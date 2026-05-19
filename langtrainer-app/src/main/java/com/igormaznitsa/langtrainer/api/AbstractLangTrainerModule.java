@@ -1,6 +1,6 @@
 package com.igormaznitsa.langtrainer.api;
 
-import com.google.gson.JsonObject;
+import com.igormaznitsa.langtrainer.engine.DialogDefinition;
 import java.util.List;
 import javax.swing.Icon;
 import javax.swing.JComponent;
@@ -45,12 +45,10 @@ public abstract class AbstractLangTrainerModule {
   }
 
   /**
-   * Whether a shared classpath JSON <em>leaf</em> (from {@code /common/jsons/index.json}) may
-   * appear in this module’s resource list. The {@link JsonObject} is a leaf element of the {@code
-   * resources} tree: it includes {@code "resource": "/path/…"} (and optionally {@code "modules"}).
-   * Folder nodes ({@code "name"} + {@code "children"}) are not passed here.
+   * Whether a bundled classpath JSON resource may appear in this module’s resource list. Restriction
+   * comes from the optional {@code "modules"} field on the resource JSON ({@link DialogDefinition}).
    */
-  public boolean isResourceAllowed(final JsonObject resourceDescription) {
+  public boolean isResourceAllowed(final DialogDefinition resourceDefinition) {
     return true;
   }
 }

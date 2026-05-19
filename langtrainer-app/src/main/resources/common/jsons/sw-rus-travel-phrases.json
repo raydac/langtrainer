@@ -1,4 +1,10 @@
 {
+  "path": "Travel",
+  "modules": [
+    "DIALOG",
+    "FLY_GAME",
+    "BRICKS"
+  ],
   "menuName": "Русско-шведский разговорник / Russian-Swedish phrasebook",
   "description": "Russian-Swedish travel phrases",
   "langA": "Russian",

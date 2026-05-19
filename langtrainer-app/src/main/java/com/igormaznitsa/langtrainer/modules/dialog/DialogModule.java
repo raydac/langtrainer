@@ -2,7 +2,6 @@ package com.igormaznitsa.langtrainer.modules.dialog;
 
 import static java.util.Collections.min;
 
-import com.google.gson.JsonObject;
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
 import com.igormaznitsa.langtrainer.api.LangTrainerModuleId;
@@ -252,9 +251,9 @@ public final class DialogModule extends AbstractLangTrainerModule {
   }
 
   @Override
-  public boolean isResourceAllowed(final JsonObject resourceDescription) {
+  public boolean isResourceAllowed(final DialogDefinition resourceDefinition) {
     return LangTrainerResourceAccess.visibleToModule(
-        resourceDescription, LangTrainerModuleId.DIALOG);
+        resourceDefinition, LangTrainerModuleId.DIALOG);
   }
 
   @Override

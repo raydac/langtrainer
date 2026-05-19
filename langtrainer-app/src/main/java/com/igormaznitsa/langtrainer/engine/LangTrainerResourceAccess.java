@@ -1,14 +1,12 @@
 package com.igormaznitsa.langtrainer.engine;
 
-import com.google.gson.JsonObject;
 import com.igormaznitsa.langtrainer.api.LangTrainerModuleId;
-import java.util.stream.StreamSupport;
+import java.util.List;
 
 /**
- * How shared <em>leaf</em> entries in {@code /common/jsons/index.json} are visible to a module.
- * Folder nodes in the index are handled separately; this applies only to objects with {@code
- * "resource"}. If a leaf has a {@code modules} array, it is shown only to modules named there; if
- * {@code modules} is absent, the entry is available to all modules.
+ * Visibility of bundled resources for a {@link com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule}.
+ * If a {@link DialogDefinition} has a {@code modules} list, it is shown only to modules named there;
+ * if {@code modules} is absent or empty, the resource is available to all modules.
  */
 public final class LangTrainerResourceAccess {
 
@@ -16,19 +14,15 @@ public final class LangTrainerResourceAccess {
   }
 
   public static boolean visibleToModule(
-      final JsonObject entry, final LangTrainerModuleId target) {
-    if (entry == null || target == null) {
+      final DialogDefinition definition, final LangTrainerModuleId target) {
+    if (definition == null || target == null) {
       return false;
     }
-    if (!entry.has("resource") || !entry.get("resource").isJsonPrimitive()) {
-      return false;
-    }
-    if (!entry.has("modules") || !entry.get("modules").isJsonArray()) {
+    final List<String> modules = definition.modules();
+    if (modules == null || modules.isEmpty()) {
       return true;
     }
-    return StreamSupport.stream(entry.getAsJsonArray("modules").spliterator(), false)
-        .anyMatch(
-            m -> m.isJsonPrimitive() && sameModuleId(m.getAsString(), target));
+    return modules.stream().anyMatch(m -> sameModuleId(m, target));
   }
 
   private static boolean sameModuleId(final String raw, final LangTrainerModuleId id) {

@@ -1,4 +1,9 @@
 {
+  "path": "By size/100 terms",
+  "modules": [
+    "DIALOG",
+    "BRICKS"
+  ],
   "menuName": "C1 Advanced Vocabulary",
   "description": "100 advanced English words (C1 level) with Russian translations",
   "langA": "English",

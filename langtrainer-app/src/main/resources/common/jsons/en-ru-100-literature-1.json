@@ -1,4 +1,9 @@
 {
+  "path": "By size/100 terms",
+  "modules": [
+    "DIALOG",
+    "BRICKS"
+  ],
   "menuName": "Literary English Phrases C1 / Литературные фразы C1",
   "description": "100 short literary English phrases (late 19th–early 20th century style) with Russian translations",
   "langA": "English",

@@ -4,7 +4,7 @@ Module FLY GAME
 1. It is a child of AbstractLangTrainerModule.
 2. It is a dynamic interactive game.
 3. Word lists use the same DialogDefinition JSON as the Dialog module (see JSON_format.txt).
-4. Bundled lists are discovered through common/jsons/index.json (same mechanism as Dialog; see index_json.txt). Entries visible to FLY_GAME are those whose index leaf includes "FLY_GAME" in "modules" when that array is present. The user may also open a JSON file from disk from the same picker pattern as Dialog/Crossword.
+4. Bundled lists are discovered through common/jsons/index.json (same mechanism as Dialog; see index_json.txt). Entries visible to FLY_GAME are those whose resource JSON includes "FLY_GAME" in "modules" when that array is present (omit "modules" for all modules). The user may also open a JSON file from disk from the same picker pattern as Dialog/Crossword.
 5. Module-specific images and sounds live under classpath paths such as /fly_game/images/ and /fly_game/sounds/ — these are not the same as the shared JSON index path (/common/jsons/).
 6. Game idea:
  6.1. User learns words from the selected list for the chosen typing language.

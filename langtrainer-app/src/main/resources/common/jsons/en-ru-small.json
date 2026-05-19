@@ -3,6 +3,10 @@
   "description": "Simple test dialog for EN-RU translation training",
   "langA": "English",
   "langB": "Russian",
+  "modules": [
+    "DIALOG",
+    "BRICKS"
+  ],
   "lines": [
     {
       "A": "Hello!",

@@ -1,4 +1,9 @@
 {
+  "path": "By size/50 terms",
+  "modules": [
+    "DIALOG",
+    "BRICKS"
+  ],
   "menuName": "Agatha Christie Style Phrases / Фразы в стиле Агаты Кристи",
   "description": "50 advanced English phrases inspired by Agatha Christie style (no names or places)",
   "langA": "English",

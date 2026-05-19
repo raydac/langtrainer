@@ -1,6 +1,5 @@
 package com.igormaznitsa.langtrainer.modules.flygame;
 
-import com.google.gson.JsonObject;
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
 import com.igormaznitsa.langtrainer.api.LangTrainerModuleId;
@@ -130,9 +129,9 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   }
 
   @Override
-  public boolean isResourceAllowed(final JsonObject resourceDescription) {
+  public boolean isResourceAllowed(final DialogDefinition resourceDefinition) {
     return LangTrainerResourceAccess.visibleToModule(
-        resourceDescription, LangTrainerModuleId.FLY_GAME);
+        resourceDefinition, LangTrainerModuleId.FLY_GAME);
   }
 
   @Override
@@ -295,7 +294,9 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
               definition.langB(),
               playable,
               definition.inputEqu(),
-              definition.shuffled());
+              definition.shuffled(),
+              definition.path(),
+              definition.modules());
       this.enterGame(sessionDef, userTypesA);
     }
   }

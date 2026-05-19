@@ -1,4 +1,9 @@
 {
+  "path": "By size/50 terms",
+  "modules": [
+    "DIALOG",
+    "BRICKS"
+  ],
   "menuName": "English Idioms / Английские идиомы",
   "description": "50 common English idioms with Russian translations",
   "langA": "English",
