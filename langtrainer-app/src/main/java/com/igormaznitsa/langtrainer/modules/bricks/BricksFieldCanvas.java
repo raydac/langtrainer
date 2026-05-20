@@ -23,6 +23,10 @@ final class BricksFieldCanvas extends JPanel {
   private static final float BRICK_FONT_PT = 19f;
   private static final int ZONE_LINE = 1;
   private static final int INNER_PAD = 8;
+  /**
+   * Extra empty margin on the left of the build strip for easier brick dragging.
+   */
+  private static final int BUILD_ZONE_EXTRA_LEFT_PAD = 48;
   private static final int ROW_V_GAP = 8;
   private static final int INTER_ZONE_GAP = 6;
   private static final float SCALE_MIN = 0.16f;
@@ -183,9 +187,9 @@ final class BricksFieldCanvas extends JPanel {
             this.buildSuffixX, this.buildSuffixY, this.buildSuffixW, this.buildSuffixH);
       }
       return new Rectangle(
-          INNER_PAD + ZONE_LINE,
+          this.buildOriginX(),
           this.buildZoneTop + INNER_PAD + ZONE_LINE,
-          Math.max(1, this.getWidth() - 2 * (INNER_PAD + ZONE_LINE)),
+          Math.max(1, this.buildInnerWidth()),
           Math.max(1, this.buildZoneH - 2 * (INNER_PAD + ZONE_LINE)));
     }
     if (this.fixedEndSuffix != null && this.buildSuffixW > 0) {
@@ -282,7 +286,9 @@ final class BricksFieldCanvas extends JPanel {
       return;
     }
     this.contentInnerW = w - 2 * (INNER_PAD + ZONE_LINE);
-    this.brickScale = this.resolveScaleForTwoRows(this.contentInnerW);
+    final int poolInnerW = this.contentInnerW;
+    final int buildInnerW = this.contentInnerW - BUILD_ZONE_EXTRA_LEFT_PAD;
+    this.brickScale = this.resolveScaleForTwoRows(poolInnerW, buildInnerW);
     final int brickDrawH = Math.max(1, Math.round(this.baseBrickH * this.brickScale));
     final int rowContentH = 2 * brickDrawH + ROW_V_GAP;
     this.poolZoneH = INNER_PAD * 2 + ZONE_LINE * 2 + rowContentH;
@@ -292,13 +298,16 @@ final class BricksFieldCanvas extends JPanel {
     this.refreshRasters();
     this.poolPlaced.clear();
     this.buildPlaced.clear();
+    final int poolOriginX = INNER_PAD + ZONE_LINE;
+    final int poolOriginY = this.poolZoneTop + INNER_PAD + ZONE_LINE;
     this.flowPlace(
         this.poolIds,
         this.poolPlaced,
-        INNER_PAD + ZONE_LINE,
-        this.poolZoneTop + INNER_PAD + ZONE_LINE,
+        poolOriginX,
+        poolOriginY,
+        poolInnerW,
         this.draggingId);
-    final int buildOriginX = INNER_PAD + ZONE_LINE;
+    final int buildOriginX = this.buildOriginX();
     final int buildOriginY = this.buildZoneTop + INNER_PAD + ZONE_LINE;
     final FlowEnd buildEnd =
         this.flowPlace(
@@ -306,18 +315,27 @@ final class BricksFieldCanvas extends JPanel {
             this.buildPlaced,
             buildOriginX,
             buildOriginY,
+            buildInnerW,
             this.draggingId);
-    this.layoutBuildFixedSuffix(buildOriginX, buildOriginY, buildEnd);
+    this.layoutBuildFixedSuffix(buildOriginX, buildOriginY, buildInnerW, buildEnd);
     final int totalH = this.buildZoneTop + this.buildZoneH;
     this.setPreferredSize(new Dimension(w, totalH));
   }
 
-  private float resolveScaleForTwoRows(final int innerW) {
+  private int buildOriginX() {
+    return INNER_PAD + ZONE_LINE + BUILD_ZONE_EXTRA_LEFT_PAD;
+  }
+
+  private int buildInnerWidth() {
+    return Math.max(1, this.contentInnerW - BUILD_ZONE_EXTRA_LEFT_PAD);
+  }
+
+  private float resolveScaleForTwoRows(final int poolInnerW, final int buildInnerW) {
     float s = 1f;
     while (s >= SCALE_MIN
-        && !(this.fitsTwoRows(innerW, s, this.poolIds, this.draggingId, 0)
+        && !(this.fitsTwoRows(poolInnerW, s, this.poolIds, this.draggingId, 0)
         && this.fitsTwoRows(
-        innerW, s, this.buildIds, this.draggingId, this.suffixTailWidthPx(s)))) {
+        buildInnerW, s, this.buildIds, this.draggingId, this.suffixTailWidthPx(s)))) {
       s -= 0.018f;
     }
     return Math.max(SCALE_MIN, s);
@@ -374,6 +392,7 @@ final class BricksFieldCanvas extends JPanel {
       final List<PlacedBrick> out,
       final int originX,
       final int originY,
+      final int innerW,
       final int excludeId) {
     int row = 0;
     int x = 0;
@@ -386,7 +405,7 @@ final class BricksFieldCanvas extends JPanel {
         continue;
       }
       final int bw = Math.max(1, Math.round(this.baseBrickW[id] * this.brickScale));
-      if (x > 0 && x + bw > this.contentInnerW) {
+      if (x > 0 && x + bw > innerW) {
         row++;
         x = 0;
         y += brickDrawH + ROW_V_GAP;
@@ -398,7 +417,10 @@ final class BricksFieldCanvas extends JPanel {
   }
 
   private void layoutBuildFixedSuffix(
-      final int buildOriginX, final int buildOriginY, final FlowEnd buildEnd) {
+      final int buildOriginX,
+      final int buildOriginY,
+      final int buildInnerW,
+      final FlowEnd buildEnd) {
     if (this.fixedEndSuffix == null) {
       this.buildSuffixW = 0;
       this.buildSuffixH = 0;
@@ -420,7 +442,7 @@ final class BricksFieldCanvas extends JPanel {
     } else {
       x = buildEnd.nextX();
       y = buildEnd.y();
-      if (x + this.buildSuffixW > buildOriginX + this.contentInnerW) {
+      if (x + this.buildSuffixW > buildOriginX + buildInnerW) {
         y += buildEnd.brickDrawH() + ROW_V_GAP;
         x = buildOriginX;
       }
