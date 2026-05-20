@@ -85,21 +85,48 @@ public final class LangTrainerApplication {
 
   private void dismissSplashAfterMillis(final int millis, final Runnable onDone) {
     final SplashScreen splash = SplashScreen.getSplashScreen();
-    if (splash == null || !splash.isVisible()) {
+    if (splash == null || !this.isSplashVisible(splash)) {
       onDone.run();
       return;
     }
     this.paintAppVersionOnSplash(splash);
     final Timer timer = new Timer(millis, event -> {
-      splash.close();
-      onDone.run();
+      try {
+        this.closeSplashIfVisible(splash);
+      } finally {
+        onDone.run();
+      }
     });
     timer.setRepeats(false);
     timer.start();
   }
 
+  private boolean isSplashVisible(final SplashScreen splash) {
+    try {
+      return splash.isVisible();
+    } catch (final IllegalStateException ex) {
+      return false;
+    }
+  }
+
+  private void closeSplashIfVisible(final SplashScreen splash) {
+    if (!this.isSplashVisible(splash)) {
+      return;
+    }
+    try {
+      splash.close();
+    } catch (final IllegalStateException ignored) {
+      // The splash may be closed by the JVM/window system before our timer fires.
+    }
+  }
+
   private void paintAppVersionOnSplash(final SplashScreen splash) {
-    final Graphics2D graphics = splash.createGraphics();
+    final Graphics2D graphics;
+    try {
+      graphics = splash.createGraphics();
+    } catch (final IllegalStateException ex) {
+      return;
+    }
     if (graphics == null) {
       return;
     }
@@ -112,8 +139,19 @@ public final class LangTrainerApplication {
       final int y = splash.getSize().height - 12;
       graphics.drawString(versionText, x, y);
     } finally {
-      splash.update();
+      this.updateSplashIfVisible(splash);
       graphics.dispose();
+    }
+  }
+
+  private void updateSplashIfVisible(final SplashScreen splash) {
+    if (!this.isSplashVisible(splash)) {
+      return;
+    }
+    try {
+      splash.update();
+    } catch (final IllegalStateException ignored) {
+      // The splash may disappear between drawing and update.
     }
   }
 
