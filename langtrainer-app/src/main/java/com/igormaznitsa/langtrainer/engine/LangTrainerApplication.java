@@ -72,12 +72,10 @@ public final class LangTrainerApplication {
 
   public void start() {
     this.initMainFrame();
-    this.mainFrame.setEnabled(false);
     SwingUtilities.invokeLater(() -> this.mainFrame.setVisible(true));
     this.dismissSplashAfterMillis(
         5000,
         () -> {
-          this.mainFrame.setEnabled(true);
           this.mainFrame.toFront();
           this.mainMenuPanel.focusList();
         });
