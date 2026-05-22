@@ -23,7 +23,7 @@ public final class DialogPhraseInputSupport {
     final String prepared =
         PhraseWordSupport.collapseRedundantTypedJoiners(
             raw == null ? "" : raw, expected);
-    return TypingPhraseFormatter.mergeLettersIntoExpected(expected, prepared);
+    return TypingPhraseFormatter.mergeLettersIntoExpectedKeepingExtraInput(expected, prepared);
   }
 
   /**
