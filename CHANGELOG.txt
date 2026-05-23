@@ -1,3 +1,6 @@
+1.0.1 (SNAPSHOT)
+ -
+
 1.0.0 (23-may-2026)
  - Initial desktop application for foreign-language training.
  - Added dialog practice, flying word game, crossword, and bricks training modules.
