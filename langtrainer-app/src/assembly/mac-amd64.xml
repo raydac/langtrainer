@@ -22,7 +22,7 @@
                 </exclude>
             </excludes>
             <includes>
-                <include>*/**</include>
+                <include>**/*</include>
             </includes>
             <filtered>true</filtered>
         </fileSet>
@@ -41,7 +41,7 @@
                 ${file.separator}LangTrainer.app${file.separator}Contents${file.separator}MacOS${file.separator}jre
             </outputDirectory>
             <includes>
-                <include>*/**</include>
+                <include>**/*</include>
             </includes>
         </fileSet>
     </fileSets>
@@ -59,6 +59,12 @@
             <source>${project.build.directory}${file.separator}${artifactId}-${version}.jar</source>
             <destName>${artifactId}-${version}.jar</destName>
             <outputDirectory>${file.separator}LangTrainer.app${file.separator}Contents${file.separator}MacOS
+            </outputDirectory>
+        </file>
+        <file>
+            <source>${project.basedir}${file.separator}appico.icns</source>
+            <destName>appico.icns</destName>
+            <outputDirectory>${file.separator}LangTrainer.app${file.separator}Contents${file.separator}Resources
             </outputDirectory>
         </file>
     </files>

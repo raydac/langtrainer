@@ -2,10 +2,11 @@
 Name=LangTrainer
 Comment=LangTrainer application
 GenericName=LangTrainerApp
+Exec=AppRun
 Terminal=false
 Type=Application
 Icon=icon
-Categories=Application;
+Categories=Education;Languages;
 Keywords=langtrainer;words;dialogs;
 StartupWMClass=LangTrainer
 StartupNotify=true

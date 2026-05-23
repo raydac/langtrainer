@@ -97,6 +97,10 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   private final Deque<String> historyLines = new ArrayDeque<>();
   private Timer completionFlyTimer;
   private JPanel completionAnimTopSpacer;
+  /**
+   * Hides the fixed suffix on the build strip while the solved row flies into history.
+   */
+  private boolean completionFlyActive;
   private DialogDefinition definition;
   private boolean userBuildsSideA;
   private List<DialogLine> exercises = List.of();
@@ -366,7 +370,8 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   }
 
   private void syncFieldCanvas() {
-    this.fieldCanvas.bindLists(this.poolIds, this.buildIds, this.wordTokens, this.fixedEndSuffix);
+    final String buildSuffix = this.completionFlyActive ? null : this.fixedEndSuffix;
+    this.fieldCanvas.bindLists(this.poolIds, this.buildIds, this.wordTokens, buildSuffix);
     this.fieldCanvas.setBuildBrickFill(this.buildTileFillColor());
   }
 
@@ -726,6 +731,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
       this.completionFlyTimer.stop();
       this.completionFlyTimer = null;
     }
+    this.completionFlyActive = false;
     this.parkCompletionGhostLabel();
     this.discardCompletionTopSpacerIfPresent();
   }
@@ -810,6 +816,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
       this.advanceAfterSuccess();
       return;
     }
+    this.completionFlyActive = true;
     final List<String> words = new ArrayList<>(this.buildIds.size());
     for (final int id : this.buildIds) {
       words.add(this.wordTokens.get(id));
@@ -913,6 +920,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   }
 
   private void advanceAfterSuccess() {
+    this.completionFlyActive = false;
     this.historyLines.addLast(this.targetLineText);
     while (this.historyLines.size() > MAX_HISTORY_LINES) {
       this.historyLines.removeFirst();

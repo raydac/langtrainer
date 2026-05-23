@@ -1,2 +1,7 @@
-1.0.0 (SNAPSHOT)
- -
+1.0.0 (23-may-2026)
+ - Initial desktop application for foreign-language training.
+ - Added dialog practice, flying word game, crossword, and bricks training modules.
+ - Added built-in editor for JSON language resources.
+ - Added bundled sample resources and resource module filtering.
+ - Added input equivalence rules for keyboard-friendly typing of accented letters.
+ - Added Maven build, packaging, and application start configuration.

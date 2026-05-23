@@ -1,15 +1,15 @@
-set "LANGTRAINER_HOME=%cd%"
-set "LOG_FILE=%LANGTRAINER_HOME%/console.log"
+set "LANGTRAINER_HOME=%~dp0"
+set "LOG_FILE=%LANGTRAINER_HOME%console.log"
 
 set JAVA_FLAGS="--add-opens=java.base/java.lang=ALL-UNNAMED"
-set JAVA_RUN="java.exe"
+set JAVA_RUN="%LANGTRAINER_HOME%jre\bin\java.exe"
 
-echo %%JAVA_RUN%%=%JAVA_RUN% > %LOG_FILE%
+echo %%JAVA_RUN%%=%JAVA_RUN% > "%LOG_FILE%"
 
-echo ------JAVA_VERSION------ >> %LOG_FILE%
+echo ------JAVA_VERSION------ >> "%LOG_FILE%"
 
-%JAVA_RUN% -version 2>> %LOG_FILE%
+%JAVA_RUN% -version 2>> "%LOG_FILE%"
 
-echo ------------------------ >> %LOG_FILE%
+echo ------------------------ >> "%LOG_FILE%"
 
-%JAVA_RUN% %JAVA_FLAGS% -Djava.library.path=%LANGTRAINER_HOME% -jar %LANGTRAINER_HOME%/langtrainer.jar %* 2>> %LOG_FILE%
+%JAVA_RUN% %JAVA_FLAGS% -Djava.library.path="%LANGTRAINER_HOME%" -jar "%LANGTRAINER_HOME%langtrainer.jar" %* 2>> "%LOG_FILE%"
