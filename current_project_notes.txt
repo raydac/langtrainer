@@ -1,0 +1,25 @@
+## 1. Implementation Progress
+- Optimized Russian `inputEqu` resources by representing `е/Е/ё/Ё` as a single equivalence-class row.
+- Expanded `README.md` with GitHub project description, Java/Maven requirements, build, and start commands.
+
+## 2. Architecture & Technical Discoveries
+- `InputEquivalenceSupport` uses positional matching when `key` and `value` lists have equal sizes, and any-key-to-any-value matching otherwise.
+- Equal-size rows where `key` and `value` contain the same token set now act as equivalence classes, allowing compact reciprocal substitutions in JSON.
+- Maven must be run as `mvn22`.
+
+## 3. Technical Debt & Refactoring
+- `langtrainer-app` currently has no test source tree; input equivalence behavior would benefit from focused unit tests.
+
+## 4. Current Work In Progress
+- None.
+
+## 5. Known Issues & Limitations
+- No known issues from the current `inputEqu` optimization.
+
+## 6. Open Questions & Pending Decisions
+- None.
+
+## 7. Useful References
+- Compile app module with reactor context: `mvn22 -pl langtrainer-app -am compile`.
+- Build app with reactor context: `mvn22 -pl langtrainer-app -am package`.
+- Start app from Maven: `mvn22 -pl langtrainer-app -am exec:java`.

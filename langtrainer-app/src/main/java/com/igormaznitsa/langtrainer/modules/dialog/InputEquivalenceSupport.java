@@ -4,6 +4,7 @@ import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
 import com.igormaznitsa.langtrainer.text.PhraseWordSupport;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
@@ -112,14 +113,18 @@ public final class InputEquivalenceSupport {
       final List<String> keys = row.key();
       final List<String> vals = row.value();
       final String matched =
-          keys.size() == vals.size()
-              ? matchPositional(typed, expectedChar, keys, vals)
-              : matchAnyKeyToExpectedValue(typed, expectedChar, keys, vals);
+          isEquivalenceClass(keys, vals) || keys.size() != vals.size()
+              ? matchAnyKeyToExpectedValue(typed, expectedChar, keys, vals)
+              : matchPositional(typed, expectedChar, keys, vals);
       if (matched != null) {
         return Optional.of(matched);
       }
     }
     return Optional.empty();
+  }
+
+  private static boolean isEquivalenceClass(final List<String> keys, final List<String> vals) {
+    return keys.size() == vals.size() && Set.copyOf(keys).equals(Set.copyOf(vals));
   }
 
   private static String matchPositional(
