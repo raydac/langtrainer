@@ -23,10 +23,8 @@ JSON files, so new vocabularies, dialogs, and phrase lists can be added or edite
 
 ## Application
 
-![Application look](assets/applook.png)
-
 The application is written in [Java](https://en.wikipedia.org/wiki/Java_%28programming_language%29) and
-requires [Java 11](https://bell-sw.com/pages/downloads/#jdk-21-lts) or later to be installed on your computer. For
+requires [Java 17+](https://bell-sw.com/pages/downloads/#jdk-21-lts) or later to be installed on your computer. For
 convenience,
 there are also build versions that come bundled with a compatible Java runtime, so you don't have to install Java
 separately if you don’t want to.
