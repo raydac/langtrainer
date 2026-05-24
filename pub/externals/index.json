@@ -1,7 +1,7 @@
 {
   "resources": [
     {
-      "resource": "./eesti-rus/esti-rus-pronouns.json"
+      "resource": "./est-rus/est-rus-pronouns.json"
     }
   ]
 }
