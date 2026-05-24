@@ -13,12 +13,15 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public final class ExternalLangResourceIndex {
 
   private static final String SHARED_INDEX = "common/jsons/index.json";
+  private static final String ROOT_INDEX = "index.json";
   private static final LinkOption[] NO_LINK_OPTIONS = {LinkOption.NOFOLLOW_LINKS};
   private static final Gson GSON = new Gson();
 
@@ -31,20 +34,37 @@ public final class ExternalLangResourceIndex {
     final Path root = requireNonNull(externalRoot, "externalRoot must not be null")
         .toAbsolutePath()
         .normalize();
-    final Path indexPath = root.resolve(SHARED_INDEX).normalize();
-    if (!isRegularFile(indexPath, NO_LINK_OPTIONS) || !indexPath.startsWith(root)) {
+    final List<Path> indexPaths = resolveExternalIndexes(root);
+    if (indexPaths.isEmpty()) {
       return ClasspathResourceIndexTree.empty();
     }
-    try {
-      return loadTreeFromIndex(root, module, indexPath);
-    } catch (final Exception ex) {
-      System.err.println("Can't load external resources from " + root + ": " + ex.getMessage());
-      return ClasspathResourceIndexTree.empty();
+    final List<DialogDefinition> definitions = new ArrayList<>();
+    final Set<Path> loadedResourcePaths = new LinkedHashSet<>();
+    for (final Path indexPath : indexPaths) {
+      try {
+        definitions.addAll(loadDefinitionsFromIndex(root, module, indexPath, loadedResourcePaths));
+      } catch (final Exception ex) {
+        System.err.println(
+            "Can't load external resources from " + indexPath + ": " + ex.getMessage());
+      }
     }
+    return LangResourceIndexTrees.fromDefinitions(module, definitions);
   }
 
-  private static ClasspathResourceIndexTree loadTreeFromIndex(
-      final Path root, final AbstractLangTrainerModule module, final Path indexPath)
+  private static List<Path> resolveExternalIndexes(final Path root) {
+    return List.of(SHARED_INDEX, ROOT_INDEX).stream()
+        .map(root::resolve)
+        .map(Path::normalize)
+        .filter(path -> path.startsWith(root))
+        .filter(path -> isRegularFile(path, NO_LINK_OPTIONS))
+        .toList();
+  }
+
+  private static List<DialogDefinition> loadDefinitionsFromIndex(
+      final Path root,
+      final AbstractLangTrainerModule module,
+      final Path indexPath,
+      final Set<Path> loadedResourcePaths)
       throws IOException {
     final JsonObject index = requireIndexWithResourcesArray(
         GSON.fromJson(readString(indexPath, StandardCharsets.UTF_8), JsonObject.class),
@@ -54,16 +74,19 @@ public final class ExternalLangResourceIndex {
       if (!el.isJsonObject() || !isLeafNode(el.getAsJsonObject())) {
         continue;
       }
-      loadDefinition(root, indexPath, el.getAsJsonObject().get("resource").getAsString())
+      final Path resourcePath =
+          localResourcePath(root, indexPath, el.getAsJsonObject().get("resource").getAsString());
+      if (!loadedResourcePaths.add(resourcePath)) {
+        continue;
+      }
+      loadDefinition(resourcePath)
           .filter(module::isResourceAllowed)
           .ifPresent(definitions::add);
     }
-    return LangResourceIndexTrees.fromDefinitions(module, definitions);
+    return List.copyOf(definitions);
   }
 
-  private static Optional<DialogDefinition> loadDefinition(
-      final Path root, final Path indexPath, final String resourcePath) {
-    final Path path = localResourcePath(root, indexPath, resourcePath);
+  private static Optional<DialogDefinition> loadDefinition(final Path path) {
     if (!isRegularFile(path, NO_LINK_OPTIONS)) {
       return Optional.empty();
     }
