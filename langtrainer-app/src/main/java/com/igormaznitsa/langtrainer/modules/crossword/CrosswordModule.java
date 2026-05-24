@@ -350,7 +350,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
         this.listModel,
         ResourceListSelectPanel.Appearance.FLY_GAME,
         "Select crossword resource",
-        "Choose language and start",
+        "Start",
         "Open from file",
         this::chooseLanguageAndStart,
         this::openFromFile,

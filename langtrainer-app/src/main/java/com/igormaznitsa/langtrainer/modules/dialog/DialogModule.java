@@ -536,7 +536,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
         this.dialogListModel,
         ResourceListSelectPanel.Appearance.DIALOG,
         "Select dialog",
-        "Choose and Start",
+        "Start",
         "Open from file",
         this::chooseUserLanguageAndStart,
         this::openDialogFromFile,

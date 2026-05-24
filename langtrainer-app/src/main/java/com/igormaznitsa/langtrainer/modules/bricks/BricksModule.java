@@ -35,7 +35,7 @@ public final class BricksModule extends AbstractLangTrainerModule {
       new ArrayList<>();
   private final JPanel rootPanel = new JPanel(new CardLayout());
   private final BricksWorkPanel workPanel;
-  private ClasspathResourceIndexTree classpathResourceTree;
+  private final ClasspathResourceIndexTree classpathResourceTree;
   private ClasspathResourceIndexTree externalResourceTree = ClasspathResourceIndexTree.empty();
   private JList<DialogListEntry> selectionList;
   private ResourceListSelectPanel.Result resourceSelectView;
@@ -101,7 +101,7 @@ public final class BricksModule extends AbstractLangTrainerModule {
         this.listModel,
         ResourceListSelectPanel.Appearance.FLY_GAME,
         "Select phrase resource",
-        "Choose language and start",
+        "Start",
         "Open from file",
         this::chooseLanguageAndStart,
         this::openFromFile,

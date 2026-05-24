@@ -16,6 +16,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
@@ -40,6 +41,10 @@ public final class ResourceListSelectPanel {
 
   private static final int INDENT_PER_LEVEL = 14;
   private static final String SYNC_GITHUB_LABEL = "Sync GitHub";
+  private static final String START_TOOLTIP = "Start training with the selected resource";
+  private static final String OPEN_FROM_FILE_TOOLTIP = "Open a compatible JSON resource from disk";
+  private static final String SYNC_GITHUB_TOOLTIP =
+      "Download or refresh external resources from GitHub";
   private static final Color START_BUTTON_BG = new Color(46, 125, 50);
   private static final Color OPEN_BUTTON_BG = new Color(25, 118, 210);
   private static final Color SYNC_BUTTON_BG = new Color(123, 31, 162);
@@ -188,25 +193,30 @@ public final class ResourceListSelectPanel {
     final JButton openFile =
         makeDialogActionButton(openFromFileLabel, OPEN_BUTTON_BG, new Color(13, 71, 161),
             BorderFactory.createEmptyBorder(14, 28, 14, 28));
+    start.setToolTipText(START_TOOLTIP);
+    openFile.setToolTipText(OPEN_FROM_FILE_TOOLTIP);
     bindStartButton(start, list, onStart);
     bindOpenFileButton(openFile, list, onOpenFromFile);
     result.addBusyControlled(openFile);
-    result.addBusyControlled(start);
+    result.addAvailabilityControlled(start, () -> hasSelectedResourceRow(list));
+    list.addListSelectionListener(event -> result.refreshAvailabilityBindings());
 
     final JPanel southWrap = new JPanel(new BorderLayout());
     southWrap.setBackground(panelBg);
     southWrap.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
     final JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 16, 8));
     buttonRow.setOpaque(false);
-    buttonRow.add(openFile);
     buttonRow.add(start);
     southWrap.add(buttonRow, BorderLayout.CENTER);
     if (onLoadExternals != null) {
-      addSyncButtonRight(
+      addExternalResourceButtonsRight(
           southWrap,
+          openFile,
           makeLoadExternalsButton(onLoadExternals, result,
               ResourceListSelectPanel::styleDialogLoadExternalsButton),
           8);
+    } else {
+      buttonRow.add(openFile);
     }
     panel.add(southWrap, BorderLayout.SOUTH);
   }
@@ -226,22 +236,27 @@ public final class ResourceListSelectPanel {
     buttonRow.setOpaque(false);
     final JButton open = new JButton(openFromFileLabel);
     styleFlyPrimaryButton(open, OPEN_BUTTON_BG);
+    open.setToolTipText(OPEN_FROM_FILE_TOOLTIP);
     bindOpenFileButton(open, list, onOpenFromFile);
     final JButton start = new JButton(startButtonLabel);
     styleFlyPrimaryButton(start, START_BUTTON_BG);
+    start.setToolTipText(START_TOOLTIP);
     bindStartButton(start, list, onStart);
-    buttonRow.add(open);
     buttonRow.add(start);
     south.add(buttonRow, BorderLayout.CENTER);
     if (onLoadExternals != null) {
-      addSyncButtonRight(
+      addExternalResourceButtonsRight(
           south,
+          open,
           makeLoadExternalsButton(onLoadExternals, result,
               button -> styleFlyPrimaryButton(button, SYNC_BUTTON_BG)),
           5);
+    } else {
+      buttonRow.add(open);
     }
     result.addBusyControlled(open);
-    result.addBusyControlled(start);
+    result.addAvailabilityControlled(start, () -> hasSelectedResourceRow(list));
+    list.addListSelectionListener(event -> result.refreshAvailabilityBindings());
     panel.add(south, BorderLayout.SOUTH);
   }
 
@@ -261,6 +276,7 @@ public final class ResourceListSelectPanel {
       final Consumer<JButton> styleButton) {
     final JButton button = new JButton(SYNC_GITHUB_LABEL);
     styleButton.accept(button);
+    button.setToolTipText(SYNC_GITHUB_TOOLTIP);
     button.addActionListener(event -> onLoadExternals.run());
     result.addBusyControlled(button);
     return button;
@@ -289,13 +305,15 @@ public final class ResourceListSelectPanel {
     button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
   }
 
-  private static void addSyncButtonRight(
+  private static void addExternalResourceButtonsRight(
       final JPanel container,
-      final JButton button,
+      final JButton openFileButton,
+      final JButton syncButton,
       final int verticalGap) {
-    final JPanel syncRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, verticalGap));
+    final JPanel syncRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, verticalGap));
     syncRow.setOpaque(false);
-    syncRow.add(button);
+    syncRow.add(openFileButton);
+    syncRow.add(syncButton);
     container.add(syncRow, BorderLayout.EAST);
   }
 
@@ -317,6 +335,10 @@ public final class ResourceListSelectPanel {
             onStart.accept(row.definition());
           }
         });
+  }
+
+  private static boolean hasSelectedResourceRow(final JList<DialogListEntry> list) {
+    return list.getSelectedValue() instanceof DialogListEntry.DialogResourceRow;
   }
 
   private static void styleFlyPrimaryButton(final JButton button, final Color bg) {
@@ -379,7 +401,7 @@ public final class ResourceListSelectPanel {
       } else if (value instanceof final DialogListEntry.DialogFolderRow folder) {
         final int left = 18 + folder.depth() * INDENT_PER_LEVEL;
         label.setIcon(folderIcon);
-        final String chevron = folder.expanded() ? "\u25bc " : "\u25b6 ";
+        final String chevron = folder.expanded() ? "▼ " : "▶ ";
         label.setText(chevron + folder.title());
         label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         label.setToolTipText(null);
@@ -430,7 +452,7 @@ public final class ResourceListSelectPanel {
           } else if (value instanceof final DialogListEntry.DialogFolderRow folder) {
             final int left = 14 + folder.depth() * INDENT_PER_LEVEL;
             cell.setIcon(folderIcon);
-            final String chevron = folder.expanded() ? "\u25bc " : "\u25b6 ";
+            final String chevron = folder.expanded() ? "▼ " : "▶ ";
             cell.setText(chevron + folder.title());
             cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             cell.setToolTipText(null);
@@ -509,7 +531,9 @@ public final class ResourceListSelectPanel {
     private final JPanel panel;
     private final BusyOverlayPanel busyOverlay;
     private final List<JComponent> busyControlledComponents = new ArrayList<>();
+    private final List<AvailabilityBinding> availabilityBindings = new ArrayList<>();
     private JList<DialogListEntry> list;
+    private boolean busy;
 
     private Result(final JPanel panel, final BusyOverlayPanel busyOverlay) {
       this.panel = panel;
@@ -525,9 +549,11 @@ public final class ResourceListSelectPanel {
     }
 
     public void setBusy(final boolean busy) {
+      this.busy = busy;
       for (final Component component : this.busyControlledComponents) {
         component.setEnabled(!busy);
       }
+      this.refreshAvailabilityBindings();
       this.panel.setCursor(
           busy ? Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR) : Cursor.getDefaultCursor());
       this.busyOverlay.setBusy(busy);
@@ -541,6 +567,23 @@ public final class ResourceListSelectPanel {
     private void addBusyControlled(final JComponent component) {
       this.busyControlledComponents.add(component);
     }
+
+    private void addAvailabilityControlled(
+        final JComponent component,
+        final BooleanSupplier enabledWhenIdle) {
+      this.availabilityBindings.add(new AvailabilityBinding(component, enabledWhenIdle));
+      this.refreshAvailabilityBindings();
+    }
+
+    private void refreshAvailabilityBindings() {
+      this.availabilityBindings.forEach(binding -> binding.component()
+          .setEnabled(!this.busy && binding.enabledWhenIdle().getAsBoolean()));
+    }
+  }
+
+  private record AvailabilityBinding(
+      JComponent component,
+      BooleanSupplier enabledWhenIdle) {
   }
 
   private static final class BusyOverlayPanel extends JPanel {

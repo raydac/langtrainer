@@ -220,7 +220,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         this.listModel,
         ResourceListSelectPanel.Appearance.FLY_GAME,
         "Select word list",
-        "Choose language and play",
+        "Start",
         "Open from file",
         this::chooseLanguage,
         this::openFromFile,
