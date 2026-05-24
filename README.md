@@ -34,6 +34,7 @@ separately if you don’t want to.
 | OS                                             | Download link                                                                                                                                       | 
 |------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
 | ![Windows](assets/icons/win64x64.png)          | __[Archive with JRE for Windows amd64](https://github.com/raydac/langtrainer/releases/download/1.0.0/langtrainer-app-1.0.0-windows-jdk-amd64.zip)__ |
+| ![Windows](assets/icons/win64x64.png)          | __[Archive without JRE for Windows](https://github.com/raydac/langtrainer/releases/download/1.0.0/langtrainer-app-1.0.0.exe)__                      |
 | ![macOS](assets/icons/macos64x64.png)          | __[Archive with JRE for macOS amd64](https://github.com/raydac/langtrainer/releases/download/1.0.0/langtrainer-app-1.0.0-macos-jdk-amd64.zip)__     |
 | ![macOS Arm64](assets/icons/macosarm64x64.png) | __[Archive with JRE for macOS arm64](https://github.com/raydac/langtrainer/releases/download/1.0.0/langtrainer-app-1.0.0-macos-jdk-aarch64.zip)__   |
 | ![macOS](assets/icons/macos64x64.png)          | __[DMG package for macOS (no JRE)](https://github.com/raydac/langtrainer/releases/download/1.0.0/langtrainer_1.0.0.dmg)__                           |

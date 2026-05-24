@@ -18,8 +18,8 @@
         <embedded.jdk.type>jdk</embedded.jdk.type>
         <embedded.jdk.version>26.0.1+10</embedded.jdk.version>
         <batik.version>1.19</batik.version>
-        <app.version.raw>1.0.0</app.version.raw>
-        <app.name>langtrainer</app.name>
+        <app.version.raw>1.0.1</app.version.raw>
+        <app.name>${project.build.finalName}</app.name>
     </properties>
 
     <dependencies>
@@ -171,7 +171,7 @@
                                 <configuration>
                                     <outfile>${project.build.directory}${file.separator}${app.name}.exe</outfile>
                                     <jre>
-                                        <minVersion>11</minVersion>
+                                        <minVersion>${maven.compiler.release}</minVersion>
                                         <jdkPreference>preferJdk</jdkPreference>
                                         <runtimeBits>64</runtimeBits>
                                         <bundledJre64Bit>false</bundledJre64Bit>
