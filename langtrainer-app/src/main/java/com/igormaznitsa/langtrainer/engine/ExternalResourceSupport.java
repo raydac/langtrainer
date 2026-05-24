@@ -5,10 +5,14 @@ import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 import javax.swing.SwingWorker;
 
 public final class ExternalResourceSupport {
 
+  private static final Logger LOG = Logger.getLogger(ExternalResourceSupport.class.getName());
   public static final String EXTERNAL_FOLDER_URL =
       "https://github.com/raydac/langtrainer/pub/externals";
   public static final String EXTERNAL_FOLDER_PROPERTY = "LANGTRAINER_EXTERNALS";
@@ -35,26 +39,32 @@ public final class ExternalResourceSupport {
       final Consumer<ClasspathResourceIndexTree> onTreeLoaded,
       final Runnable onListRefreshNeeded) {
     view.setBusy(true);
-    new SwingWorker<ClasspathResourceIndexTree, Void>() {
+    new SwingWorker<RefreshResult, Void>() {
       @Override
-      protected ClasspathResourceIndexTree doInBackground() {
-        ExternalResourceSupport.syncExternalFolder();
-        return ExternalResourceSupport.loadLocalTree(module);
+      protected RefreshResult doInBackground() {
+        return ExternalResourceSupport.refreshExternalResources(module);
       }
 
       @Override
       protected void done() {
         try {
-          onTreeLoaded.accept(this.get());
+          final RefreshResult result = this.get();
+          onTreeLoaded.accept(result.tree());
           onListRefreshNeeded.run();
+          if (result instanceof final RefreshResult.SyncFailed failed) {
+            ExternalResourceSupport.showExternalSyncFailure(view, failed.failure());
+          }
         } catch (final InterruptedException ex) {
           Thread.currentThread().interrupt();
-          System.err.println("External resource refresh was interrupted: " + ex.getMessage());
+          LOG.log(Level.WARNING, "External resource refresh was interrupted", ex);
+          ExternalResourceSupport.showExternalSyncFailure(view, ex);
         } catch (final ExecutionException ex) {
           final Throwable cause = ex.getCause() == null ? ex : ex.getCause();
-          System.err.println("Can't refresh external resources: " + cause.getMessage());
+          LOG.log(Level.SEVERE, "Can't refresh external resources", cause);
+          ExternalResourceSupport.showExternalSyncFailure(view, cause);
         } catch (final Exception ex) {
-          System.err.println("Can't refresh external resources: " + ex.getMessage());
+          LOG.log(Level.SEVERE, "Can't refresh external resources", ex);
+          ExternalResourceSupport.showExternalSyncFailure(view, ex);
         } finally {
           view.setBusy(false);
         }
@@ -62,13 +72,56 @@ public final class ExternalResourceSupport {
     }.execute();
   }
 
-  private static void syncExternalFolder() {
+  private static RefreshResult refreshExternalResources(final AbstractLangTrainerModule module) {
     try {
-      new GitHubFolderSynchronizer(EXTERNAL_FOLDER_URL, EXTERNAL_FOLDER).sync();
+      syncExternalFolder();
+      return new RefreshResult.SyncSucceeded(loadLocalTree(module));
     } catch (final Exception ex) {
-      System.err.println(
-          "Can't sync external resources from " + EXTERNAL_FOLDER_URL + ": " + ex.getMessage());
+      LOG.log(Level.WARNING, "Can't sync external resources from " + EXTERNAL_FOLDER_URL, ex);
+      return new RefreshResult.SyncFailed(loadLocalTree(module), ex);
     }
+  }
+
+  private static void syncExternalFolder() {
+    new GitHubFolderSynchronizer(EXTERNAL_FOLDER_URL, EXTERNAL_FOLDER).sync();
+  }
+
+  private static void showExternalSyncFailure(
+      final ResourceListSelectPanel.Result view, final Throwable failure) {
+    JOptionPane.showMessageDialog(
+        view.panel(),
+        externalSyncFailureMessage(failure),
+        "External resources",
+        JOptionPane.ERROR_MESSAGE);
+  }
+
+  private static String externalSyncFailureMessage(final Throwable failure) {
+    return """
+        Can't sync external resources from GitHub.
+        
+        Source: %s
+        Target: %s
+        Reason: %s
+        
+        Existing local resources will still be shown if they can be loaded.
+        """.formatted(EXTERNAL_FOLDER_URL, EXTERNAL_FOLDER.toAbsolutePath().normalize(),
+        describeFailure(failure));
+  }
+
+  private static String describeFailure(final Throwable failure) {
+    final Throwable root = rootCause(failure);
+    final String message = root.getMessage();
+    return message == null || message.isBlank()
+        ? root.getClass().getSimpleName()
+        : "%s: %s".formatted(root.getClass().getSimpleName(), message);
+  }
+
+  private static Throwable rootCause(final Throwable failure) {
+    Throwable result = failure;
+    while (result.getCause() != null && result.getCause() != result) {
+      result = result.getCause();
+    }
+    return result;
   }
 
   private static Path resolveExternalFolder() {
@@ -78,5 +131,17 @@ public final class ExternalResourceSupport {
         .filter(value -> !value.isEmpty())
         .map(Path::of)
         .orElse(Path.of("./externals"));
+  }
+
+  private sealed interface RefreshResult
+      permits RefreshResult.SyncSucceeded, RefreshResult.SyncFailed {
+
+    ClasspathResourceIndexTree tree();
+
+    record SyncSucceeded(ClasspathResourceIndexTree tree) implements RefreshResult {
+    }
+
+    record SyncFailed(ClasspathResourceIndexTree tree, Throwable failure) implements RefreshResult {
+    }
   }
 }

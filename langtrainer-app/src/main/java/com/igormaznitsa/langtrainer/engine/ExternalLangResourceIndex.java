@@ -17,9 +17,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class ExternalLangResourceIndex {
 
+  private static final Logger LOG = Logger.getLogger(ExternalLangResourceIndex.class.getName());
   private static final String SHARED_INDEX = "common/jsons/index.json";
   private static final String ROOT_INDEX = "index.json";
   private static final LinkOption[] NO_LINK_OPTIONS = {LinkOption.NOFOLLOW_LINKS};
@@ -44,8 +47,7 @@ public final class ExternalLangResourceIndex {
       try {
         definitions.addAll(loadDefinitionsFromIndex(root, module, indexPath, loadedResourcePaths));
       } catch (final Exception ex) {
-        System.err.println(
-            "Can't load external resources from " + indexPath + ": " + ex.getMessage());
+        LOG.log(Level.WARNING, "Can't load external resources from " + indexPath, ex);
       }
     }
     return LangResourceIndexTrees.fromDefinitions(module, definitions);
@@ -93,7 +95,7 @@ public final class ExternalLangResourceIndex {
     try {
       return Optional.of(LangResourceJson.parseFromPath(path));
     } catch (final Exception ex) {
-      System.err.println("Can't load external resource " + path + ": " + ex.getMessage());
+      LOG.log(Level.WARNING, "Can't load external resource " + path, ex);
       return Optional.empty();
     }
   }
