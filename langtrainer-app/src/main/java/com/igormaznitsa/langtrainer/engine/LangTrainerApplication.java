@@ -313,6 +313,10 @@ public final class LangTrainerApplication {
   }
 
   private void openInSystemBrowser(final URI uri) {
+    final String scheme = uri.getScheme();
+    if (!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme)) {
+      throw new IllegalStateException("Unsupported help hyperlink scheme: " + scheme);
+    }
     if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
       throw new IllegalStateException("Desktop browser open action is not supported");
     }

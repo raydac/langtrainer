@@ -10,6 +10,7 @@ import static java.nio.file.Files.isRegularFile;
 import static java.nio.file.Files.mismatch;
 import static java.nio.file.Files.move;
 import static java.nio.file.Files.walk;
+import static java.nio.file.Files.writeString;
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.util.Objects.requireNonNull;
@@ -19,6 +20,7 @@ import static java.util.stream.Collectors.toUnmodifiableSet;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -28,6 +30,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.kohsuke.github.GHContent;
@@ -43,6 +46,10 @@ public final class GitHubFolderSynchronizer {
       Set.of("CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6",
           "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6",
           "LPT7", "LPT8", "LPT9");
+  private static final Set<String> CRITICAL_HOME_CHILD_NAMES =
+      Set.of("desktop", "documents", "downloads", "music", "pictures", "projects", "videos",
+          "work", "workspace");
+  private static final String LOCAL_SYNC_MARKER_FILE = ".langtrainer-external-sync";
   private static final LinkOption[] NO_LINK_OPTIONS = {LinkOption.NOFOLLOW_LINKS};
 
   private final URI githubFolderUri;
@@ -194,12 +201,93 @@ public final class GitHubFolderSynchronizer {
     return relativePath;
   }
 
+  private static Optional<Path> pathFromProperty(final String property) {
+    final String value = System.getProperty(property);
+    if (value == null || value.isBlank()) {
+      return Optional.empty();
+    }
+    return Optional.of(Path.of(value).toAbsolutePath().normalize());
+  }
+
   private void requireLocalFolderReady() throws IOException {
+    this.requireSafeSyncTarget();
     if (exists(this.localFolder, NO_LINK_OPTIONS)
         && !isDirectory(this.localFolder, NO_LINK_OPTIONS)) {
       throw new IllegalStateException("Local sync target is not a folder: " + this.localFolder);
     }
     createDirectories(this.localFolder);
+    this.ensureLangTrainerSyncMarker();
+  }
+
+  private void requireSafeSyncTarget() {
+    if (this.isRootDirectory()) {
+      throw new IllegalStateException("Refusing to sync into filesystem root: " + this.localFolder);
+    }
+    if (this.isConfiguredHomeDirectory()) {
+      throw new IllegalStateException("Refusing to sync into user home: " + this.localFolder);
+    }
+    if (this.isConfiguredHomeCriticalChild()) {
+      throw new IllegalStateException(
+          "Refusing to sync into a broad user folder: " + this.localFolder);
+    }
+    if (this.isCurrentWorkingDirectory()) {
+      throw new IllegalStateException(
+          "Refusing to sync into application working directory: " + this.localFolder);
+    }
+    if (this.isLikelyProjectRoot()) {
+      throw new IllegalStateException(
+          "Refusing to sync into a project root folder: " + this.localFolder);
+    }
+  }
+
+  private boolean isRootDirectory() {
+    return this.localFolder.getParent() == null;
+  }
+
+  private boolean isConfiguredHomeDirectory() {
+    return pathFromProperty("user.home")
+        .map(this.localFolder::equals)
+        .orElse(false);
+  }
+
+  private boolean isConfiguredHomeCriticalChild() {
+    return pathFromProperty("user.home")
+        .filter(home -> home.equals(this.localFolder.getParent()))
+        .map(ignored -> this.localFolder.getFileName())
+        .map(Path::toString)
+        .map(name -> name.toLowerCase(Locale.ROOT))
+        .filter(CRITICAL_HOME_CHILD_NAMES::contains)
+        .isPresent();
+  }
+
+  private boolean isCurrentWorkingDirectory() {
+    return pathFromProperty("user.dir")
+        .map(this.localFolder::equals)
+        .orElse(false);
+  }
+
+  private boolean isLikelyProjectRoot() {
+    return this.hasLocalChild(".git")
+        || this.hasLocalChild("pom.xml")
+        || this.hasLocalChild("build.gradle")
+        || this.hasLocalChild("build.gradle.kts")
+        || this.hasLocalChild("settings.gradle")
+        || this.hasLocalChild("settings.gradle.kts");
+  }
+
+  private boolean hasLocalChild(final String name) {
+    return exists(this.localFolder.resolve(name), NO_LINK_OPTIONS);
+  }
+
+  private void ensureLangTrainerSyncMarker() throws IOException {
+    final Path marker = this.localPath(LOCAL_SYNC_MARKER_FILE);
+    if (exists(marker, NO_LINK_OPTIONS)) {
+      if (!isRegularFile(marker, NO_LINK_OPTIONS)) {
+        throw new IllegalStateException("Invalid LangTrainer sync marker: " + marker);
+      }
+      return;
+    }
+    writeString(marker, "LangTrainer external resources sync folder\n", StandardCharsets.UTF_8);
   }
 
   private void createRemoteDirectories(
@@ -297,6 +385,9 @@ public final class GitHubFolderSynchronizer {
       final RemoteFolder remote,
       final SyncSummaryBuilder summary) throws IOException {
     final String relativePath = this.localRelativePath(path);
+    if (LOCAL_SYNC_MARKER_FILE.equals(relativePath)) {
+      return;
+    }
     if (isDirectory(path, NO_LINK_OPTIONS)) {
       if (!remote.directories().contains(relativePath) && this.isDirectoryEmpty(path)) {
         deleteIfExists(path);
@@ -431,6 +522,10 @@ public final class GitHubFolderSynchronizer {
 
     private static void requireNoCaseInsensitivePathCollision(
         final Set<String> normalizedPaths, final String path) {
+      if (LOCAL_SYNC_MARKER_FILE.equals(path)) {
+        throw new IllegalStateException(
+            "GitHub folder contains reserved local sync marker: " + path);
+      }
       final String normalizedPath = path.toLowerCase(Locale.ROOT);
       if (!path.isEmpty() && !normalizedPaths.add(normalizedPath)) {
         throw new IllegalStateException(

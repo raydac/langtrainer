@@ -1,6 +1,8 @@
 package com.igormaznitsa.langtrainer.engine;
 
+import static java.nio.file.Files.exists;
 import static java.nio.file.Files.isRegularFile;
+import static java.nio.file.Files.isSymbolicLink;
 import static java.nio.file.Files.readString;
 import static java.util.Objects.requireNonNull;
 
@@ -57,9 +59,14 @@ public final class ExternalLangResourceIndex {
     return List.of(SHARED_INDEX, ROOT_INDEX).stream()
         .map(root::resolve)
         .map(Path::normalize)
-        .filter(path -> path.startsWith(root))
-        .filter(path -> isRegularFile(path, NO_LINK_OPTIONS))
+        .filter(path -> isRegularLocalFile(root, path))
         .toList();
+  }
+
+  private static boolean isRegularLocalFile(final Path root, final Path path) {
+    return path.startsWith(root)
+        && !hasSymbolicPathSegment(root, path)
+        && isRegularFile(path, NO_LINK_OPTIONS);
   }
 
   private static List<DialogDefinition> loadDefinitionsFromIndex(
@@ -117,7 +124,32 @@ public final class ExternalLangResourceIndex {
       throw new IllegalStateException(
           "External resource path must point to a JSON file: " + resourcePath);
     }
+    requireNoSymbolicPathSegment(root, path, resourcePath);
     return path;
+  }
+
+  private static void requireNoSymbolicPathSegment(
+      final Path root,
+      final Path path,
+      final String resourcePath) {
+    if (hasSymbolicPathSegment(root, path)) {
+      throw new IllegalStateException(
+          "External resource path must not contain symbolic links: " + resourcePath);
+    }
+  }
+
+  private static boolean hasSymbolicPathSegment(final Path root, final Path path) {
+    Path current = root;
+    if (exists(current, NO_LINK_OPTIONS) && isSymbolicLink(current)) {
+      return true;
+    }
+    for (final Path segment : root.relativize(path)) {
+      current = current.resolve(segment);
+      if (exists(current, NO_LINK_OPTIONS) && isSymbolicLink(current)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static JsonObject requireIndexWithResourcesArray(
