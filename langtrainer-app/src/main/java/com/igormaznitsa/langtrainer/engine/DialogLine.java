@@ -1,8 +1,8 @@
 package com.igormaznitsa.langtrainer.engine;
 
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record DialogLine(
-    @SerializedName("A") String a,
-    @SerializedName("B") String b) {
+    @JsonProperty("A") String a,
+    @JsonProperty("B") String b) {
 }

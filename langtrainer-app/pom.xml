@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.igormaznitsa</groupId>
         <artifactId>langtrainer-pom</artifactId>
-        <version>1.0.1-SNAPSHOT</version>
+        <version>1.1.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>langtrainer-app</artifactId>
@@ -18,7 +18,7 @@
         <embedded.jdk.type>jdk</embedded.jdk.type>
         <embedded.jdk.version>26.0.1+10</embedded.jdk.version>
         <batik.version>1.19</batik.version>
-        <app.version.raw>1.0.1</app.version.raw>
+        <app.version.raw>1.1.0</app.version.raw>
         <app.name>${project.build.finalName}</app.name>
     </properties>
 
@@ -39,15 +39,19 @@
             <version>2.12.2</version>
         </dependency>
         <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-            <version>2.13.2</version>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.21.1</version>
         </dependency>
         <dependency>
             <groupId>org.kohsuke</groupId>
             <artifactId>github-api</artifactId>
             <version>2.0-rc.6</version>
             <exclusions>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
                 <exclusion>
                     <groupId>com.infradna.tool</groupId>
                     <artifactId>bridge-method-annotation</artifactId>

@@ -1,5 +1,6 @@
-1.0.1 (SNAPSHOT)
+1.1.0 (SNAPSHOT)
  - Added external JSON resources support with local loading, configurable storage path, and GitHub sync from module resource selectors.
+ - Replaced Gson JSON processing with Jackson databind already used by the GitHub API dependency.
 
 1.0.0 (23-may-2026)
  - Initial desktop application for foreign-language training.

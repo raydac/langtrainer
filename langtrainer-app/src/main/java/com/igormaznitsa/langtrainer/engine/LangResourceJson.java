@@ -1,12 +1,12 @@
 package com.igormaznitsa.langtrainer.engine;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.igormaznitsa.langtrainer.api.LangTrainerModuleId;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -16,56 +16,57 @@ import java.util.List;
 
 public final class LangResourceJson {
 
-  private static final Gson GSON = new Gson();
-  private static final Gson GSON_PRETTY = new GsonBuilder()
-      .setPrettyPrinting()
-      .create();
+  private static final ObjectMapper MAPPER = new ObjectMapper()
+      .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+  private static final ObjectWriter PRETTY_WRITER = MAPPER.writerWithDefaultPrettyPrinter();
 
   private LangResourceJson() {
   }
 
   public static String toPrettyJson(final DialogDefinition definition) {
-    final JsonObject root = new JsonObject();
-    root.addProperty("menuName", definition.menuName());
-    root.addProperty("description", definition.description());
-    root.addProperty("langA", definition.langA());
-    root.addProperty("langB", definition.langB());
+    final ObjectNode root = MAPPER.createObjectNode();
+    root.put("menuName", definition.menuName());
+    root.put("description", definition.description());
+    root.put("langA", definition.langA());
+    root.put("langB", definition.langB());
     if (definition.path() != null && !definition.path().isBlank()) {
-      root.addProperty("path", definition.path().strip());
+      root.put("path", definition.path().strip());
     }
     if (definition.modules() != null && !definition.modules().isEmpty()) {
-      final JsonArray modules = new JsonArray();
+      final ArrayNode modules = root.putArray("modules");
       for (final String moduleId : definition.modules()) {
         modules.add(moduleId);
       }
-      root.add("modules", modules);
     }
     if (definition.shuffled()) {
-      root.addProperty("shuffled", true);
+      root.put("shuffled", true);
     }
-    final JsonArray lines = new JsonArray();
+    final ArrayNode lines = root.putArray("lines");
     for (final DialogLine line : definition.lines()) {
-      final JsonObject row = new JsonObject();
-      row.addProperty("A", line.a());
-      row.addProperty("B", line.b());
+      final ObjectNode row = MAPPER.createObjectNode();
+      row.put("A", line.a());
+      row.put("B", line.b());
       lines.add(row);
     }
-    root.add("lines", lines);
     if (!definition.inputEqu().isEmpty()) {
-      root.add("inputEqu", GSON.toJsonTree(definition.inputEqu()));
+      root.set("inputEqu", MAPPER.valueToTree(definition.inputEqu()));
     }
-    return GSON_PRETTY.toJson(root) + "\n";
+    try {
+      return PRETTY_WRITER.writeValueAsString(root) + "\n";
+    } catch (final JsonProcessingException ex) {
+      throw new IllegalStateException("Can't write JSON", ex);
+    }
   }
 
   public static DialogDefinition parse(final String jsonText) {
     try {
       final DialogDefinition def =
-          GSON.fromJson(jsonText, DialogDefinition.class);
+          MAPPER.readValue(jsonText, DialogDefinition.class);
       if (def == null) {
-        throw new JsonParseException("Empty or invalid JSON");
+        throw new IllegalStateException("Empty or invalid JSON");
       }
       return normalizeAfterLoad(def);
-    } catch (final JsonParseException ex) {
+    } catch (final JsonProcessingException ex) {
       throw new IllegalStateException(ex.getMessage() == null
           ? "Invalid JSON"
           : ex.getMessage(), ex);

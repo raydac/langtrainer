@@ -17,6 +17,7 @@
 - Fixed Bricks completion animation leaving a lone `?` suffix brick on the build strip while the solved row flies into history.
 - Added `GitHubFolderSynchronizer` to mirror a public GitHub folder into a local folder synchronously.
 - Added app-wide external resource support: module resource selectors load the configured externals folder, can sync it from GitHub, and refresh lists asynchronously.
+- Replaced Gson JSON processing with Jackson databind; `github-api` already uses Jackson so the app avoids shipping a second JSON library.
 
 ## 2. Architecture & Technical Discoveries
 - External Estonian resource includes `DIALOG`, `FLY_GAME`, `CROSSWORD`, and `BRICKS`, mixing single-word pronouns with short multi-word phrases so different modules have usable rows.
@@ -25,6 +26,7 @@
 - Maven must be run as `mvn22`.
 - Assembly descriptors must use `**/*` include patterns so root-level launcher files are packaged.
 - GitHub folder sync uses Hub4j `org.kohsuke:github-api` anonymously through the GitHub Contents API.
+- App JSON resource parsing and writing uses Jackson databind 2.21.0; `DialogLine` maps uppercase JSON fields with `@JsonProperty("A")` and `@JsonProperty("B")`.
 - `ExternalResourceSupport.syncAndLoadAsync` reports sync failures through `JOptionPane` and Java Util Logging; local external resources remain visible if loading succeeds after a failed sync.
 - `GitHubFolderSynchronizer` rejects non-portable GitHub paths before local writes: traversal segments, separators, control characters, Windows-reserved names/chars, trailing dots/spaces, and case-insensitive collisions.
 - External resources merge entries from `<externals>/common/jsons/index.json` and `<externals>/index.json`; `<externals>` defaults to `./externals` and can be overridden by Java property or environment variable `LANGTRAINER_EXTERNALS`.

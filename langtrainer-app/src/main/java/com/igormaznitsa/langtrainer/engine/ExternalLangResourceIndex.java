@@ -6,9 +6,9 @@ import static java.nio.file.Files.isSymbolicLink;
 import static java.nio.file.Files.readString;
 import static java.util.Objects.requireNonNull;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -28,7 +28,8 @@ public final class ExternalLangResourceIndex {
   private static final String SHARED_INDEX = "common/jsons/index.json";
   private static final String ROOT_INDEX = "index.json";
   private static final LinkOption[] NO_LINK_OPTIONS = {LinkOption.NOFOLLOW_LINKS};
-  private static final Gson GSON = new Gson();
+  private static final ObjectMapper MAPPER = new ObjectMapper()
+      .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
   private ExternalLangResourceIndex() {
   }
@@ -75,16 +76,16 @@ public final class ExternalLangResourceIndex {
       final Path indexPath,
       final Set<Path> loadedResourcePaths)
       throws IOException {
-    final JsonObject index = requireIndexWithResourcesArray(
-        GSON.fromJson(readString(indexPath, StandardCharsets.UTF_8), JsonObject.class),
+    final JsonNode index = requireIndexWithResourcesArray(
+        MAPPER.readTree(readString(indexPath, StandardCharsets.UTF_8)),
         indexPath);
     final List<DialogDefinition> definitions = new ArrayList<>();
-    for (final JsonElement el : index.get("resources").getAsJsonArray()) {
-      if (!el.isJsonObject() || !isLeafNode(el.getAsJsonObject())) {
+    for (final JsonNode entry : index.get("resources")) {
+      if (!entry.isObject() || !isLeafNode(entry)) {
         continue;
       }
       final Path resourcePath =
-          localResourcePath(root, indexPath, el.getAsJsonObject().get("resource").getAsString());
+          localResourcePath(root, indexPath, entry.get("resource").asText());
       if (!loadedResourcePaths.add(resourcePath)) {
         continue;
       }
@@ -152,15 +153,15 @@ public final class ExternalLangResourceIndex {
     return false;
   }
 
-  private static JsonObject requireIndexWithResourcesArray(
-      final JsonObject root, final Path indexPath) {
-    if (root == null || !root.has("resources") || !root.get("resources").isJsonArray()) {
+  private static JsonNode requireIndexWithResourcesArray(
+      final JsonNode root, final Path indexPath) {
+    if (root == null || !root.has("resources") || !root.get("resources").isArray()) {
       throw new IllegalStateException("Invalid external resource index: " + indexPath);
     }
     return root;
   }
 
-  private static boolean isLeafNode(final JsonObject entry) {
-    return entry.has("resource") && entry.get("resource").isJsonPrimitive();
+  private static boolean isLeafNode(final JsonNode entry) {
+    return entry.has("resource") && entry.get("resource").isValueNode();
   }
 }

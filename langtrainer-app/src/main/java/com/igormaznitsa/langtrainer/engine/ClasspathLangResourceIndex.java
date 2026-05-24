@@ -1,8 +1,8 @@
 package com.igormaznitsa.langtrainer.engine;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,7 +13,8 @@ import java.util.List;
 public final class ClasspathLangResourceIndex {
 
   private static final String SHARED_INDEX = "/common/jsons/index.json";
-  private static final Gson GSON = new Gson();
+  private static final ObjectMapper MAPPER = new ObjectMapper()
+      .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
   private ClasspathLangResourceIndex() {
   }
@@ -45,17 +46,16 @@ public final class ClasspathLangResourceIndex {
       final AbstractLangTrainerModule module,
       final String indexText,
       final String indexResourcePath,
-      final String perEntryFailureContext) {
-    final JsonObject root =
+      final String perEntryFailureContext) throws IOException {
+    final JsonNode root =
         requireIndexWithResourcesArray(
-            GSON.fromJson(indexText, JsonObject.class),
+            MAPPER.readTree(indexText),
             indexResourcePath);
     final List<DialogDefinition> definitions = new ArrayList<>();
-    for (final JsonElement el : root.get("resources").getAsJsonArray()) {
-      if (!el.isJsonObject()) {
+    for (final JsonNode entry : root.get("resources")) {
+      if (!entry.isObject()) {
         continue;
       }
-      final JsonObject entry = el.getAsJsonObject();
       if (entry.has("children")) {
         throw new IllegalStateException(
             "index.json no longer supports folder entries; set \"path\" on each resource JSON ("
@@ -76,15 +76,15 @@ public final class ClasspathLangResourceIndex {
       final DialogDefinition loaded =
           loadDialogFromResourcePath(
               anchor,
-              resolveClasspathResourcePath(indexResourcePath, entry.get("resource").getAsString()),
+              resolveClasspathResourcePath(indexResourcePath, entry.get("resource").asText()),
               perEntryFailureContext);
       definitions.add(loaded);
     }
     return LangResourceIndexTrees.fromDefinitions(module, definitions);
   }
 
-  private static boolean isLeafNode(final JsonObject node) {
-    return node.has("resource") && node.get("resource").isJsonPrimitive();
+  private static boolean isLeafNode(final JsonNode node) {
+    return node.has("resource") && node.get("resource").isValueNode();
   }
 
   private static InputStream openClasspathStreamOrThrow(final Class<?> anchor, final String path)
@@ -100,12 +100,12 @@ public final class ClasspathLangResourceIndex {
     return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
   }
 
-  private static JsonObject requireIndexWithResourcesArray(
-      final JsonObject root, final String indexResourcePath) {
+  private static JsonNode requireIndexWithResourcesArray(
+      final JsonNode root, final String indexResourcePath) {
     if (root == null) {
       throw new IllegalStateException("Invalid index JSON: " + indexResourcePath);
     }
-    if (!root.has("resources") || !root.get("resources").isJsonArray()) {
+    if (!root.has("resources") || !root.get("resources").isArray()) {
       throw new IllegalStateException(
           "index.json must contain a 'resources' array: " + indexResourcePath);
     }
