@@ -1,8 +1,5 @@
 1.0.1 (SNAPSHOT)
- - Added loading of external JSON resources from a local externals folder.
- - Added "Sync GitHub" action to module resource selectors to sync public GitHub-hosted resources.
- - Added configurable externals folder path through LANGTRAINER_EXTERNALS, defaulting to ./externals.
- - Hardened GitHub folder sync for cross-platform paths and anonymous access.
+ - Added external JSON resources support with local loading, configurable storage path, and GitHub sync from module resource selectors.
 
 1.0.0 (23-may-2026)
  - Initial desktop application for foreign-language training.
