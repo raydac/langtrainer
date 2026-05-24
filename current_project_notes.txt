@@ -1,5 +1,6 @@
 ## 1. Implementation Progress
 - Added external Estonian-Russian pronouns teaching resource at `pub/externals/est-rus/est-rus-pronouns.json`.
+- Normalized `est-rus-pronouns.json`: variants start uppercase and sentence/question phrases carry terminal punctuation.
 - External GitHub sync failures now show a Swing alert, log stack traces, and still load existing local resources when possible.
 - Fixed external resource loading to merge both `common/jsons/index.json` and root-level `index.json` in local externals folders.
 - Consolidated `CHANGELOG.txt` 1.0.1 external-resource notes into one unreleased feature entry and refined global changelog-maintenance Cursor rule.
@@ -7,6 +8,7 @@
 - Expanded `README.md` with GitHub project description, Java/Maven requirements, build, and start commands.
 - Added `CHANGELOG.txt` 1.0.0 summary of implemented application features.
 - Fixed assembly resources: descriptor include patterns, launcher path quoting, AppImage desktop entry, bundled JRE usage, and macOS icon reference.
+- Dialog typing tips now show the expected text instead of a dash placeholder after the current phrase is fully entered.
 - Fixed Bricks completion animation leaving a lone `?` suffix brick on the build strip while the solved row flies into history.
 - Added `GitHubFolderSynchronizer` to mirror a public GitHub folder into a local folder synchronously.
 - Added app-wide external resource support: module resource selectors load the configured externals folder, can sync it from GitHub, and refresh lists asynchronously.

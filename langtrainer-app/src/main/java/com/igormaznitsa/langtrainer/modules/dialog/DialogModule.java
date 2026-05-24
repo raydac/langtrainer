@@ -771,7 +771,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
             : extractDocumentText(this.focusedInput().getDocument());
     final String snippet = PhraseWordSupport.computeTypingTip(entered, expected);
     if (snippet.isEmpty()) {
-      this.tipZone.setText("—");
+      this.tipZone.setText(expected);
     } else {
       this.tipZone.setText(snippet);
     }
