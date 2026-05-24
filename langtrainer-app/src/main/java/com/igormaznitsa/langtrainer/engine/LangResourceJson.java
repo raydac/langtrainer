@@ -1,5 +1,10 @@
 package com.igormaznitsa.langtrainer.engine;
 
+import static java.util.Objects.requireNonNullElse;
+import static org.apache.commons.lang3.ObjectUtils.isEmpty;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.stripToNull;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,10 +34,10 @@ public final class LangResourceJson {
     root.put("description", definition.description());
     root.put("langA", definition.langA());
     root.put("langB", definition.langB());
-    if (definition.path() != null && !definition.path().isBlank()) {
+    if (!isBlank(definition.path())) {
       root.put("path", definition.path().strip());
     }
-    if (definition.modules() != null && !definition.modules().isEmpty()) {
+    if (!isEmpty(definition.modules())) {
       final ArrayNode modules = root.putArray("modules");
       for (final String moduleId : definition.modules()) {
         modules.add(moduleId);
@@ -67,9 +72,7 @@ public final class LangResourceJson {
       }
       return normalizeAfterLoad(def);
     } catch (final JsonProcessingException ex) {
-      throw new IllegalStateException(ex.getMessage() == null
-          ? "Invalid JSON"
-          : ex.getMessage(), ex);
+      throw new IllegalStateException(requireNonNullElse(ex.getMessage(), "Invalid JSON"), ex);
     }
   }
 
@@ -82,29 +85,28 @@ public final class LangResourceJson {
   }
 
   private static DialogDefinition normalizeAfterLoad(final DialogDefinition def) {
-    final List<DialogLine> lines = def.lines() == null || def.lines().isEmpty()
+    final List<DialogLine> lines = isEmpty(def.lines())
         ? List.of(new DialogLine("", ""))
         : def.lines();
-    final String path = def.path() == null || def.path().isBlank() ? null : def.path().strip();
     return new DialogDefinition(
-        nullToEmpty(def.menuName()),
-        nullToEmpty(def.description()),
-        nullToEmpty(def.langA()),
-        nullToEmpty(def.langB()),
+        requireNonNullElse(def.menuName(), ""),
+        requireNonNullElse(def.description(), ""),
+        requireNonNullElse(def.langA(), ""),
+        requireNonNullElse(def.langB(), ""),
         lines,
         def.inputEqu(),
         def.shuffled(),
-        path,
+        stripToNull(def.path()),
         normalizeModules(def.modules()));
   }
 
   private static List<String> normalizeModules(final List<String> raw) {
-    if (raw == null || raw.isEmpty()) {
+    if (isEmpty(raw)) {
       return null;
     }
     final List<String> out = new ArrayList<>();
     for (final String moduleId : raw) {
-      if (moduleId == null || moduleId.isBlank()) {
+      if (isBlank(moduleId)) {
         continue;
       }
       final String id = moduleId.strip();
@@ -118,9 +120,5 @@ public final class LangResourceJson {
       }
     }
     return out.isEmpty() ? null : List.copyOf(out);
-  }
-
-  private static String nullToEmpty(final String s) {
-    return s == null ? "" : s;
   }
 }

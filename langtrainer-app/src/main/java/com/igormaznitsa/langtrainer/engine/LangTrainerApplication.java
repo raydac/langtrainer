@@ -1,6 +1,7 @@
 package com.igormaznitsa.langtrainer.engine;
 
 import static com.igormaznitsa.langtrainer.engine.EngineUtils.loadResourceImage;
+import static org.apache.commons.lang3.Strings.CI;
 
 import com.igormaznitsa.langtrainer.Modules;
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
@@ -314,7 +315,7 @@ public final class LangTrainerApplication {
 
   private void openInSystemBrowser(final URI uri) {
     final String scheme = uri.getScheme();
-    if (!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme)) {
+    if (!CI.equalsAny(scheme, "https", "http")) {
       throw new IllegalStateException("Unsupported help hyperlink scheme: " + scheme);
     }
     if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {

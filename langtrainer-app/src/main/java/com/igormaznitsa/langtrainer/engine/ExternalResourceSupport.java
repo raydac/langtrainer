@@ -1,6 +1,14 @@
 package com.igormaznitsa.langtrainer.engine;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.commons.lang3.ClassUtils.getSimpleName;
+import static org.apache.commons.lang3.ObjectUtils.getIfNull;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.stripToNull;
+import static org.apache.commons.lang3.SystemUtils.IS_OS_MAC;
+import static org.apache.commons.lang3.SystemUtils.IS_OS_WINDOWS;
+import static org.apache.commons.lang3.SystemUtils.getUserHome;
+import static org.apache.commons.lang3.exception.ExceptionUtils.getRootCause;
 
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.engine.GitHubFolderSynchronizer.SyncSummary;
@@ -8,6 +16,7 @@ import java.awt.Component;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
@@ -27,6 +36,8 @@ public final class ExternalResourceSupport {
       "https://github.com/raydac/langtrainer/pub/externals";
   public static final String EXTERNAL_FOLDER_PROPERTY = "LANGTRAINER_EXTERNALS";
   public static final Path EXTERNAL_FOLDER = resolveExternalFolder();
+  private static final String APP_CONFIG_FOLDER_NAME = "LangTrainer";
+  private static final String EXTERNAL_RESOURCES_FOLDER_NAME = "externals";
   private static final String EXTERNAL_FOLDER_PATH_KEY_PREFIX = "external:";
 
   private ExternalResourceSupport() {
@@ -199,28 +210,48 @@ public final class ExternalResourceSupport {
   }
 
   private static String describeFailure(final Throwable failure) {
-    final Throwable root = rootCause(failure);
+    final Throwable root = getIfNull(getRootCause(failure), failure);
     final String message = root.getMessage();
-    return message == null || message.isBlank()
-        ? root.getClass().getSimpleName()
-        : "%s: %s".formatted(root.getClass().getSimpleName(), message);
-  }
-
-  private static Throwable rootCause(final Throwable failure) {
-    Throwable result = failure;
-    while (result.getCause() != null && result.getCause() != result) {
-      result = result.getCause();
-    }
-    return result;
+    return isBlank(message) ? getSimpleName(root) :
+        "%s: %s".formatted(getSimpleName(root), message);
   }
 
   private static Path resolveExternalFolder() {
-    return Optional.ofNullable(System.getProperty(EXTERNAL_FOLDER_PROPERTY))
-        .or(() -> Optional.ofNullable(System.getenv(EXTERNAL_FOLDER_PROPERTY)))
-        .map(String::strip)
-        .filter(value -> !value.isEmpty())
+    return Optional.ofNullable(stripToNull(System.getProperty(EXTERNAL_FOLDER_PROPERTY)))
+        .or(() -> Optional.ofNullable(stripToNull(System.getenv(EXTERNAL_FOLDER_PROPERTY))))
         .map(Path::of)
-        .orElse(Path.of("./.langtrainer_externals"));
+        .orElseGet(() -> findDefaultAppConfigFolder().resolve(EXTERNAL_RESOURCES_FOLDER_NAME));
+  }
+
+  static Path findDefaultAppConfigFolder() {
+    if (IS_OS_WINDOWS) {
+      return resolveWindowsAppConfigFolder();
+    }
+    if (IS_OS_MAC) {
+      return userHomeFolder().resolve("Library").resolve("Application Support")
+          .resolve(APP_CONFIG_FOLDER_NAME);
+    }
+    return resolveUnixAppConfigFolder();
+  }
+
+  private static Path resolveWindowsAppConfigFolder() {
+    return configuredPath("APPDATA")
+        .orElseGet(() -> userHomeFolder().resolve("AppData").resolve("Roaming"))
+        .resolve(APP_CONFIG_FOLDER_NAME);
+  }
+
+  private static Path resolveUnixAppConfigFolder() {
+    return configuredPath("XDG_CONFIG_HOME")
+        .orElseGet(() -> userHomeFolder().resolve(".config"))
+        .resolve(APP_CONFIG_FOLDER_NAME.toLowerCase(Locale.ROOT));
+  }
+
+  private static Optional<Path> configuredPath(final String environmentVariable) {
+    return Optional.ofNullable(stripToNull(System.getenv(environmentVariable))).map(Path::of);
+  }
+
+  private static Path userHomeFolder() {
+    return getUserHome().toPath();
   }
 
   private sealed interface RefreshResult

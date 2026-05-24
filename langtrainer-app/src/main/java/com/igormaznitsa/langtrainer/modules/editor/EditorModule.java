@@ -2,6 +2,9 @@ package com.igormaznitsa.langtrainer.modules.editor;
 
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.stripToEmpty;
+import static org.apache.commons.lang3.Strings.CI;
 
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
 import com.igormaznitsa.langtrainer.api.KeyboardLanguage;
@@ -34,7 +37,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import javax.swing.BorderFactory;
@@ -208,10 +210,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
   }
 
   private static String cellString(final Object cell) {
-    if (cell == null) {
-      return "";
-    }
-    return String.valueOf(cell).strip();
+    return stripToEmpty(cell == null ? null : String.valueOf(cell));
   }
 
   private static String joinCommaSeparated(final List<String> parts) {
@@ -219,7 +218,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
   }
 
   private static List<String> splitCommaSeparated(final String raw) {
-    if (raw == null || raw.isBlank()) {
+    if (isBlank(raw)) {
       return List.of();
     }
     final List<String> out = new ArrayList<>();
@@ -233,7 +232,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
   }
 
   private static Optional<String> validateEquivTokenListSyntax(final String raw) {
-    if (raw == null || raw.isBlank()) {
+    if (isBlank(raw)) {
       return of("must not be empty or blank");
     }
     for (final String part : raw.split(",", -1)) {
@@ -914,7 +913,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     if (out == null) {
       return;
     }
-    if (!out.getName().toLowerCase(Locale.ROOT).endsWith(".json")) {
+    if (!CI.endsWith(out.getName(), ".json")) {
       out = new File(out.getParentFile(), out.getName() + ".json");
     }
     EditorModule.rememberWorkDir(out);

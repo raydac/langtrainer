@@ -1,5 +1,7 @@
 package com.igormaznitsa.langtrainer.engine;
 
+import static org.apache.commons.lang3.ObjectUtils.isEmpty;
+
 import com.igormaznitsa.langtrainer.api.LangTrainerModuleId;
 import java.util.List;
 
@@ -19,14 +21,14 @@ public final class LangTrainerResourceAccess {
       return false;
     }
     final List<String> modules = definition.modules();
-    if (modules == null || modules.isEmpty()) {
+    if (isEmpty(modules)) {
       return true;
     }
     return modules.stream().anyMatch(m -> sameModuleId(m, target));
   }
 
   private static boolean sameModuleId(final String raw, final LangTrainerModuleId id) {
-    if (raw == null || raw.isEmpty()) {
+    if (isEmpty(raw)) {
       return false;
     }
     return id.name().equals(raw);

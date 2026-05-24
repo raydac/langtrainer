@@ -1,5 +1,7 @@
 package com.igormaznitsa.langtrainer.engine;
 
+import static org.apache.commons.lang3.Strings.CI;
+
 import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
 import java.awt.Image;
@@ -11,7 +13,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.URL;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.imageio.ImageIO;
@@ -67,7 +68,7 @@ public final class ImageResourceLoader {
 
   private static Icon loadIconUncached(
       final String resourcePath, final int width, final int height) {
-    if (resourcePath.toLowerCase(Locale.ROOT).endsWith(".svg")) {
+    if (CI.endsWith(resourcePath, ".svg")) {
       return ImageResourceLoader.buildSvgIcon(resourcePath, width, height);
     }
     final URL resource = ImageResourceLoader.class.getResource(resourcePath);

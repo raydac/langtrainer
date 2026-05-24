@@ -1,5 +1,7 @@
 package com.igormaznitsa.langtrainer.engine;
 
+import static org.apache.commons.lang3.ObjectUtils.isEmpty;
+
 import java.util.List;
 
 public record DialogDefinition(
@@ -15,7 +17,7 @@ public record DialogDefinition(
 ) {
   public DialogDefinition {
     inputEqu = inputEqu == null ? List.of() : List.copyOf(inputEqu);
-    modules = modules == null || modules.isEmpty() ? null : List.copyOf(modules);
+    modules = isEmpty(modules) ? null : List.copyOf(modules);
   }
 
   public DialogDefinition(

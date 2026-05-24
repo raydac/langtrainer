@@ -1,5 +1,8 @@
 ## 1. Implementation Progress
 - Added external Estonian-Russian pronouns teaching resource at `pub/externals/est-rus/est-rus-pronouns.json`.
+- Default external resources now live under the OS-specific per-user app config folder, with `LANGTRAINER_EXTERNALS` still overriding the path.
+- External resource config folder detection uses Apache Commons Lang `SystemUtils` for OS and user-home facts, with local logic only for app-specific path conventions.
+- Replaced low-risk self-written null/blank/root-cause/suffix checks with Apache Commons Lang helpers in resource sync, JSON loading, editor save, image loading, and help URL validation paths; avoid deprecated Commons Lang 3.20 `StringUtils`/`ObjectUtils` APIs (use `Strings.CI`/`Strings.CS`, `getIfNull`, or JDK `Objects.requireNonNullElse` instead).
 - Updated `CHANGELOG.txt` 1.1.0 entry to mention the `LANGTRAINER_EXTERNALS` configurable storage path.
 - Normalized `est-rus-pronouns.json`: variants start uppercase and sentence/question phrases carry terminal punctuation.
 - External GitHub sync success now shows an info dialog with loaded, removed, and updated file counts.
@@ -27,10 +30,11 @@
 - Maven must be run as `mvn22`.
 - Assembly descriptors must use `**/*` include patterns so root-level launcher files are packaged.
 - GitHub folder sync uses Hub4j `org.kohsuke:github-api` anonymously through the GitHub Contents API.
+- `langtrainer-app` declares Apache Commons Lang directly because production code uses `SystemUtils`; Commons Text already pulls the same 3.20.0 version transitively.
 - App JSON resource parsing and writing uses Jackson databind 2.21.0; `DialogLine` maps uppercase JSON fields with `@JsonProperty("A")` and `@JsonProperty("B")`.
 - `ExternalResourceSupport.syncAndLoadAsync` reports sync failures through `JOptionPane` and Java Util Logging; local external resources remain visible if loading succeeds after a failed sync.
 - `GitHubFolderSynchronizer` rejects non-portable GitHub paths before local writes: traversal segments, separators, control characters, Windows-reserved names/chars, trailing dots/spaces, and case-insensitive collisions.
-- External resources merge entries from `<externals>/common/jsons/index.json` and `<externals>/index.json`; `<externals>` defaults to `./.langtrainer_externals` and can be overridden by Java property or environment variable `LANGTRAINER_EXTERNALS`.
+- External resources merge entries from `<externals>/common/jsons/index.json` and `<externals>/index.json`; `<externals>` defaults to an OS-specific app config path (`%APPDATA%\LangTrainer\externals`, `~/Library/Application Support/LangTrainer/externals`, or `$XDG_CONFIG_HOME/langtrainer/externals`) and can be overridden by Java property or environment variable `LANGTRAINER_EXTERNALS`.
 - Resource entries in `index.json` may be absolute (`/common/jsons/file.json`) or relative to the `index.json` file location (`./folder/file.json`).
 
 ## 3. Technical Debt & Refactoring

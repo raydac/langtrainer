@@ -16,7 +16,13 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toUnmodifiableSet;
+import static org.apache.commons.lang3.StringUtils.containsAny;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.apache.commons.lang3.Strings.CS;
+import static org.apache.commons.lang3.SystemUtils.getUserDir;
+import static org.apache.commons.lang3.SystemUtils.getUserHome;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -75,7 +81,7 @@ public final class GitHubFolderSynchronizer {
     final String baseName = segment.split("\\.", 2)[0].toUpperCase(Locale.ROOT);
     return segment.endsWith(" ")
         || segment.endsWith(".")
-        || segment.chars().anyMatch(character -> WINDOWS_FORBIDDEN_CHARS.indexOf(character) >= 0)
+        || containsAny(segment, WINDOWS_FORBIDDEN_CHARS)
         || WINDOWS_RESERVED_NAMES.contains(baseName);
   }
 
@@ -125,35 +131,30 @@ public final class GitHubFolderSynchronizer {
         segments.get(3));
   }
 
+  private static Path normalizePath(final Path path) {
+    return path.toAbsolutePath().normalize();
+  }
+
+  private static Path normalizePath(final File file) {
+    return normalizePath(file.toPath());
+  }
+
   private void requireGitHubUrl() {
-    final String host = this.githubFolderUri.getHost();
     if (!"https".equalsIgnoreCase(this.githubFolderUri.getScheme())
-        || host == null
-        || !GITHUB_HOST.equals(host.toLowerCase(Locale.ROOT))) {
+        || !GITHUB_HOST.equalsIgnoreCase(this.githubFolderUri.getHost())) {
       throw new IllegalArgumentException("Only https://github.com folder URLs are supported");
     }
-  }
-
-  private List<String> pathSegments() {
-    return Stream.of(this.githubFolderUri.getPath().split("/"))
-        .filter(not(String::isBlank))
-        .map(this::requireValidUrlPathSegment)
-        .toList();
-  }
-
-  private String requireValidUrlPathSegment(final String segment) {
-    if ("..".equals(segment) || segment.indexOf('\\') >= 0) {
-      throw new IllegalArgumentException("Invalid GitHub URL path segment: " + segment);
-    }
-    return segment;
   }
 
   private String repositoryFullName(final List<String> segments) {
     return segments.get(0) + '/' + this.stripGitSuffix(segments.get(1));
   }
 
-  private String stripGitSuffix(final String repoName) {
-    return repoName.endsWith(".git") ? repoName.substring(0, repoName.length() - 4) : repoName;
+  private List<String> pathSegments() {
+    return Stream.of(this.githubFolderUri.getPath().split("/"))
+        .filter(not(org.apache.commons.lang3.StringUtils::isBlank))
+        .map(this::requireValidUrlPathSegment)
+        .toList();
   }
 
   private String joinPath(final List<String> segments) {
@@ -201,12 +202,15 @@ public final class GitHubFolderSynchronizer {
     return relativePath;
   }
 
-  private static Optional<Path> pathFromProperty(final String property) {
-    final String value = System.getProperty(property);
-    if (value == null || value.isBlank()) {
-      return Optional.empty();
+  private String requireValidUrlPathSegment(final String segment) {
+    if ("..".equals(segment) || containsAny(segment, '\\')) {
+      throw new IllegalArgumentException("Invalid GitHub URL path segment: " + segment);
     }
-    return Optional.of(Path.of(value).toAbsolutePath().normalize());
+    return segment;
+  }
+
+  private String stripGitSuffix(final String repoName) {
+    return CS.removeEnd(repoName, ".git");
   }
 
   private void requireLocalFolderReady() throws IOException {
@@ -245,15 +249,12 @@ public final class GitHubFolderSynchronizer {
   }
 
   private boolean isConfiguredHomeDirectory() {
-    return pathFromProperty("user.home")
-        .map(this.localFolder::equals)
-        .orElse(false);
+    return this.localFolder.equals(normalizePath(getUserHome()));
   }
 
   private boolean isConfiguredHomeCriticalChild() {
-    return pathFromProperty("user.home")
-        .filter(home -> home.equals(this.localFolder.getParent()))
-        .map(ignored -> this.localFolder.getFileName())
+    return normalizePath(getUserHome()).equals(this.localFolder.getParent())
+        && Optional.ofNullable(this.localFolder.getFileName())
         .map(Path::toString)
         .map(name -> name.toLowerCase(Locale.ROOT))
         .filter(CRITICAL_HOME_CHILD_NAMES::contains)
@@ -261,9 +262,7 @@ public final class GitHubFolderSynchronizer {
   }
 
   private boolean isCurrentWorkingDirectory() {
-    return pathFromProperty("user.dir")
-        .map(this.localFolder::equals)
-        .orElse(false);
+    return this.localFolder.equals(normalizePath(getUserDir()));
   }
 
   private boolean isLikelyProjectRoot() {
@@ -472,10 +471,10 @@ public final class GitHubFolderSynchronizer {
   }
 
   private String requirePortableLocalSegment(final String segment) {
-    if (segment == null || segment.isEmpty() || ".".equals(segment) || "..".equals(segment)) {
+    if (isEmpty(segment) || ".".equals(segment) || "..".equals(segment)) {
       throw new IllegalStateException("Invalid GitHub content path segment: " + segment);
     }
-    if (segment.indexOf('/') >= 0 || segment.indexOf('\\') >= 0 || hasControlCharacter(segment)) {
+    if (containsAny(segment, '/', '\\') || hasControlCharacter(segment)) {
       throw new IllegalStateException("Unsupported GitHub content path segment: " + segment);
     }
     if (hasWindowsUnsafeName(segment)) {
