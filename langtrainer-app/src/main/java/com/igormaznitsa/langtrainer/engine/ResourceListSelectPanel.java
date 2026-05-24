@@ -1,5 +1,7 @@
 package com.igormaznitsa.langtrainer.engine;
 
+import static com.igormaznitsa.langtrainer.engine.ImageResourceLoader.loadIcon;
+
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -40,11 +42,14 @@ import javax.swing.UIManager;
 public final class ResourceListSelectPanel {
 
   private static final int INDENT_PER_LEVEL = 14;
-  private static final String SYNC_GITHUB_LABEL = "Sync GitHub";
+  private static final String SYNC_LESSONS_LABEL = "Sync Lessons";
   private static final String START_TOOLTIP = "Start training with the selected resource";
   private static final String OPEN_FROM_FILE_TOOLTIP = "Open a compatible JSON resource from disk";
-  private static final String SYNC_GITHUB_TOOLTIP =
-      "Download or refresh external resources from GitHub";
+  private static final String SYNC_LESSONS_TOOLTIP =
+      "Download or refresh lesson resources from the online lesson repository";
+  private static final Icon START_ICON = loadIcon("/images/action-start.svg", 26, 26);
+  private static final Icon OPEN_FROM_FILE_ICON = loadIcon("/images/action-open-file.svg", 26, 26);
+  private static final Icon SYNC_GITHUB_ICON = loadIcon("/images/action-sync-github.svg", 26, 26);
   private static final Color START_BUTTON_BG = new Color(46, 125, 50);
   private static final Color OPEN_BUTTON_BG = new Color(25, 118, 210);
   private static final Color SYNC_BUTTON_BG = new Color(123, 31, 162);
@@ -193,6 +198,8 @@ public final class ResourceListSelectPanel {
     final JButton openFile =
         makeDialogActionButton(openFromFileLabel, OPEN_BUTTON_BG, new Color(13, 71, 161),
             BorderFactory.createEmptyBorder(14, 28, 14, 28));
+    start.setIcon(START_ICON);
+    openFile.setIcon(OPEN_FROM_FILE_ICON);
     start.setToolTipText(START_TOOLTIP);
     openFile.setToolTipText(OPEN_FROM_FILE_TOOLTIP);
     bindStartButton(start, list, onStart);
@@ -236,10 +243,12 @@ public final class ResourceListSelectPanel {
     buttonRow.setOpaque(false);
     final JButton open = new JButton(openFromFileLabel);
     styleFlyPrimaryButton(open, OPEN_BUTTON_BG);
+    open.setIcon(OPEN_FROM_FILE_ICON);
     open.setToolTipText(OPEN_FROM_FILE_TOOLTIP);
     bindOpenFileButton(open, list, onOpenFromFile);
     final JButton start = new JButton(startButtonLabel);
     styleFlyPrimaryButton(start, START_BUTTON_BG);
+    start.setIcon(START_ICON);
     start.setToolTipText(START_TOOLTIP);
     bindStartButton(start, list, onStart);
     buttonRow.add(start);
@@ -274,9 +283,10 @@ public final class ResourceListSelectPanel {
       final Runnable onLoadExternals,
       final Result result,
       final Consumer<JButton> styleButton) {
-    final JButton button = new JButton(SYNC_GITHUB_LABEL);
+    final JButton button = new JButton(SYNC_LESSONS_LABEL);
     styleButton.accept(button);
-    button.setToolTipText(SYNC_GITHUB_TOOLTIP);
+    button.setIcon(SYNC_GITHUB_ICON);
+    button.setToolTipText(SYNC_LESSONS_TOOLTIP);
     button.addActionListener(event -> onLoadExternals.run());
     result.addBusyControlled(button);
     return button;
@@ -302,6 +312,7 @@ public final class ResourceListSelectPanel {
         BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(borderColor, 2, true),
             padding));
+    button.setIconTextGap(8);
     button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
   }
 
@@ -347,6 +358,7 @@ public final class ResourceListSelectPanel {
     button.setBackground(bg);
     button.setOpaque(true);
     button.setFocusPainted(false);
+    button.setIconTextGap(8);
     button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
   }
 

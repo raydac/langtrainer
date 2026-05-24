@@ -6,8 +6,8 @@
 - Updated `CHANGELOG.txt` 1.1.0 entry to mention the `LANGTRAINER_EXTERNALS` configurable storage path.
 - Normalized `est-rus-pronouns.json`: variants start uppercase and sentence/question phrases carry terminal punctuation.
 - External GitHub sync success now shows an info dialog with loaded, removed, and updated file counts.
-- Resource selector now places `Sync GitHub` at the right edge of the bottom action bar to reduce accidental clicks.
-- Resource selectors label the primary action as `Start`, place `Open from file` immediately before `Sync GitHub`, add action tooltips, and disable `Start` unless a resource row is selected.
+- Resource selector now places `Sync Lessons` at the right edge of the bottom action bar to reduce accidental clicks.
+- Resource selectors label the primary action as `Start`, show large action icons, place `Open from file` immediately before `Sync Lessons`, add action tooltips, and disable `Start` unless a resource row is selected.
 - DRY refactor: shared resource selector button wiring/styling and local JSON resource open/merge helpers now live in common support code.
 - Crossword board now scales to the largest square that fits the work area instead of capping itself at 80%, reducing unused space below the field.
 - Security hardening: GitHub sync allows existing resource folders but refuses dangerous broad targets (root, home, common home folders, working/project roots) and preserves a `.langtrainer-external-sync` ownership marker; external indexes reject symlinked resource paths; help links only open HTTP(S) URLs.
