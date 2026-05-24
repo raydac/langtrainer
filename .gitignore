@@ -27,3 +27,4 @@ buildNumber.properties
 /langtrainer-win-launcher/bin/langtrainer.exe
 /.cursor/rules/maven-cli.mdc
 /externals
+/.langtrainer_externals

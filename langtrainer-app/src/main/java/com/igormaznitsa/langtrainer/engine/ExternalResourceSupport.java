@@ -220,7 +220,7 @@ public final class ExternalResourceSupport {
         .map(String::strip)
         .filter(value -> !value.isEmpty())
         .map(Path::of)
-        .orElse(Path.of("./externals"));
+        .orElse(Path.of("./.langtrainer_externals"));
   }
 
   private sealed interface RefreshResult
