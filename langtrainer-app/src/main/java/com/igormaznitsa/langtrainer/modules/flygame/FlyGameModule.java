@@ -11,7 +11,6 @@ import com.igormaznitsa.langtrainer.engine.DialogListEntry;
 import com.igormaznitsa.langtrainer.engine.ExternalResourceSupport;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
-import com.igormaznitsa.langtrainer.engine.LangResourceJson;
 import com.igormaznitsa.langtrainer.engine.LangTrainerApplication;
 import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
@@ -53,7 +52,6 @@ import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
-import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -66,7 +64,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
@@ -248,40 +245,17 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   }
 
   private void openFromFile(final JList<DialogListEntry> list) {
-    final JFileChooser chooser = new JFileChooser();
-    chooser.setFileFilter(new FileNameExtensionFilter("JSON word list (*.json)", "json"));
-    chooser.setAcceptAllFileFilterUsed(false);
-    if (this.lastOpenDir != null) {
-      chooser.setCurrentDirectory(this.lastOpenDir);
-    }
-    if (chooser.showOpenDialog(this.rootPanel) != JFileChooser.APPROVE_OPTION) {
-      return;
-    }
-    final File file = chooser.getSelectedFile();
-    if (file == null) {
-      return;
-    }
-    try {
-      final DialogDefinition loaded = LangResourceJson.parseFromPath(file.toPath());
-      DialogListEntry.mergeExternalResourceRow(
-          this.externalClasspathResourceRows, DialogListEntry.externalResourceRow(loaded));
-      this.rebuildFlyResourceListModel();
-      final int index =
-          DialogListEntry.indexOfExternalResourceMenuName(this.listModel, loaded.menuName());
-      if (index >= 0) {
-        list.setSelectedIndex(index);
-      }
-      final File parent = file.getParentFile();
-      if (parent != null) {
-        this.lastOpenDir = parent;
-      }
-    } catch (Exception ex) {
-      JOptionPane.showMessageDialog(
-          this.rootPanel,
-          ex.getMessage(),
-          "Can't open file",
-          JOptionPane.ERROR_MESSAGE);
-    }
+    ExternalResourceSupport.openResourceFromFile(
+            this.rootPanel, this.lastOpenDir, "JSON word list (*.json)", "Can't open file")
+        .ifPresent(resource -> {
+          ExternalResourceSupport.mergeOpenedResource(
+              this.listModel,
+              this.externalClasspathResourceRows,
+              list,
+              resource.definition(),
+              this::rebuildFlyResourceListModel);
+          resource.parentDirectory().ifPresent(parent -> this.lastOpenDir = parent);
+        });
   }
 
   private void chooseLanguage(final DialogDefinition definition) {

@@ -6,6 +6,8 @@ import static java.nio.file.Files.createTempFile;
 import static java.nio.file.Files.deleteIfExists;
 import static java.nio.file.Files.exists;
 import static java.nio.file.Files.isDirectory;
+import static java.nio.file.Files.isRegularFile;
+import static java.nio.file.Files.mismatch;
 import static java.nio.file.Files.move;
 import static java.nio.file.Files.walk;
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
@@ -70,17 +72,19 @@ public final class GitHubFolderSynchronizer {
         || WINDOWS_RESERVED_NAMES.contains(baseName);
   }
 
-  public void sync() {
+  public SyncSummary sync() {
     try {
       final FolderSource source = this.parseFolderSource();
       final RemoteFolder remote = this.collectRemoteFolder(
           GitHub.connectAnonymously().getRepository(source.repositoryFullName()),
           source);
+      final SyncSummaryBuilder summary = new SyncSummaryBuilder();
 
       this.requireLocalFolderReady();
-      this.createRemoteDirectories(remote);
-      this.downloadRemoteFiles(remote);
-      this.removeLocalEntriesMissingFrom(remote);
+      this.createRemoteDirectories(remote, summary);
+      this.downloadRemoteFiles(remote, summary);
+      this.removeLocalEntriesMissingFrom(remote, summary);
+      return summary.build();
     } catch (final IOException ex) {
       throw new IllegalStateException(
           "Can't sync GitHub folder %s into %s".formatted(this.githubFolderUri, this.localFolder),
@@ -198,42 +202,66 @@ public final class GitHubFolderSynchronizer {
     createDirectories(this.localFolder);
   }
 
-  private void createRemoteDirectories(final RemoteFolder remote) throws IOException {
+  private void createRemoteDirectories(
+      final RemoteFolder remote,
+      final SyncSummaryBuilder summary) throws IOException {
     for (final String directory : remote.directoriesByDepth()) {
       if (!directory.isEmpty()) {
-        this.createLocalDirectory(directory);
+        this.createLocalDirectory(directory, summary);
       }
     }
   }
 
-  private void createLocalDirectory(final String relativePath) throws IOException {
+  private void createLocalDirectory(
+      final String relativePath,
+      final SyncSummaryBuilder summary) throws IOException {
     final Path target = this.localPath(relativePath);
-    if (exists(target, NO_LINK_OPTIONS) && !isDirectory(target, NO_LINK_OPTIONS)) {
-      deleteIfExists(target);
+    if (exists(target, NO_LINK_OPTIONS)
+        && !isDirectory(target, NO_LINK_OPTIONS)
+        && deleteIfExists(target)) {
+      summary.fileRemoved();
     }
     createDirectories(target);
   }
 
-  private void downloadRemoteFiles(final RemoteFolder remote) throws IOException {
+  private void downloadRemoteFiles(final RemoteFolder remote, final SyncSummaryBuilder summary)
+      throws IOException {
     for (final RemoteFile file : remote.files()) {
-      this.downloadRemoteFile(file);
+      this.downloadRemoteFile(file, summary);
     }
   }
 
-  private void downloadRemoteFile(final RemoteFile file) throws IOException {
+  private void downloadRemoteFile(final RemoteFile file, final SyncSummaryBuilder summary)
+      throws IOException {
     final Path target = this.localPath(file.relativePath());
     this.ensureWritableParent(target);
     if (exists(target, NO_LINK_OPTIONS) && isDirectory(target, NO_LINK_OPTIONS)) {
-      this.deleteRecursively(target);
+      summary.addRemovedFiles(this.deleteRecursively(target));
     }
 
     final Path tempFile = createTempFile(target.getParent(), ".github-sync-", ".tmp");
     try (InputStream input = file.content().read()) {
       copy(input, tempFile, REPLACE_EXISTING);
-      this.moveIntoPlace(tempFile, target);
+      this.moveDownloadedFile(tempFile, target, summary);
     } finally {
       deleteIfExists(tempFile);
     }
+  }
+
+  private void moveDownloadedFile(
+      final Path tempFile,
+      final Path target,
+      final SyncSummaryBuilder summary) throws IOException {
+    if (!exists(target, NO_LINK_OPTIONS)) {
+      this.moveIntoPlace(tempFile, target);
+      summary.fileLoaded();
+      return;
+    }
+    if (isRegularFile(target, NO_LINK_OPTIONS) && mismatch(tempFile, target) == -1L) {
+      return;
+    }
+    this.moveIntoPlace(tempFile, target);
+    summary.fileUpdated();
   }
 
   private void ensureWritableParent(final Path target) throws IOException {
@@ -252,42 +280,81 @@ public final class GitHubFolderSynchronizer {
     }
   }
 
-  private void removeLocalEntriesMissingFrom(final RemoteFolder remote) throws IOException {
+  private void removeLocalEntriesMissingFrom(
+      final RemoteFolder remote,
+      final SyncSummaryBuilder summary) throws IOException {
     try (Stream<Path> paths = walk(this.localFolder)) {
       for (final Path path : paths.sorted(Comparator.reverseOrder()).toList()) {
         if (!this.localFolder.equals(path)) {
-          this.removeLocalEntryIfMissing(path, remote);
+          this.removeLocalEntryIfMissing(path, remote, summary);
         }
       }
     }
   }
 
-  private void removeLocalEntryIfMissing(final Path path, final RemoteFolder remote)
-      throws IOException {
+  private void removeLocalEntryIfMissing(
+      final Path path,
+      final RemoteFolder remote,
+      final SyncSummaryBuilder summary) throws IOException {
     final String relativePath = this.localRelativePath(path);
     if (isDirectory(path, NO_LINK_OPTIONS)) {
       if (!remote.directories().contains(relativePath) && this.isDirectoryEmpty(path)) {
         deleteIfExists(path);
       }
-    } else if (!remote.filePaths().contains(relativePath)) {
-      deleteIfExists(path);
+    } else if (!remote.filePaths().contains(relativePath) && deleteIfExists(path)) {
+      summary.fileRemoved();
+    }
+  }
+
+  private int deleteRecursively(final Path target) throws IOException {
+    if (!exists(target, NO_LINK_OPTIONS)) {
+      return 0;
+    }
+    int removedFiles = 0;
+    try (Stream<Path> paths = walk(target)) {
+      for (final Path path : paths.sorted(Comparator.reverseOrder()).toList()) {
+        if (!isDirectory(path, NO_LINK_OPTIONS) && deleteIfExists(path)) {
+          removedFiles++;
+        } else {
+          deleteIfExists(path);
+        }
+      }
+    }
+    return removedFiles;
+  }
+
+  public record SyncSummary(int loadedFiles, int removedFiles, int updatedFiles) {
+  }
+
+  private static final class SyncSummaryBuilder {
+    private int loadedFiles;
+    private int removedFiles;
+    private int updatedFiles;
+
+    private void fileLoaded() {
+      this.loadedFiles++;
+    }
+
+    private void fileRemoved() {
+      this.removedFiles++;
+    }
+
+    private void fileUpdated() {
+      this.updatedFiles++;
+    }
+
+    private void addRemovedFiles(final int removedFiles) {
+      this.removedFiles += removedFiles;
+    }
+
+    private SyncSummary build() {
+      return new SyncSummary(this.loadedFiles, this.removedFiles, this.updatedFiles);
     }
   }
 
   private boolean isDirectoryEmpty(final Path path) throws IOException {
     try (Stream<Path> children = walk(path, 1)) {
       return children.count() == 1L;
-    }
-  }
-
-  private void deleteRecursively(final Path target) throws IOException {
-    if (!exists(target, NO_LINK_OPTIONS)) {
-      return;
-    }
-    try (Stream<Path> paths = walk(target)) {
-      for (final Path path : paths.sorted(Comparator.reverseOrder()).toList()) {
-        deleteIfExists(path);
-      }
     }
   }
 

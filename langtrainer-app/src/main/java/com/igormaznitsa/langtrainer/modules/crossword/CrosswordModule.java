@@ -11,7 +11,6 @@ import com.igormaznitsa.langtrainer.engine.DialogListEntry;
 import com.igormaznitsa.langtrainer.engine.ExternalResourceSupport;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
-import com.igormaznitsa.langtrainer.engine.LangResourceJson;
 import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
 import com.igormaznitsa.langtrainer.modules.dialog.InputEquivalenceSupport;
@@ -55,7 +54,6 @@ import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
-import javax.swing.JFileChooser;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -63,7 +61,6 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
-import javax.swing.filechooser.FileNameExtensionFilter;
 
 public final class CrosswordModule extends AbstractLangTrainerModule {
 
@@ -81,7 +78,6 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private static final int GENERATION_ANIMATION_PERIOD_MS = 16;
   private static final int MIN_WORDS_IN_CROSSWORD = 3;
   private static final double CROSSWORD_FILL_RATIO = 0.92d;
-  private static final int TRANSLATION_TO_BOARD_GAP_PX = 6;
   private static final Color EMPTY_CELL_BG = new Color(225, 225, 225);
   private static final Color FILLED_CELL_BG = Color.WHITE;
   private static final Color SELECTED_CELL_BG = new Color(187, 222, 251);
@@ -106,9 +102,10 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private final javax.swing.JLabel translationLabel =
       new javax.swing.JLabel(" ", SwingConstants.CENTER);
   private final javax.swing.JLabel modeLabel = new javax.swing.JLabel(" ", SwingConstants.CENTER);
-  private Timer generationAnimationTimer;  private final JPanel boardHost = this.makeBoardHost();
+  private final JPanel boardHost = this.makeBoardHost();
   private final char[][] solution = new char[BOARD_SIZE][BOARD_SIZE];
   private final char[][] userInput = new char[BOARD_SIZE][BOARD_SIZE];
+  private Timer generationAnimationTimer;
 
   private JPanel makeWorkPanel() {
     final JPanel panel = new JPanel(new BorderLayout(8, 8));
@@ -155,6 +152,34 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     centerStack.add(this.boardHost, BorderLayout.CENTER);
     panel.add(centerStack, BorderLayout.CENTER);
     return panel;
+  }
+
+  private void layoutBoardByHostSize(final int hostWidth, final int hostHeight) {
+    final int targetSide = Math.min(hostWidth, hostHeight);
+    if (targetSide <= 0) {
+      return;
+    }
+    final int side = Math.max(BOARD_SIZE, targetSide - (targetSide % BOARD_SIZE));
+    final int x = (hostWidth - side) / 2;
+    final int y = (hostHeight - side) / 2;
+    if (this.boardPanel.getX() != x || this.boardPanel.getY() != y ||
+        this.boardPanel.getWidth() != side || this.boardPanel.getHeight() != side) {
+      this.boardPanel.setBounds(x, y, side, side);
+    }
+  }
+
+  private void openFromFile(final JList<DialogListEntry> list) {
+    ExternalResourceSupport.openResourceFromFile(
+            this.rootPanel, this.lastOpenDirectory, "Crossword JSON (*.json)", "Can't open file")
+        .ifPresent(resource -> {
+          ExternalResourceSupport.mergeOpenedResource(
+              this.listModel,
+              this.externalClasspathResourceRows,
+              list,
+              resource.definition(),
+              this::rebuildCrosswordResourceListModel);
+          resource.parentDirectory().ifPresent(parent -> this.lastOpenDirectory = parent);
+        });
   }  private final JPanel boardPanel = this.makeBoardPanel();
   private final Set<Point> fillableCells = new HashSet<>();
   private final Set<Point> startCells = new HashSet<>();
@@ -405,19 +430,6 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     };
   }
 
-  private void layoutBoardByHostSize(final int hostWidth, final int hostHeight) {
-    final int targetSide = (int) (Math.min(hostWidth, hostHeight) * 0.8d);
-    if (targetSide <= 0) {
-      return;
-    }
-    final int side = Math.max(BOARD_SIZE, targetSide - (targetSide % BOARD_SIZE));
-    final int x = (hostWidth - side) / 2;
-    final int y = Math.max(0, Math.min(TRANSLATION_TO_BOARD_GAP_PX, hostHeight - side));
-    if (this.boardPanel.getX() != x || this.boardPanel.getY() != y ||
-        this.boardPanel.getWidth() != side || this.boardPanel.getHeight() != side) {
-      this.boardPanel.setBounds(x, y, side, side);
-    }
-  }
 
   private void startGenerationProgressTimer() {
     final Timer previousTimer = this.generationProgressTimer;
@@ -1587,42 +1599,6 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     }
   }
 
-  private void openFromFile(final JList<DialogListEntry> list) {
-    final JFileChooser chooser = new JFileChooser();
-    chooser.setFileFilter(new FileNameExtensionFilter("Crossword JSON (*.json)", "json"));
-    chooser.setAcceptAllFileFilterUsed(false);
-    if (this.lastOpenDirectory != null) {
-      chooser.setCurrentDirectory(this.lastOpenDirectory);
-    }
-    if (chooser.showOpenDialog(this.rootPanel) != JFileChooser.APPROVE_OPTION) {
-      return;
-    }
-    final File file = chooser.getSelectedFile();
-    if (file == null) {
-      return;
-    }
-    try {
-      final DialogDefinition loaded = LangResourceJson.parseFromPath(file.toPath());
-      DialogListEntry.mergeExternalResourceRow(
-          this.externalClasspathResourceRows, DialogListEntry.externalResourceRow(loaded));
-      this.rebuildCrosswordResourceListModel();
-      final int index =
-          DialogListEntry.indexOfExternalResourceMenuName(this.listModel, loaded.menuName());
-      if (index >= 0) {
-        list.setSelectedIndex(index);
-      }
-      final File parent = file.getParentFile();
-      if (parent != null) {
-        this.lastOpenDirectory = parent;
-      }
-    } catch (final Exception ex) {
-      JOptionPane.showMessageDialog(
-          this.rootPanel,
-          ex.getMessage(),
-          "Can't open file",
-          JOptionPane.ERROR_MESSAGE);
-    }
-  }
 
   private void showCard(final String card) {
     final CardLayout layout = (CardLayout) this.rootPanel.getLayout();

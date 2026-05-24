@@ -9,7 +9,6 @@ import com.igormaznitsa.langtrainer.engine.DialogLine;
 import com.igormaznitsa.langtrainer.engine.DialogListEntry;
 import com.igormaznitsa.langtrainer.engine.ExternalResourceSupport;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
-import com.igormaznitsa.langtrainer.engine.LangResourceJson;
 import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
 import java.awt.CardLayout;
@@ -21,12 +20,10 @@ import java.util.Set;
 import javax.swing.DefaultListModel;
 import javax.swing.Icon;
 import javax.swing.JComponent;
-import javax.swing.JFileChooser;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
-import javax.swing.filechooser.FileNameExtensionFilter;
 
 public final class BricksModule extends AbstractLangTrainerModule {
 
@@ -129,40 +126,17 @@ public final class BricksModule extends AbstractLangTrainerModule {
   }
 
   private void openFromFile(final JList<DialogListEntry> list) {
-    final JFileChooser chooser = new JFileChooser();
-    chooser.setFileFilter(new FileNameExtensionFilter("JSON phrase list (*.json)", "json"));
-    chooser.setAcceptAllFileFilterUsed(false);
-    if (this.lastOpenDir != null) {
-      chooser.setCurrentDirectory(this.lastOpenDir);
-    }
-    if (chooser.showOpenDialog(this.rootPanel) != JFileChooser.APPROVE_OPTION) {
-      return;
-    }
-    final File file = chooser.getSelectedFile();
-    if (file == null) {
-      return;
-    }
-    try {
-      final DialogDefinition loaded = LangResourceJson.parseFromPath(file.toPath());
-      DialogListEntry.mergeExternalResourceRow(
-          this.externalClasspathResourceRows, DialogListEntry.externalResourceRow(loaded));
-      this.rebuildResourceListModel();
-      final int index =
-          DialogListEntry.indexOfExternalResourceMenuName(this.listModel, loaded.menuName());
-      if (index >= 0) {
-        list.setSelectedIndex(index);
-      }
-      final File parent = file.getParentFile();
-      if (parent != null) {
-        this.lastOpenDir = parent;
-      }
-    } catch (final Exception ex) {
-      JOptionPane.showMessageDialog(
-          this.rootPanel,
-          ex.getMessage(),
-          "Can't open file",
-          JOptionPane.ERROR_MESSAGE);
-    }
+    ExternalResourceSupport.openResourceFromFile(
+            this.rootPanel, this.lastOpenDir, "JSON phrase list (*.json)", "Can't open file")
+        .ifPresent(resource -> {
+          ExternalResourceSupport.mergeOpenedResource(
+              this.listModel,
+              this.externalClasspathResourceRows,
+              list,
+              resource.definition(),
+              this::rebuildResourceListModel);
+          resource.parentDirectory().ifPresent(parent -> this.lastOpenDir = parent);
+        });
   }
 
   private void chooseLanguageAndStart(final DialogDefinition definition) {

@@ -1,14 +1,24 @@
 package com.igormaznitsa.langtrainer.engine;
 
+import static java.util.Objects.requireNonNull;
+
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
+import com.igormaznitsa.langtrainer.engine.GitHubFolderSynchronizer.SyncSummary;
+import java.awt.Component;
+import java.io.File;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.DefaultListModel;
+import javax.swing.JFileChooser;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.SwingWorker;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 public final class ExternalResourceSupport {
 
@@ -33,6 +43,38 @@ public final class ExternalResourceSupport {
     tree.materializeInto(model, expandedFolderPathKeys, true, EXTERNAL_FOLDER_PATH_KEY_PREFIX);
   }
 
+  public static Optional<OpenedResource> openResourceFromFile(
+      final Component parent,
+      final File currentDirectory,
+      final String filterDescription,
+      final String errorTitle) {
+    final JFileChooser chooser = new JFileChooser();
+    chooser.setFileFilter(new FileNameExtensionFilter(filterDescription, "json"));
+    chooser.setAcceptAllFileFilterUsed(false);
+    if (currentDirectory != null) {
+      chooser.setCurrentDirectory(currentDirectory);
+    }
+    if (chooser.showOpenDialog(parent) != JFileChooser.APPROVE_OPTION) {
+      return Optional.empty();
+    }
+    return parseSelectedResource(parent, chooser.getSelectedFile(), errorTitle);
+  }
+
+  public static void mergeOpenedResource(
+      final DefaultListModel<DialogListEntry> model,
+      final List<DialogListEntry.DialogResourceRow> externalRows,
+      final JList<DialogListEntry> list,
+      final DialogDefinition loaded,
+      final Runnable onListRefreshNeeded) {
+    DialogListEntry.mergeExternalResourceRow(
+        externalRows, DialogListEntry.externalResourceRow(loaded));
+    onListRefreshNeeded.run();
+    final int index = DialogListEntry.indexOfExternalResourceMenuName(model, loaded.menuName());
+    if (index >= 0) {
+      list.setSelectedIndex(index);
+    }
+  }
+
   public static void syncAndLoadAsync(
       final AbstractLangTrainerModule module,
       final ResourceListSelectPanel.Result view,
@@ -53,6 +95,8 @@ public final class ExternalResourceSupport {
           onListRefreshNeeded.run();
           if (result instanceof final RefreshResult.SyncFailed failed) {
             ExternalResourceSupport.showExternalSyncFailure(view, failed.failure());
+          } else if (result instanceof final RefreshResult.SyncSucceeded succeeded) {
+            ExternalResourceSupport.showExternalSyncSuccess(view, succeeded.summary());
           }
         } catch (final InterruptedException ex) {
           Thread.currentThread().interrupt();
@@ -74,16 +118,62 @@ public final class ExternalResourceSupport {
 
   private static RefreshResult refreshExternalResources(final AbstractLangTrainerModule module) {
     try {
-      syncExternalFolder();
-      return new RefreshResult.SyncSucceeded(loadLocalTree(module));
+      final SyncSummary summary = syncExternalFolder();
+      return new RefreshResult.SyncSucceeded(loadLocalTree(module), summary);
     } catch (final Exception ex) {
       LOG.log(Level.WARNING, "Can't sync external resources from " + EXTERNAL_FOLDER_URL, ex);
       return new RefreshResult.SyncFailed(loadLocalTree(module), ex);
     }
   }
 
-  private static void syncExternalFolder() {
-    new GitHubFolderSynchronizer(EXTERNAL_FOLDER_URL, EXTERNAL_FOLDER).sync();
+  private static Optional<OpenedResource> parseSelectedResource(
+      final Component parent,
+      final File file,
+      final String errorTitle) {
+    if (file == null) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.of(
+          new OpenedResource(
+              LangResourceJson.parseFromPath(file.toPath()),
+              Optional.ofNullable(file.getParentFile())));
+    } catch (final Exception ex) {
+      JOptionPane.showMessageDialog(parent, ex.getMessage(), errorTitle, JOptionPane.ERROR_MESSAGE);
+      return Optional.empty();
+    }
+  }
+
+  private static SyncSummary syncExternalFolder() {
+    return new GitHubFolderSynchronizer(EXTERNAL_FOLDER_URL, EXTERNAL_FOLDER).sync();
+  }
+
+  private static void showExternalSyncSuccess(
+      final ResourceListSelectPanel.Result view,
+      final SyncSummary summary) {
+    JOptionPane.showMessageDialog(
+        view.panel(),
+        externalSyncSuccessMessage(summary),
+        "External resources",
+        JOptionPane.INFORMATION_MESSAGE);
+  }
+
+  private static String externalSyncSuccessMessage(final SyncSummary summary) {
+    return """
+        Sync is OK.
+        
+        Source: %s
+        Target: %s
+        
+        Files loaded: %d
+        Files removed: %d
+        Files updated: %d
+        """.formatted(
+        EXTERNAL_FOLDER_URL,
+        EXTERNAL_FOLDER.toAbsolutePath().normalize(),
+        summary.loadedFiles(),
+        summary.removedFiles(),
+        summary.updatedFiles());
   }
 
   private static void showExternalSyncFailure(
@@ -138,10 +228,19 @@ public final class ExternalResourceSupport {
 
     ClasspathResourceIndexTree tree();
 
-    record SyncSucceeded(ClasspathResourceIndexTree tree) implements RefreshResult {
+    record SyncSucceeded(ClasspathResourceIndexTree tree, SyncSummary summary)
+        implements RefreshResult {
     }
 
     record SyncFailed(ClasspathResourceIndexTree tree, Throwable failure) implements RefreshResult {
+    }
+  }
+
+  public record OpenedResource(DialogDefinition definition, Optional<File> parentDirectory) {
+
+    public OpenedResource {
+      requireNonNull(definition, "definition must not be null");
+      requireNonNull(parentDirectory, "parentDirectory must not be null");
     }
   }
 }

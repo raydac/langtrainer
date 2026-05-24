@@ -39,6 +39,10 @@ import javax.swing.UIManager;
 public final class ResourceListSelectPanel {
 
   private static final int INDENT_PER_LEVEL = 14;
+  private static final String SYNC_GITHUB_LABEL = "Sync GitHub";
+  private static final Color START_BUTTON_BG = new Color(46, 125, 50);
+  private static final Color OPEN_BUTTON_BG = new Color(25, 118, 210);
+  private static final Color SYNC_BUTTON_BG = new Color(123, 31, 162);
 
   private ResourceListSelectPanel() {
   }
@@ -178,39 +182,14 @@ public final class ResourceListSelectPanel {
       final Consumer<JList<DialogListEntry>> onOpenFromFile,
       final Runnable onLoadExternals,
       final Result result) {
-    final JButton start = new JButton(startButtonLabel);
-    start.setFont(start.getFont().deriveFont(Font.BOLD, 18f));
-    start.setForeground(Color.WHITE);
-    start.setBackground(new Color(46, 125, 50));
-    start.setOpaque(true);
-    start.setContentAreaFilled(true);
-    start.setFocusPainted(false);
-    start.setBorder(
-        BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(27, 94, 32), 2, true),
-            BorderFactory.createEmptyBorder(14, 32, 14, 32)));
-    start.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    start.addActionListener(
-        event -> {
-          final DialogListEntry selected = list.getSelectedValue();
-          if (selected instanceof final DialogListEntry.DialogResourceRow row) {
-            onStart.accept(row.definition());
-          }
-        });
-
-    final JButton openFile = new JButton(openFromFileLabel);
-    openFile.setFont(openFile.getFont().deriveFont(Font.BOLD, 18f));
-    openFile.setForeground(Color.WHITE);
-    openFile.setBackground(new Color(25, 118, 210));
-    openFile.setOpaque(true);
-    openFile.setContentAreaFilled(true);
-    openFile.setFocusPainted(false);
-    openFile.setBorder(
-        BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(13, 71, 161), 2, true),
-            BorderFactory.createEmptyBorder(14, 28, 14, 28)));
-    openFile.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    openFile.addActionListener(event -> onOpenFromFile.accept(list));
+    final JButton start =
+        makeDialogActionButton(startButtonLabel, START_BUTTON_BG, new Color(27, 94, 32),
+            BorderFactory.createEmptyBorder(14, 32, 14, 32));
+    final JButton openFile =
+        makeDialogActionButton(openFromFileLabel, OPEN_BUTTON_BG, new Color(13, 71, 161),
+            BorderFactory.createEmptyBorder(14, 28, 14, 28));
+    bindStartButton(start, list, onStart);
+    bindOpenFileButton(openFile, list, onOpenFromFile);
     result.addBusyControlled(openFile);
     result.addBusyControlled(start);
 
@@ -219,12 +198,16 @@ public final class ResourceListSelectPanel {
     southWrap.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
     final JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 16, 8));
     buttonRow.setOpaque(false);
-    if (onLoadExternals != null) {
-      buttonRow.add(makeDialogLoadExternalsButton(onLoadExternals, result));
-    }
     buttonRow.add(openFile);
     buttonRow.add(start);
     southWrap.add(buttonRow, BorderLayout.CENTER);
+    if (onLoadExternals != null) {
+      addSyncButtonRight(
+          southWrap,
+          makeLoadExternalsButton(onLoadExternals, result,
+              ResourceListSelectPanel::styleDialogLoadExternalsButton),
+          8);
+    }
     panel.add(southWrap, BorderLayout.SOUTH);
   }
 
@@ -237,56 +220,103 @@ public final class ResourceListSelectPanel {
       final Consumer<JList<DialogListEntry>> onOpenFromFile,
       final Runnable onLoadExternals,
       final Result result) {
-    final JPanel south = new JPanel();
+    final JPanel south = new JPanel(new BorderLayout());
     south.setOpaque(false);
-    if (onLoadExternals != null) {
-      south.add(makeFlyLoadExternalsButton(onLoadExternals, result));
-    }
+    final JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 5));
+    buttonRow.setOpaque(false);
     final JButton open = new JButton(openFromFileLabel);
-    styleFlyPrimaryButton(open, new Color(25, 118, 210));
-    open.addActionListener(e -> onOpenFromFile.accept(list));
+    styleFlyPrimaryButton(open, OPEN_BUTTON_BG);
+    bindOpenFileButton(open, list, onOpenFromFile);
     final JButton start = new JButton(startButtonLabel);
-    styleFlyPrimaryButton(start, new Color(46, 125, 50));
-    start.addActionListener(
-        e -> {
-          final DialogListEntry entry = list.getSelectedValue();
-          if (entry instanceof final DialogListEntry.DialogResourceRow row) {
-            onStart.accept(row.definition());
-          }
-        });
-    south.add(open);
-    south.add(start);
+    styleFlyPrimaryButton(start, START_BUTTON_BG);
+    bindStartButton(start, list, onStart);
+    buttonRow.add(open);
+    buttonRow.add(start);
+    south.add(buttonRow, BorderLayout.CENTER);
+    if (onLoadExternals != null) {
+      addSyncButtonRight(
+          south,
+          makeLoadExternalsButton(onLoadExternals, result,
+              button -> styleFlyPrimaryButton(button, SYNC_BUTTON_BG)),
+          5);
+    }
     result.addBusyControlled(open);
     result.addBusyControlled(start);
     panel.add(south, BorderLayout.SOUTH);
   }
 
-  private static JButton makeDialogLoadExternalsButton(
-      final Runnable onLoadExternals, final Result result) {
-    final JButton button = new JButton("Sync GitHub");
-    button.setFont(button.getFont().deriveFont(Font.BOLD, 18f));
-    button.setForeground(Color.WHITE);
-    button.setBackground(new Color(123, 31, 162));
-    button.setOpaque(true);
-    button.setContentAreaFilled(true);
-    button.setFocusPainted(false);
-    button.setBorder(
-        BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(74, 20, 140), 2, true),
-            BorderFactory.createEmptyBorder(14, 28, 14, 28)));
-    button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+  private static JButton makeDialogActionButton(
+      final String label,
+      final Color background,
+      final Color borderColor,
+      final javax.swing.border.Border padding) {
+    final JButton button = new JButton(label);
+    styleDialogButton(button, background, borderColor, padding);
+    return button;
+  }
+
+  private static JButton makeLoadExternalsButton(
+      final Runnable onLoadExternals,
+      final Result result,
+      final Consumer<JButton> styleButton) {
+    final JButton button = new JButton(SYNC_GITHUB_LABEL);
+    styleButton.accept(button);
     button.addActionListener(event -> onLoadExternals.run());
     result.addBusyControlled(button);
     return button;
   }
 
-  private static JButton makeFlyLoadExternalsButton(
-      final Runnable onLoadExternals, final Result result) {
-    final JButton button = new JButton("Sync GitHub");
-    styleFlyPrimaryButton(button, new Color(123, 31, 162));
-    button.addActionListener(event -> onLoadExternals.run());
-    result.addBusyControlled(button);
-    return button;
+  private static void styleDialogLoadExternalsButton(final JButton button) {
+    styleDialogButton(button, SYNC_BUTTON_BG, new Color(74, 20, 140),
+        BorderFactory.createEmptyBorder(14, 28, 14, 28));
+  }
+
+  private static void styleDialogButton(
+      final JButton button,
+      final Color background,
+      final Color borderColor,
+      final javax.swing.border.Border padding) {
+    button.setFont(button.getFont().deriveFont(Font.BOLD, 18f));
+    button.setForeground(Color.WHITE);
+    button.setBackground(background);
+    button.setOpaque(true);
+    button.setContentAreaFilled(true);
+    button.setFocusPainted(false);
+    button.setBorder(
+        BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(borderColor, 2, true),
+            padding));
+    button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+  }
+
+  private static void addSyncButtonRight(
+      final JPanel container,
+      final JButton button,
+      final int verticalGap) {
+    final JPanel syncRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, verticalGap));
+    syncRow.setOpaque(false);
+    syncRow.add(button);
+    container.add(syncRow, BorderLayout.EAST);
+  }
+
+  private static void bindOpenFileButton(
+      final JButton button,
+      final JList<DialogListEntry> list,
+      final Consumer<JList<DialogListEntry>> onOpenFromFile) {
+    button.addActionListener(event -> onOpenFromFile.accept(list));
+  }
+
+  private static void bindStartButton(
+      final JButton button,
+      final JList<DialogListEntry> list,
+      final Consumer<DialogDefinition> onStart) {
+    button.addActionListener(
+        event -> {
+          final DialogListEntry selected = list.getSelectedValue();
+          if (selected instanceof final DialogListEntry.DialogResourceRow row) {
+            onStart.accept(row.definition());
+          }
+        });
   }
 
   private static void styleFlyPrimaryButton(final JButton button, final Color bg) {
