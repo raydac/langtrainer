@@ -8,16 +8,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.regex.Pattern;
 
 public final class ClasspathLangResourceIndex {
 
   private static final String SHARED_INDEX = "/common/jsons/index.json";
-  private static final Pattern RESOURCE_AT_COMMON_JSONS =
-      Pattern.compile("^/common/jsons/[^/]+\\.json$");
   private static final Gson GSON = new Gson();
 
   private ClasspathLangResourceIndex() {
@@ -55,8 +50,7 @@ public final class ClasspathLangResourceIndex {
         requireIndexWithResourcesArray(
             GSON.fromJson(indexText, JsonObject.class),
             indexResourcePath);
-    final List<RootSlot> rootOrder = new ArrayList<>();
-    final Map<String, FolderBuilder> rootFoldersByKey = new LinkedHashMap<>();
+    final List<DialogDefinition> definitions = new ArrayList<>();
     for (final JsonElement el : root.get("resources").getAsJsonArray()) {
       if (!el.isJsonObject()) {
         continue;
@@ -76,74 +70,17 @@ public final class ClasspathLangResourceIndex {
                 + "): "
                 + entry);
       }
-      if (!isLeafNode(entry) || !isIndexEntryOnClasspath(entry)) {
+      if (!isLeafNode(entry)) {
         continue;
       }
       final DialogDefinition loaded =
           loadDialogFromResourcePath(
-              anchor, entry.get("resource").getAsString(), perEntryFailureContext);
-      if (!module.isResourceAllowed(loaded)) {
-        continue;
-      }
-      final ClasspathResourceIndexTree.IndexedClasspathNode.IndexedLeaf leaf =
-          new ClasspathResourceIndexTree.IndexedClasspathNode.IndexedLeaf(loaded);
-      insertLeafByMenuPath(
-          rootOrder, rootFoldersByKey, leaf, ResourceMenuPath.parseSegments(loaded.path()));
+              anchor,
+              resolveClasspathResourcePath(indexResourcePath, entry.get("resource").getAsString()),
+              perEntryFailureContext);
+      definitions.add(loaded);
     }
-    return new ClasspathResourceIndexTree(materializeRootOrder(rootOrder));
-  }
-
-  private static List<ClasspathResourceIndexTree.IndexedClasspathNode> materializeRootOrder(
-      final List<RootSlot> rootOrder) {
-    final List<ClasspathResourceIndexTree.IndexedClasspathNode> roots = new ArrayList<>();
-    for (final RootSlot slot : rootOrder) {
-      if (slot.leaf() != null) {
-        roots.add(slot.leaf());
-      } else {
-        roots.add(slot.folder().toIndexedFolder());
-      }
-    }
-    return List.copyOf(roots);
-  }
-
-  private static void insertLeafByMenuPath(
-      final List<RootSlot> rootOrder,
-      final Map<String, FolderBuilder> rootFoldersByKey,
-      final ClasspathResourceIndexTree.IndexedClasspathNode.IndexedLeaf leaf,
-      final List<String> pathSegments) {
-    if (pathSegments.isEmpty()) {
-      rootOrder.add(RootSlot.leaf(leaf));
-      return;
-    }
-    final String rootSegment = pathSegments.get(0);
-    final String rootKey = ResourceMenuPath.canonicalSegmentKey(rootSegment);
-    FolderBuilder folder = rootFoldersByKey.get(rootKey);
-    if (folder == null) {
-      folder =
-          new FolderBuilder(
-              ResourceMenuPath.displaySegment(rootSegment),
-              ClasspathResourceIndexTree.childFolderPathKey("", rootSegment));
-      rootFoldersByKey.put(rootKey, folder);
-      rootOrder.add(RootSlot.folder(folder));
-    }
-    for (int i = 1; i < pathSegments.size(); i++) {
-      folder = folder.childFolder(pathSegments.get(i));
-    }
-    folder.addLeaf(leaf);
-  }
-
-  private record RootSlot(
-      ClasspathResourceIndexTree.IndexedClasspathNode.IndexedLeaf leaf,
-      FolderBuilder folder) {
-
-    static RootSlot leaf(
-        final ClasspathResourceIndexTree.IndexedClasspathNode.IndexedLeaf leaf) {
-      return new RootSlot(leaf, null);
-    }
-
-    static RootSlot folder(final FolderBuilder folder) {
-      return new RootSlot(null, folder);
-    }
+    return LangResourceIndexTrees.fromDefinitions(module, definitions);
   }
 
   private static boolean isLeafNode(final JsonObject node) {
@@ -175,13 +112,6 @@ public final class ClasspathLangResourceIndex {
     return root;
   }
 
-  private static boolean isIndexEntryOnClasspath(final JsonObject entry) {
-    if (!entry.has("resource") || !entry.get("resource").isJsonPrimitive()) {
-      return false;
-    }
-    return RESOURCE_AT_COMMON_JSONS.matcher(entry.get("resource").getAsString()).matches();
-  }
-
   private static DialogDefinition loadDialogFromResourcePath(
       final Class<?> anchor, final String resourcePath, final String loadFailureContext) {
     if (resourcePath == null) {
@@ -196,6 +126,46 @@ public final class ClasspathLangResourceIndex {
     }
   }
 
+  private static String resolveClasspathResourcePath(
+      final String indexResourcePath, final String resourcePath) {
+    if (resourcePath == null || resourcePath.isBlank()) {
+      throw new IllegalStateException("Missing resource path in " + indexResourcePath);
+    }
+    final String rawPath = resourcePath.strip();
+    final String absolutePath = rawPath.startsWith("/")
+        ? rawPath
+        : classpathParent(indexResourcePath) + "/" + rawPath;
+    final String normalized = normalizeClasspathPath(absolutePath);
+    if (!normalized.endsWith(".json")) {
+      throw new IllegalStateException("Resource path must point to a JSON file: " + resourcePath);
+    }
+    return normalized;
+  }
+
+  private static String classpathParent(final String resourcePath) {
+    final String normalized = normalizeClasspathPath(resourcePath);
+    final int slash = normalized.lastIndexOf('/');
+    return slash <= 0 ? "" : normalized.substring(0, slash);
+  }
+
+  private static String normalizeClasspathPath(final String resourcePath) {
+    final List<String> segments = new ArrayList<>();
+    for (final String segment : resourcePath.split("/+")) {
+      if (segment.isBlank() || ".".equals(segment)) {
+        continue;
+      }
+      if ("..".equals(segment)) {
+        if (segments.isEmpty()) {
+          throw new IllegalStateException("Classpath resource path escapes root: " + resourcePath);
+        }
+        segments.remove(segments.size() - 1);
+      } else {
+        segments.add(segment);
+      }
+    }
+    return "/" + String.join("/", segments);
+  }
+
   private static IllegalStateException wrapUnlessAlreadyIllegalState(
       final Exception ex, final String message) {
     if (ex instanceof final IllegalStateException ise) {
@@ -204,44 +174,4 @@ public final class ClasspathLangResourceIndex {
     return new IllegalStateException(message, ex);
   }
 
-  private static final class FolderBuilder {
-
-    private final String displayName;
-    private final String pathKey;
-    private final List<ClasspathResourceIndexTree.IndexedClasspathNode.IndexedLeaf> leaves =
-        new ArrayList<>();
-    private final Map<String, FolderBuilder> childFoldersByKey = new LinkedHashMap<>();
-
-    private FolderBuilder(final String displayName, final String pathKey) {
-      this.displayName = displayName;
-      this.pathKey = pathKey;
-    }
-
-    private void addLeaf(
-        final ClasspathResourceIndexTree.IndexedClasspathNode.IndexedLeaf leaf) {
-      this.leaves.add(leaf);
-    }
-
-    private FolderBuilder childFolder(final String segment) {
-      final String key = ResourceMenuPath.canonicalSegmentKey(segment);
-      return this.childFoldersByKey.computeIfAbsent(
-          key,
-          ignored ->
-              new FolderBuilder(
-                  ResourceMenuPath.displaySegment(segment),
-                  ClasspathResourceIndexTree.childFolderPathKey(this.pathKey, segment)));
-    }
-
-    private ClasspathResourceIndexTree.IndexedClasspathNode.IndexedFolder toIndexedFolder() {
-      final List<ClasspathResourceIndexTree.IndexedClasspathNode> children = new ArrayList<>();
-      for (final ClasspathResourceIndexTree.IndexedClasspathNode.IndexedLeaf leaf : this.leaves) {
-        children.add(leaf);
-      }
-      for (final FolderBuilder sub : this.childFoldersByKey.values()) {
-        children.add(sub.toIndexedFolder());
-      }
-      return new ClasspathResourceIndexTree.IndexedClasspathNode.IndexedFolder(
-          this.displayName, this.pathKey, List.copyOf(children));
-    }
-  }
 }

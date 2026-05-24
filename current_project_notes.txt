@@ -1,15 +1,23 @@
 ## 1. Implementation Progress
+- Added external Estonian-Russian pronouns teaching resource at `pub/externals /eesti-rus/et-ru-pronouns.json`.
 - Optimized Russian `inputEqu` resources by representing `е/Е/ё/Ё` as a single equivalence-class row.
 - Expanded `README.md` with GitHub project description, Java/Maven requirements, build, and start commands.
 - Added `CHANGELOG.txt` 1.0.0 summary of implemented application features.
 - Fixed assembly resources: descriptor include patterns, launcher path quoting, AppImage desktop entry, bundled JRE usage, and macOS icon reference.
 - Fixed Bricks completion animation leaving a lone `?` suffix brick on the build strip while the solved row flies into history.
+- Added `GitHubFolderSynchronizer` to mirror a public GitHub folder into a local folder synchronously.
+- Added app-wide external resource support: module resource selectors load the configured externals folder, can sync it from GitHub, and refresh lists asynchronously.
 
 ## 2. Architecture & Technical Discoveries
+- External Estonian resource includes `DIALOG`, `FLY_GAME`, `CROSSWORD`, and `BRICKS`, mixing single-word pronouns with short multi-word phrases so different modules have usable rows.
 - `InputEquivalenceSupport` uses positional matching when `key` and `value` lists have equal sizes, and any-key-to-any-value matching otherwise.
 - Equal-size rows where `key` and `value` contain the same token set now act as equivalence classes, allowing compact reciprocal substitutions in JSON.
 - Maven must be run as `mvn22`.
 - Assembly descriptors must use `**/*` include patterns so root-level launcher files are packaged.
+- GitHub folder sync uses Hub4j `org.kohsuke:github-api` anonymously through the GitHub Contents API.
+- `GitHubFolderSynchronizer` rejects non-portable GitHub paths before local writes: traversal segments, separators, control characters, Windows-reserved names/chars, trailing dots/spaces, and case-insensitive collisions.
+- External resources are expected at `<externals>/common/jsons/index.json` with the same `resources` entries as bundled `/common/jsons/index.json`; `<externals>` defaults to `./externals` and can be overridden by Java property or environment variable `LANGTRAINER_EXTERNALS`.
+- Resource entries in `index.json` may be absolute (`/common/jsons/file.json`) or relative to the `index.json` file location (`./folder/file.json`).
 
 ## 3. Technical Debt & Refactoring
 - `langtrainer-app` currently has no test source tree; input equivalence behavior would benefit from focused unit tests.

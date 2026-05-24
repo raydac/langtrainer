@@ -8,6 +8,7 @@ import com.igormaznitsa.langtrainer.engine.ClasspathResourceIndexTree;
 import com.igormaznitsa.langtrainer.engine.DialogDefinition;
 import com.igormaznitsa.langtrainer.engine.DialogLine;
 import com.igormaznitsa.langtrainer.engine.DialogListEntry;
+import com.igormaznitsa.langtrainer.engine.ExternalResourceSupport;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
 import com.igormaznitsa.langtrainer.engine.LangResourceJson;
@@ -91,15 +92,18 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   private final List<DialogListEntry.DialogResourceRow> externalClasspathResourceRows =
       new ArrayList<>();
   private ClasspathResourceIndexTree classpathResourceTree;
+  private ClasspathResourceIndexTree externalResourceTree = ClasspathResourceIndexTree.empty();
   private final JPanel rootPanel = new JPanel(new java.awt.CardLayout());
   private final GameBoard gameBoard = new GameBoard(this);
   private JList<DialogListEntry> selectionList;
+  private ResourceListSelectPanel.Result resourceSelectView;
   private File lastOpenDir;
 
   public FlyGameModule() {
     this.classpathResourceTree =
         ClasspathLangResourceIndex.loadSharedTree(
             FlyGameModule.class, this, "Can't load fly game word lists");
+    this.externalResourceTree = ExternalResourceSupport.loadLocalTree(this);
     this.rebuildFlyResourceListModel();
     this.rootPanel.add(this.makeSelectPanel(), CARD_SELECT);
     this.rootPanel.add(this.gameBoard, CARD_GAME);
@@ -109,6 +113,8 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   private void rebuildFlyResourceListModel() {
     this.listModel.clear();
     this.classpathResourceTree.materializeInto(this.listModel, this.expandedClasspathFolders);
+    ExternalResourceSupport.materializeLocalTree(
+        this.externalResourceTree, this.listModel, this.expandedClasspathFolders);
     for (final DialogListEntry.DialogResourceRow row : this.externalClasspathResourceRows) {
       this.listModel.addElement(row);
     }
@@ -167,6 +173,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   @Override
   public void onActivation() {
     this.gameBoard.shutdownSession();
+    this.reloadExternalResourcesFromDisk();
     this.showCard(CARD_SELECT);
     SwingUtilities.invokeLater(() -> {
       if (this.selectionList != null) {
@@ -220,9 +227,24 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         "Open from file",
         this::chooseLanguage,
         this::openFromFile,
-        this::onClasspathFolderRowClicked);
+        this::onClasspathFolderRowClicked,
+        this::loadExternalResources);
+    this.resourceSelectView = view;
     this.selectionList = view.list();
     return view.panel();
+  }
+
+  private void loadExternalResources() {
+    ExternalResourceSupport.syncAndLoadAsync(
+        this,
+        this.resourceSelectView,
+        tree -> this.externalResourceTree = tree,
+        this::rebuildFlyResourceListModel);
+  }
+
+  private void reloadExternalResourcesFromDisk() {
+    this.externalResourceTree = ExternalResourceSupport.loadLocalTree(this);
+    this.rebuildFlyResourceListModel();
   }
 
   private void openFromFile(final JList<DialogListEntry> list) {

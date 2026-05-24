@@ -1,25 +1,34 @@
 package com.igormaznitsa.langtrainer.engine;
 
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.Icon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.ListCellRenderer;
 import javax.swing.SwingConstants;
+import javax.swing.Timer;
 import javax.swing.UIManager;
 
 /**
@@ -43,7 +52,31 @@ public final class ResourceListSelectPanel {
       final Consumer<DialogDefinition> onStart,
       final Consumer<JList<DialogListEntry>> onOpenFromFile,
       final Consumer<DialogListEntry.DialogFolderRow> onFolderRowSingleClick) {
+    return build(
+        model,
+        appearance,
+        titleText,
+        startButtonLabel,
+        openFromFileLabel,
+        onStart,
+        onOpenFromFile,
+        onFolderRowSingleClick,
+        null);
+  }
+
+  public static Result build(
+      final DefaultListModel<DialogListEntry> model,
+      final Appearance appearance,
+      final String titleText,
+      final String startButtonLabel,
+      final String openFromFileLabel,
+      final Consumer<DialogDefinition> onStart,
+      final Consumer<JList<DialogListEntry>> onOpenFromFile,
+      final Consumer<DialogListEntry.DialogFolderRow> onFolderRowSingleClick,
+      final Runnable onLoadExternals) {
     final JPanel panel = new JPanel(new BorderLayout(12, 14));
+    final BusyOverlayPanel busyOverlay = new BusyOverlayPanel();
+    final Result result = new Result(wrapWithBusyOverlay(panel, busyOverlay), busyOverlay);
     final Color panelBg = appearance == Appearance.DIALOG
         ? new Color(236, 242, 249)
         : new Color(230, 240, 255);
@@ -75,6 +108,7 @@ public final class ResourceListSelectPanel {
     if (onFolderRowSingleClick != null) {
       bindFolderRowSingleClick(list, onFolderRowSingleClick);
     }
+    result.setList(list);
 
     final JScrollPane scroll = new JScrollPane(list);
     if (appearance == Appearance.DIALOG) {
@@ -93,12 +127,37 @@ public final class ResourceListSelectPanel {
 
     if (appearance == Appearance.DIALOG) {
       addDialogSouth(panel, panelBg, list, startButtonLabel, openFromFileLabel, onStart,
-          onOpenFromFile);
+          onOpenFromFile, onLoadExternals, result);
     } else {
-      addFlySouth(panel, list, startButtonLabel, openFromFileLabel, onStart, onOpenFromFile);
+      addFlySouth(
+          panel, list, startButtonLabel, openFromFileLabel, onStart, onOpenFromFile,
+          onLoadExternals, result);
     }
 
-    return new Result(panel, list);
+    return result;
+  }
+
+  private static JPanel wrapWithBusyOverlay(
+      final JPanel content, final BusyOverlayPanel busyOverlay) {
+    busyOverlay.setVisible(false);
+    return new JPanel(null) {
+      {
+        this.add(content);
+        this.add(busyOverlay);
+        this.setComponentZOrder(busyOverlay, 0);
+      }
+
+      @Override
+      public void doLayout() {
+        content.setBounds(0, 0, this.getWidth(), this.getHeight());
+        busyOverlay.setBounds(0, 0, this.getWidth(), this.getHeight());
+      }
+
+      @Override
+      public Dimension getPreferredSize() {
+        return content.getPreferredSize();
+      }
+    };
   }
 
   private static Icon folderRowIcon() {
@@ -116,7 +175,9 @@ public final class ResourceListSelectPanel {
       final String startButtonLabel,
       final String openFromFileLabel,
       final Consumer<DialogDefinition> onStart,
-      final Consumer<JList<DialogListEntry>> onOpenFromFile) {
+      final Consumer<JList<DialogListEntry>> onOpenFromFile,
+      final Runnable onLoadExternals,
+      final Result result) {
     final JButton start = new JButton(startButtonLabel);
     start.setFont(start.getFont().deriveFont(Font.BOLD, 18f));
     start.setForeground(Color.WHITE);
@@ -150,12 +211,17 @@ public final class ResourceListSelectPanel {
             BorderFactory.createEmptyBorder(14, 28, 14, 28)));
     openFile.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     openFile.addActionListener(event -> onOpenFromFile.accept(list));
+    result.addBusyControlled(openFile);
+    result.addBusyControlled(start);
 
     final JPanel southWrap = new JPanel(new BorderLayout());
     southWrap.setBackground(panelBg);
     southWrap.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
     final JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 16, 8));
     buttonRow.setOpaque(false);
+    if (onLoadExternals != null) {
+      buttonRow.add(makeDialogLoadExternalsButton(onLoadExternals, result));
+    }
     buttonRow.add(openFile);
     buttonRow.add(start);
     southWrap.add(buttonRow, BorderLayout.CENTER);
@@ -168,9 +234,14 @@ public final class ResourceListSelectPanel {
       final String startButtonLabel,
       final String openFromFileLabel,
       final Consumer<DialogDefinition> onStart,
-      final Consumer<JList<DialogListEntry>> onOpenFromFile) {
+      final Consumer<JList<DialogListEntry>> onOpenFromFile,
+      final Runnable onLoadExternals,
+      final Result result) {
     final JPanel south = new JPanel();
     south.setOpaque(false);
+    if (onLoadExternals != null) {
+      south.add(makeFlyLoadExternalsButton(onLoadExternals, result));
+    }
     final JButton open = new JButton(openFromFileLabel);
     styleFlyPrimaryButton(open, new Color(25, 118, 210));
     open.addActionListener(e -> onOpenFromFile.accept(list));
@@ -185,7 +256,37 @@ public final class ResourceListSelectPanel {
         });
     south.add(open);
     south.add(start);
+    result.addBusyControlled(open);
+    result.addBusyControlled(start);
     panel.add(south, BorderLayout.SOUTH);
+  }
+
+  private static JButton makeDialogLoadExternalsButton(
+      final Runnable onLoadExternals, final Result result) {
+    final JButton button = new JButton("Sync GitHub");
+    button.setFont(button.getFont().deriveFont(Font.BOLD, 18f));
+    button.setForeground(Color.WHITE);
+    button.setBackground(new Color(123, 31, 162));
+    button.setOpaque(true);
+    button.setContentAreaFilled(true);
+    button.setFocusPainted(false);
+    button.setBorder(
+        BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(74, 20, 140), 2, true),
+            BorderFactory.createEmptyBorder(14, 28, 14, 28)));
+    button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    button.addActionListener(event -> onLoadExternals.run());
+    result.addBusyControlled(button);
+    return button;
+  }
+
+  private static JButton makeFlyLoadExternalsButton(
+      final Runnable onLoadExternals, final Result result) {
+    final JButton button = new JButton("Sync GitHub");
+    styleFlyPrimaryButton(button, new Color(123, 31, 162));
+    button.addActionListener(event -> onLoadExternals.run());
+    result.addBusyControlled(button);
+    return button;
   }
 
   private static void styleFlyPrimaryButton(final JButton button, final Color bg) {
@@ -373,6 +474,106 @@ public final class ResourceListSelectPanel {
     FLY_GAME
   }
 
-  public record Result(JPanel panel, JList<DialogListEntry> list) {
+  public static final class Result {
+
+    private final JPanel panel;
+    private final BusyOverlayPanel busyOverlay;
+    private final List<JComponent> busyControlledComponents = new ArrayList<>();
+    private JList<DialogListEntry> list;
+
+    private Result(final JPanel panel, final BusyOverlayPanel busyOverlay) {
+      this.panel = panel;
+      this.busyOverlay = busyOverlay;
+    }
+
+    public JPanel panel() {
+      return this.panel;
+    }
+
+    public JList<DialogListEntry> list() {
+      return this.list;
+    }
+
+    public void setBusy(final boolean busy) {
+      for (final Component component : this.busyControlledComponents) {
+        component.setEnabled(!busy);
+      }
+      this.panel.setCursor(
+          busy ? Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR) : Cursor.getDefaultCursor());
+      this.busyOverlay.setBusy(busy);
+    }
+
+    private void setList(final JList<DialogListEntry> list) {
+      this.list = list;
+      this.addBusyControlled(list);
+    }
+
+    private void addBusyControlled(final JComponent component) {
+      this.busyControlledComponents.add(component);
+    }
+  }
+
+  private static final class BusyOverlayPanel extends JPanel {
+
+    private static final long SPIN_PERIOD_NS = 1_200_000_000L;
+    private static final int ANIMATION_PERIOD_MS = 16;
+    private final Timer animationTimer = new Timer(ANIMATION_PERIOD_MS, event -> this.repaint());
+    private long startedAtNs;
+
+    private BusyOverlayPanel() {
+      this.setOpaque(false);
+      this.animationTimer.setRepeats(true);
+    }
+
+    private void setBusy(final boolean busy) {
+      this.setVisible(busy);
+      if (busy) {
+        this.startedAtNs = System.nanoTime();
+        this.animationTimer.start();
+      } else {
+        this.animationTimer.stop();
+      }
+      this.repaint();
+    }
+
+    @Override
+    protected void paintComponent(final Graphics graphics) {
+      super.paintComponent(graphics);
+      if (!this.isVisible()) {
+        return;
+      }
+      final Graphics2D g2 = (Graphics2D) graphics.create();
+      try {
+        this.paintBusyOverlay(g2);
+      } finally {
+        g2.dispose();
+      }
+    }
+
+    private void paintBusyOverlay(final Graphics2D g2) {
+      final int w = this.getWidth();
+      final int h = this.getHeight();
+      g2.setColor(new Color(255, 255, 255, 170));
+      g2.fillRect(0, 0, w, h);
+      if (w < 12 || h < 12) {
+        return;
+      }
+
+      final int diameterRaw = Math.max(44, Math.min(w, h) / 9);
+      final int diameter = diameterRaw - (diameterRaw & 1);
+      final long elapsedNs = System.nanoTime() - this.startedAtNs;
+      final long phaseNs = Math.floorMod(elapsedNs, SPIN_PERIOD_NS);
+      final double angleRad = phaseNs * (Math.PI * 2.0d / SPIN_PERIOD_NS);
+      g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+      g2.translate(w * 0.5d, h * 0.5d);
+      g2.rotate(angleRad);
+      g2.setStroke(
+          new BasicStroke(Math.max(3f, diameter / 14f), BasicStroke.CAP_ROUND,
+              BasicStroke.JOIN_ROUND));
+      g2.setColor(new Color(200, 200, 200));
+      g2.drawOval(-diameter / 2, -diameter / 2, diameter, diameter);
+      g2.setColor(new Color(25, 118, 210));
+      g2.drawArc(-diameter / 2, -diameter / 2, diameter, diameter, 90, 270);
+    }
   }
 }

@@ -7,6 +7,7 @@ import com.igormaznitsa.langtrainer.engine.ClasspathResourceIndexTree;
 import com.igormaznitsa.langtrainer.engine.DialogDefinition;
 import com.igormaznitsa.langtrainer.engine.DialogLine;
 import com.igormaznitsa.langtrainer.engine.DialogListEntry;
+import com.igormaznitsa.langtrainer.engine.ExternalResourceSupport;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.LangResourceJson;
 import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
@@ -38,12 +39,15 @@ public final class BricksModule extends AbstractLangTrainerModule {
   private final JPanel rootPanel = new JPanel(new CardLayout());
   private final BricksWorkPanel workPanel;
   private ClasspathResourceIndexTree classpathResourceTree;
+  private ClasspathResourceIndexTree externalResourceTree = ClasspathResourceIndexTree.empty();
   private JList<DialogListEntry> selectionList;
+  private ResourceListSelectPanel.Result resourceSelectView;
   private File lastOpenDir;
   public BricksModule() {
     this.classpathResourceTree =
         ClasspathLangResourceIndex.loadSharedTree(
             BricksModule.class, this, "Can't load phrase resources");
+    this.externalResourceTree = ExternalResourceSupport.loadLocalTree(this);
     this.rebuildResourceListModel();
     this.workPanel = new BricksWorkPanel(this::showSelectCard);
     this.rootPanel.add(this.makeSelectPanel(), CARD_SELECT);
@@ -59,6 +63,8 @@ public final class BricksModule extends AbstractLangTrainerModule {
   private void rebuildResourceListModel() {
     this.listModel.clear();
     this.classpathResourceTree.materializeInto(this.listModel, this.expandedClasspathFolders);
+    ExternalResourceSupport.materializeLocalTree(
+        this.externalResourceTree, this.listModel, this.expandedClasspathFolders);
     for (final DialogListEntry.DialogResourceRow row : this.externalClasspathResourceRows) {
       this.listModel.addElement(row);
     }
@@ -102,9 +108,24 @@ public final class BricksModule extends AbstractLangTrainerModule {
         "Open from file",
         this::chooseLanguageAndStart,
         this::openFromFile,
-        this::onClasspathFolderRowClicked);
+        this::onClasspathFolderRowClicked,
+        this::loadExternalResources);
+    this.resourceSelectView = view;
     this.selectionList = view.list();
     return view.panel();
+  }
+
+  private void loadExternalResources() {
+    ExternalResourceSupport.syncAndLoadAsync(
+        this,
+        this.resourceSelectView,
+        tree -> this.externalResourceTree = tree,
+        this::rebuildResourceListModel);
+  }
+
+  private void reloadExternalResourcesFromDisk() {
+    this.externalResourceTree = ExternalResourceSupport.loadLocalTree(this);
+    this.rebuildResourceListModel();
   }
 
   private void openFromFile(final JList<DialogListEntry> list) {
@@ -201,6 +222,7 @@ public final class BricksModule extends AbstractLangTrainerModule {
   @Override
   public void onActivation() {
     this.workPanel.resetToIdle();
+    this.reloadExternalResourcesFromDisk();
     this.showSelectCard();
     SwingUtilities.invokeLater(() -> {
       if (this.selectionList != null) {

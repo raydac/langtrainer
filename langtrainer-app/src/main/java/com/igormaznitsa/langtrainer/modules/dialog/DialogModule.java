@@ -10,6 +10,7 @@ import com.igormaznitsa.langtrainer.engine.ClasspathResourceIndexTree;
 import com.igormaznitsa.langtrainer.engine.DialogDefinition;
 import com.igormaznitsa.langtrainer.engine.DialogLine;
 import com.igormaznitsa.langtrainer.engine.DialogListEntry;
+import com.igormaznitsa.langtrainer.engine.ExternalResourceSupport;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
 import com.igormaznitsa.langtrainer.engine.LangResourceJson;
@@ -112,6 +113,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private final List<DialogListEntry.DialogResourceRow> externalClasspathResourceRows =
       new ArrayList<>();
   private ClasspathResourceIndexTree classpathResourceTree;
+  private ClasspathResourceIndexTree externalResourceTree = ClasspathResourceIndexTree.empty();
   private final JPanel rootPanel = new JPanel(new CardLayout());
   private final JTextArea showA = makeShowArea();
   private final JTextArea showB = makeShowArea();
@@ -128,6 +130,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private final List<String> historyB = new ArrayList<>();
   private File lastDialogOpenDirectory;
   private JList<DialogListEntry> dialogSelectionList;
+  private ResourceListSelectPanel.Result resourceSelectView;
   private DialogDefinition activeDialog;
   private boolean userWritesToA;
   private final List<Integer> remainingLineIndices = new ArrayList<>();
@@ -143,6 +146,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     this.classpathResourceTree =
         ClasspathLangResourceIndex.loadSharedTree(
             DialogModule.class, this, "Can't load dialog definitions");
+    this.externalResourceTree = ExternalResourceSupport.loadLocalTree(this);
     this.rebuildDialogResourceListModel();
     this.bindEnterToSubmit(this.inputA);
     this.bindEnterToSubmit(this.inputB);
@@ -163,6 +167,8 @@ public final class DialogModule extends AbstractLangTrainerModule {
     this.dialogListModel.clear();
     this.classpathResourceTree.materializeInto(
         this.dialogListModel, this.expandedClasspathFolders);
+    ExternalResourceSupport.materializeLocalTree(
+        this.externalResourceTree, this.dialogListModel, this.expandedClasspathFolders);
     for (final DialogListEntry.DialogResourceRow row : this.externalClasspathResourceRows) {
       this.dialogListModel.addElement(row);
     }
@@ -321,6 +327,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     this.dismissCompletionBanner();
     this.phraseFlashBanner.dismiss();
     this.setTipControlsWorkMode(false);
+    this.reloadExternalResourcesFromDisk();
     this.showCard(CARD_SELECT);
     SwingUtilities.invokeLater(() -> {
       if (this.dialogSelectionList != null) {
@@ -536,9 +543,24 @@ public final class DialogModule extends AbstractLangTrainerModule {
         "Open from file",
         this::chooseUserLanguageAndStart,
         this::openDialogFromFile,
-        this::onClasspathFolderRowClicked);
+        this::onClasspathFolderRowClicked,
+        this::loadExternalResources);
+    this.resourceSelectView = view;
     this.dialogSelectionList = view.list();
     return view.panel();
+  }
+
+  private void loadExternalResources() {
+    ExternalResourceSupport.syncAndLoadAsync(
+        this,
+        this.resourceSelectView,
+        tree -> this.externalResourceTree = tree,
+        this::rebuildDialogResourceListModel);
+  }
+
+  private void reloadExternalResourcesFromDisk() {
+    this.externalResourceTree = ExternalResourceSupport.loadLocalTree(this);
+    this.rebuildDialogResourceListModel();
   }
 
   private void openDialogFromFile(final JList<DialogListEntry> list) {

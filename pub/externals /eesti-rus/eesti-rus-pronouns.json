@@ -1,0 +1,319 @@
+{
+  "path": "Eesti-Русский",
+  "menuName": "Estonian-Russian Pronouns / Эстонские местоимения",
+  "description": "Estonian personal, possessive, demonstrative, interrogative, and indefinite pronouns with Russian translations and short practice phrases",
+  "langA": "Eesti",
+  "langB": "Русский",
+  "modules": [
+    "DIALOG",
+    "FLY_GAME",
+    "CROSSWORD",
+    "BRICKS"
+  ],
+  "inputEqu": [
+    {
+      "key": [
+        "a",
+        "A"
+      ],
+      "value": [
+        "ä",
+        "Ä"
+      ]
+    },
+    {
+      "key": [
+        "o",
+        "O"
+      ],
+      "value": [
+        "õ",
+        "Õ",
+        "ö",
+        "Ö"
+      ]
+    },
+    {
+      "key": [
+        "u",
+        "U"
+      ],
+      "value": [
+        "ü",
+        "Ü"
+      ]
+    },
+    {
+      "key": [
+        "е",
+        "Е",
+        "ё",
+        "Ё"
+      ],
+      "value": [
+        "е",
+        "Е",
+        "ё",
+        "Ё"
+      ]
+    }
+  ],
+  "lines": [
+    {
+      "A": "mina",
+      "B": "я"
+    },
+    {
+      "A": "sina",
+      "B": "ты"
+    },
+    {
+      "A": "tema",
+      "B": "он"
+    },
+    {
+      "A": "meie",
+      "B": "мы"
+    },
+    {
+      "A": "teie",
+      "B": "вы"
+    },
+    {
+      "A": "nemad",
+      "B": "они"
+    },
+    {
+      "A": "ma",
+      "B": "я"
+    },
+    {
+      "A": "sa",
+      "B": "ты"
+    },
+    {
+      "A": "ta",
+      "B": "он"
+    },
+    {
+      "A": "minu",
+      "B": "мой"
+    },
+    {
+      "A": "sinu",
+      "B": "твой"
+    },
+    {
+      "A": "tema",
+      "B": "его"
+    },
+    {
+      "A": "meie",
+      "B": "наш"
+    },
+    {
+      "A": "teie",
+      "B": "ваш"
+    },
+    {
+      "A": "nende",
+      "B": "их"
+    },
+    {
+      "A": "oma",
+      "B": "свой"
+    },
+    {
+      "A": "mind",
+      "B": "меня"
+    },
+    {
+      "A": "sind",
+      "B": "тебя"
+    },
+    {
+      "A": "teda",
+      "B": "его"
+    },
+    {
+      "A": "meid",
+      "B": "нас"
+    },
+    {
+      "A": "teid",
+      "B": "вас"
+    },
+    {
+      "A": "neid",
+      "B": "их"
+    },
+    {
+      "A": "mulle",
+      "B": "мне"
+    },
+    {
+      "A": "sulle",
+      "B": "тебе"
+    },
+    {
+      "A": "talle",
+      "B": "ему"
+    },
+    {
+      "A": "meile",
+      "B": "нам"
+    },
+    {
+      "A": "teile",
+      "B": "вам"
+    },
+    {
+      "A": "neile",
+      "B": "им"
+    },
+    {
+      "A": "see",
+      "B": "это"
+    },
+    {
+      "A": "need",
+      "B": "эти"
+    },
+    {
+      "A": "seda",
+      "B": "это"
+    },
+    {
+      "A": "selle",
+      "B": "этого"
+    },
+    {
+      "A": "kes",
+      "B": "кто"
+    },
+    {
+      "A": "mis",
+      "B": "что"
+    },
+    {
+      "A": "kelle",
+      "B": "чей"
+    },
+    {
+      "A": "milline",
+      "B": "какой"
+    },
+    {
+      "A": "kumb",
+      "B": "который"
+    },
+    {
+      "A": "iga",
+      "B": "каждый"
+    },
+    {
+      "A": "kõik",
+      "B": "все"
+    },
+    {
+      "A": "keegi",
+      "B": "кто-то"
+    },
+    {
+      "A": "miski",
+      "B": "что-то"
+    },
+    {
+      "A": "mõni",
+      "B": "некоторый"
+    },
+    {
+      "A": "ükski",
+      "B": "никакой"
+    },
+    {
+      "A": "ise",
+      "B": "сам"
+    },
+    {
+      "A": "sama",
+      "B": "тот же"
+    },
+    {
+      "A": "teine",
+      "B": "другой"
+    },
+    {
+      "A": "mina olen siin",
+      "B": "я здесь"
+    },
+    {
+      "A": "sina oled siin",
+      "B": "ты здесь"
+    },
+    {
+      "A": "tema on siin",
+      "B": "он здесь"
+    },
+    {
+      "A": "meie oleme siin",
+      "B": "мы здесь"
+    },
+    {
+      "A": "teie olete siin",
+      "B": "вы здесь"
+    },
+    {
+      "A": "nemad on siin",
+      "B": "они здесь"
+    },
+    {
+      "A": "minu raamat",
+      "B": "моя книга"
+    },
+    {
+      "A": "sinu maja",
+      "B": "твой дом"
+    },
+    {
+      "A": "tema nimi",
+      "B": "его имя"
+    },
+    {
+      "A": "meie pere",
+      "B": "наша семья"
+    },
+    {
+      "A": "teie auto",
+      "B": "ваша машина"
+    },
+    {
+      "A": "nende kool",
+      "B": "их школа"
+    },
+    {
+      "A": "kes see on",
+      "B": "кто это"
+    },
+    {
+      "A": "mis see on",
+      "B": "что это"
+    },
+    {
+      "A": "kelle oma see on",
+      "B": "чьё это"
+    },
+    {
+      "A": "mitte keegi",
+      "B": "никто"
+    },
+    {
+      "A": "mitte midagi",
+      "B": "ничего"
+    },
+    {
+      "A": "kõik nad",
+      "B": "все они"
+    }
+  ]
+}
