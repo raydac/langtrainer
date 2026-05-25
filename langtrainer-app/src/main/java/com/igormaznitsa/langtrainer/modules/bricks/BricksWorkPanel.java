@@ -440,10 +440,16 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     row.setAlignmentX(
         this.targetRightToLeft ? Component.RIGHT_ALIGNMENT : Component.LEFT_ALIGNMENT);
     final BricksPhraseSupport.Parts parts = BricksPhraseSupport.parsePhrase(phrase);
+    if (this.targetRightToLeft && parts.fixedEndSuffix() != null) {
+      row.add(
+          new JLabel(
+              BrickImageRenderer.renderIcon(
+                  parts.fixedEndSuffix(), BrickImageRenderer.SUFFIX_BRICK_FILL, font)));
+    }
     for (final String word : this.visualWordOrder(parts.wordTokens())) {
       row.add(new JLabel(BrickImageRenderer.renderIcon(word, BUILD_CORRECT_BG, font)));
     }
-    if (parts.fixedEndSuffix() != null) {
+    if (!this.targetRightToLeft && parts.fixedEndSuffix() != null) {
       row.add(
           new JLabel(
               BrickImageRenderer.renderIcon(
@@ -840,7 +846,11 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     final Font font = this.fieldCanvas.layoutFont();
     final ImageIcon rowIcon =
         BrickImageRenderer.renderRowIcon(
-            this.visualWordOrder(words), this.fixedEndSuffix, BUILD_CORRECT_BG, font);
+            this.visualWordOrder(words),
+            this.fixedEndSuffix,
+            BUILD_CORRECT_BG,
+            font,
+            this.targetRightToLeft);
     final int iw = Math.max(1, rowIcon.getIconWidth());
     final int ih = Math.max(1, rowIcon.getIconHeight());
     final Point start = this.completionFlyStartTopLeftInLayered(iw, ih);
@@ -914,7 +924,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     this.syncFieldCanvas();
     final Point sp0 = this.completionSpacerOriginInLayered();
     final int slotH = Math.max(1, this.completionAnimTopSpacer.getHeight());
-    final int x1 = sp0.x + BRICK_FLOW_H_GAP;
+    final int x1 = this.completionSlotTargetX(sp0, iw);
     final int y1 = BricksWorkPanel.completionSlotTargetY(sp0, slotH, ih);
     this.completionFlyGhost.setIcon(rowIcon);
     this.completionFlyGhost.setBounds(x0, y0, iw, ih);
@@ -934,6 +944,18 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
           this.completionAnimTopSpacer = null;
           this.advanceAfterSuccess();
         });
+  }
+
+  private int completionSlotTargetX(final Point spacerOrigin, final int ghostWidth) {
+    if (!this.targetRightToLeft) {
+      return spacerOrigin.x + BRICK_FLOW_H_GAP;
+    }
+    final Point historyOrigin =
+        SwingUtilities.convertPoint(this.historyStackLayered, 0, 0, this.layered);
+    final int historyRight = historyOrigin.x + Math.max(0, this.historyStackLayered.getWidth());
+    final int layerRight = Math.max(0, this.layered.getWidth());
+    final int rightEdge = Math.max(historyOrigin.x, Math.min(historyRight, layerRight));
+    return Math.max(historyOrigin.x + BRICK_FLOW_H_GAP, rightEdge - ghostWidth - BRICK_FLOW_H_GAP);
   }
 
   private void advanceAfterSuccess() {

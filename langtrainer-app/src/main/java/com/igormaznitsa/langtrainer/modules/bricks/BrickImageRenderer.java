@@ -80,7 +80,11 @@ final class BrickImageRenderer {
   }
 
   static ImageIcon renderRowIcon(
-      final List<String> words, final String fixedEndSuffix, final Color fill, final Font font) {
+      final List<String> words,
+      final String fixedEndSuffix,
+      final Color fill,
+      final Font font,
+      final boolean rightToLeft) {
     if (words.isEmpty() && (fixedEndSuffix == null || fixedEndSuffix.isEmpty())) {
       return new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
     }
@@ -114,11 +118,15 @@ final class BrickImageRenderer {
           RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
       gfx.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
       int x = 0;
+      if (rightToLeft && suffixIcon != null) {
+        suffixIcon.paintIcon(null, gfx, x, (maxH - suffixIcon.getIconHeight()) / 2);
+        x += suffixIcon.getIconWidth() + BRICK_FLOW_H_GAP;
+      }
       for (final ImageIcon ic : icons) {
         ic.paintIcon(null, gfx, x, (maxH - ic.getIconHeight()) / 2);
         x += ic.getIconWidth() + BRICK_FLOW_H_GAP;
       }
-      if (suffixIcon != null) {
+      if (!rightToLeft && suffixIcon != null) {
         suffixIcon.paintIcon(null, gfx, x, (maxH - suffixIcon.getIconHeight()) / 2);
       }
       return new ImageIcon(row);

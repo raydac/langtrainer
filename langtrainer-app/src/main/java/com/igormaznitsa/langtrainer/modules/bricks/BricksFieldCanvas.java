@@ -25,9 +25,10 @@ final class BricksFieldCanvas extends JPanel {
   private static final int ZONE_LINE = 1;
   private static final int INNER_PAD = 8;
   /**
-   * Extra empty margin on the left of the build strip for easier brick dragging.
+   * Extra empty margin on the drag side of the build strip for easier brick operations.
+   * LTR: leading (left) edge; RTL: trailing (right) edge.
    */
-  private static final int BUILD_ZONE_EXTRA_LEFT_PAD = 48;
+  private static final int BUILD_ZONE_EXTRA_DRAG_PAD = 48;
   private static final int ROW_V_GAP = 8;
   private static final int INTER_ZONE_GAP = 6;
   private static final float SCALE_MIN = 0.16f;
@@ -302,7 +303,7 @@ final class BricksFieldCanvas extends JPanel {
     }
     this.contentInnerW = w - 2 * (INNER_PAD + ZONE_LINE);
     final int poolInnerW = this.contentInnerW;
-    final int buildInnerW = this.contentInnerW - BUILD_ZONE_EXTRA_LEFT_PAD;
+    final int buildInnerW = this.buildInnerWidth();
     this.brickScale = this.resolveScaleForTwoRows(poolInnerW, buildInnerW);
     final int brickDrawH = Math.max(1, Math.round(this.baseBrickH * this.brickScale));
     final int rowContentH = 2 * brickDrawH + ROW_V_GAP;
@@ -337,12 +338,29 @@ final class BricksFieldCanvas extends JPanel {
     this.setPreferredSize(new Dimension(w, totalH));
   }
 
+  private int buildZoneInnerX() {
+    return INNER_PAD + ZONE_LINE;
+  }
+
+  private int buildLeadingPad() {
+    return this.rightToLeft ? 0 : BUILD_ZONE_EXTRA_DRAG_PAD;
+  }
+
+  private int buildTrailingPad() {
+    return this.rightToLeft ? BUILD_ZONE_EXTRA_DRAG_PAD : 0;
+  }
+
   private int buildOriginX() {
-    return INNER_PAD + ZONE_LINE + (this.rightToLeft ? 0 : BUILD_ZONE_EXTRA_LEFT_PAD);
+    return this.buildZoneInnerX() + this.buildLeadingPad();
   }
 
   private int buildInnerWidth() {
-    return Math.max(1, this.contentInnerW - BUILD_ZONE_EXTRA_LEFT_PAD);
+    return Math.max(
+        1, this.contentInnerW - this.buildLeadingPad() - this.buildTrailingPad());
+  }
+
+  private int buildFlowRightX() {
+    return this.buildZoneInnerX() + this.contentInnerW - this.buildTrailingPad();
   }
 
   private float resolveScaleForTwoRows(final int poolInnerW, final int buildInnerW) {
@@ -442,8 +460,9 @@ final class BricksFieldCanvas extends JPanel {
       final int innerW,
       final int excludeId) {
     int row = 0;
-    int x = innerW;
+    int x = this.buildFlowRightX();
     int y = 0;
+    final int flowLeftX = originX;
     final int hgap = Math.max(1, Math.round(BrickImageRenderer.BRICK_FLOW_H_GAP * this.brickScale));
     final int brickDrawH = Math.max(1, Math.round(this.baseBrickH * this.brickScale));
     for (final Integer idObj : ids) {
@@ -452,16 +471,16 @@ final class BricksFieldCanvas extends JPanel {
         continue;
       }
       final int bw = Math.max(1, Math.round(this.baseBrickW[id] * this.brickScale));
-      if (x < innerW && x - bw < 0) {
+      if (x - bw < flowLeftX) {
         row++;
-        x = innerW;
+        x = this.buildFlowRightX();
         y += brickDrawH + ROW_V_GAP;
       }
       x -= bw;
-      out.add(new PlacedBrick(id, originX + x, originY + y, bw, brickDrawH));
+      out.add(new PlacedBrick(id, x, originY + y, bw, brickDrawH));
       x -= hgap;
     }
-    return new FlowEnd(originX + x, originY + y, row, brickDrawH);
+    return new FlowEnd(x, originY + y, row, brickDrawH);
   }
 
   private void layoutBuildFixedSuffix(
@@ -485,14 +504,14 @@ final class BricksFieldCanvas extends JPanel {
     int x;
     int y;
     if (this.buildPlaced.isEmpty()) {
-      x = this.rightToLeft ? buildOriginX + buildInnerW - this.buildSuffixW : buildOriginX;
+      x = this.rightToLeft ? this.buildFlowRightX() - this.buildSuffixW : buildOriginX;
       y = buildOriginY;
     } else if (this.rightToLeft) {
       x = buildEnd.nextX() - this.buildSuffixW;
       y = buildEnd.y();
       if (x < buildOriginX) {
         y += buildEnd.brickDrawH() + ROW_V_GAP;
-        x = buildOriginX + buildInnerW - this.buildSuffixW;
+        x = this.buildFlowRightX() - this.buildSuffixW;
       }
     } else {
       x = buildEnd.nextX();
