@@ -122,13 +122,21 @@ public enum KeyboardLanguage {
           "qwertyuiop",
           "asdfghjklñ",
           "zxcvbnmáéíóúü",
-          " ,.-()?!¡¿"));
+          " ,.-()?!¡¿")),
+  HEB(
+      "עברית",
+      List.of(
+          "1234567890",
+          "קראטוןםפ",
+          "שדגכעיחלךף",
+          "זסבהנמצתץ",
+          " ,.-()?!"));
 
   /**
    * Languages for modules that show the full on-screen virtual keyboard (ENG / RUS / EST rows).
    */
   public static final List<KeyboardLanguage> VIRTUAL_BOARD_ALL = List.of(
-      ENG, SPA, GER, EST, FIN, LIT, LAT, RUS, UKR, CZE, ESP, SWE, NOR, DAN, DUT);
+      ENG, SPA, GER, EST, FIN, LIT, LAT, RUS, UKR, HEB, CZE, ESP, SWE, NOR, DAN, DUT);
 
   private final String abbreviation;
   private final List<String> rows;

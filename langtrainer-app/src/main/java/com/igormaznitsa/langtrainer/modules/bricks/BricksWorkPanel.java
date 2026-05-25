@@ -2,6 +2,7 @@ package com.igormaznitsa.langtrainer.modules.bricks;
 
 import com.igormaznitsa.langtrainer.engine.DialogDefinition;
 import com.igormaznitsa.langtrainer.engine.DialogLine;
+import com.igormaznitsa.langtrainer.engine.TextDirectionSupport;
 import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
 import java.awt.AWTEvent;
 import java.awt.BorderLayout;
@@ -103,6 +104,8 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   private boolean completionFlyActive;
   private DialogDefinition definition;
   private boolean userBuildsSideA;
+  private boolean targetRightToLeft;
+  private boolean cueRightToLeft;
   private List<DialogLine> exercises = List.of();
   private int exerciseIndex;
   private List<String> wordTokens = List.of();
@@ -233,12 +236,14 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
    * {@link JLabel} HTML ignores the component {@link Font}; embed the JetBrains face and weight so
    * the cue line (text to translate) actually renders bold.
    */
-  private static String formatCueLabelHtml(final String escapedCueLine) {
-    final Font f = LangTrainerFonts.MONO_NL_BOLD.atPoints(CUE_LABEL_FONT_PT);
+  private static String formatCueLabelHtml(final String escapedCueLine, final boolean rtl) {
+    final Font f = TextDirectionSupport.fontForDirection(
+        LangTrainerFonts.MONO_NL_BOLD, Font.BOLD, rtl, CUE_LABEL_FONT_PT);
     final String family = f.getFamily();
     final String familyCss = family.indexOf(' ') >= 0 ? "'%s'".formatted(family) : family;
-    return "<html><div style=\"text-align:center;font-family:%s;font-size:%spt;font-weight:bold\">%s</div></html>"
-        .formatted(familyCss, Float.toString(CUE_LABEL_FONT_PT), escapedCueLine);
+    return "<html><div dir=\"%s\" style=\"text-align:center;font-family:%s;font-size:%spt;font-weight:bold\">%s</div></html>"
+        .formatted(rtl ? "rtl" : "ltr", familyCss, Float.toString(CUE_LABEL_FONT_PT),
+            escapedCueLine);
   }
 
   /**
@@ -274,6 +279,8 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     this.definition = null;
     this.exercises = List.of();
     this.exerciseIndex = 0;
+    this.targetRightToLeft = false;
+    this.cueRightToLeft = false;
     this.wordTokens = List.of();
     this.fixedEndSuffix = null;
     this.buildIds.clear();
@@ -282,6 +289,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     this.cueLabel.setText(" ");
     this.rebuildHistoryBrickList();
     this.fieldCanvas.bindLists(List.of(), List.of(), List.of(), null);
+    this.fieldCanvas.setRightToLeft(false);
     this.fieldCanvas.setBuildBrickFill(BUILD_PARTIAL_BG);
     this.repaint();
   }
@@ -293,6 +301,11 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     this.resetToIdle();
     this.definition = Objects.requireNonNull(definition, "definition");
     this.userBuildsSideA = userBuildsSideA;
+    this.targetRightToLeft = TextDirectionSupport.isRightToLeft(definition, userBuildsSideA);
+    this.cueRightToLeft = TextDirectionSupport.isRightToLeft(definition, !userBuildsSideA);
+    this.cueLabel.setFont(TextDirectionSupport.fontForDirection(
+        LangTrainerFonts.MONO_NL_BOLD, Font.BOLD, this.cueRightToLeft, CUE_LABEL_FONT_PT));
+    this.fieldCanvas.setRightToLeft(this.targetRightToLeft);
     final ArrayList<DialogLine> shuffledLines = new ArrayList<>(exerciseLines);
     Collections.shuffle(shuffledLines, this.random);
     this.exercises = List.copyOf(shuffledLines);
@@ -315,7 +328,8 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   }
 
   private Font brickFont() {
-    return LangTrainerFonts.MONO_NL_REGULAR.atPoints(BRICK_FONT_PT);
+    return TextDirectionSupport.fontForDirection(
+        LangTrainerFonts.MONO_NL_REGULAR, Font.PLAIN, this.targetRightToLeft, BRICK_FONT_PT);
   }
 
   private void layoutHistoryStackArea() {
@@ -341,7 +355,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     final BricksPhraseSupport.Parts parts = BricksPhraseSupport.parsePhrase(this.targetLineText);
     this.wordTokens = parts.wordTokens();
     this.fixedEndSuffix = parts.fixedEndSuffix();
-    this.cueLabel.setText(formatCueLabelHtml(escapeHtml(this.cueLineText)));
+    this.cueLabel.setText(formatCueLabelHtml(escapeHtml(this.cueLineText), this.cueRightToLeft));
     this.buildIds.clear();
     this.poolIds.clear();
     final List<Integer> ids = new ArrayList<>();
@@ -420,11 +434,13 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
 
   private JPanel newHistoryRowFromPhrase(final Font font, final String phrase) {
     final JPanel row =
-        new JPanel(new FlowLayout(FlowLayout.LEFT, BRICK_FLOW_H_GAP, 0));
+        new JPanel(new FlowLayout(
+            this.targetRightToLeft ? FlowLayout.RIGHT : FlowLayout.LEFT, BRICK_FLOW_H_GAP, 0));
     row.setOpaque(false);
-    row.setAlignmentX(Component.LEFT_ALIGNMENT);
+    row.setAlignmentX(
+        this.targetRightToLeft ? Component.RIGHT_ALIGNMENT : Component.LEFT_ALIGNMENT);
     final BricksPhraseSupport.Parts parts = BricksPhraseSupport.parsePhrase(phrase);
-    for (final String word : parts.wordTokens()) {
+    for (final String word : this.visualWordOrder(parts.wordTokens())) {
       row.add(new JLabel(BrickImageRenderer.renderIcon(word, BUILD_CORRECT_BG, font)));
     }
     if (parts.fixedEndSuffix() != null) {
@@ -823,7 +839,8 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     }
     final Font font = this.fieldCanvas.layoutFont();
     final ImageIcon rowIcon =
-        BrickImageRenderer.renderRowIcon(words, this.fixedEndSuffix, BUILD_CORRECT_BG, font);
+        BrickImageRenderer.renderRowIcon(
+            this.visualWordOrder(words), this.fixedEndSuffix, BUILD_CORRECT_BG, font);
     final int iw = Math.max(1, rowIcon.getIconWidth());
     final int ih = Math.max(1, rowIcon.getIconHeight());
     final Point start = this.completionFlyStartTopLeftInLayered(iw, ih);
@@ -939,6 +956,15 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
       return;
     }
     this.loadCurrentExercise();
+  }
+
+  private List<String> visualWordOrder(final List<String> words) {
+    if (!this.targetRightToLeft) {
+      return words;
+    }
+    final ArrayList<String> reversed = new ArrayList<>(words);
+    Collections.reverse(reversed);
+    return List.copyOf(reversed);
   }
 
   /**

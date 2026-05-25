@@ -1,0 +1,50 @@
+{
+  "path": "English-Hebrew",
+  "menuName": "Short Practice",
+  "description": "Small Hebrew sample resource for RTL text direction testing",
+  "langA": "English",
+  "langB": "Hebrew",
+  "rtl": [
+    "Hebrew"
+  ],
+  "modules": [
+    "DIALOG",
+    "FLY_GAME",
+    "CROSSWORD",
+    "BRICKS"
+  ],
+  "lines": [
+    {
+      "A": "hello",
+      "B": "שלום"
+    },
+    {
+      "A": "house",
+      "B": "בית"
+    },
+    {
+      "A": "sun",
+      "B": "שמש"
+    },
+    {
+      "A": "water",
+      "B": "מים"
+    },
+    {
+      "A": "book",
+      "B": "ספר"
+    },
+    {
+      "A": "Good morning.",
+      "B": "בוקר טוב."
+    },
+    {
+      "A": "Thank you very much.",
+      "B": "תודה רבה."
+    },
+    {
+      "A": "How are you?",
+      "B": "מה שלומך?"
+    }
+  ]
+}

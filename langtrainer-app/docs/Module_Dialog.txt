@@ -26,6 +26,7 @@ Module DIALOG
 5. Bundled classpath lists come from common/jsons/index.json (see index_json.txt): optional folder hierarchy, collapsible rows in the picker, then a leaf JSON file under /common/jsons/. The user may also "Open from file" to load any compatible JSON from disk (shown in the list with a leading * in the menu title).
 6. Before play, the module shows the resource list; after choosing a resource, the user picks which side (language A or B) they will type; the other side is the prompt target.
 7. The non-active entry zone shows the expected line in the target language; the user types in the chosen language zone.
+7a. If JSON "rtl" contains the chosen language name (case-insensitive match against langA/langB), input and output text areas switch to right-to-left component orientation for that side.
 8. On Enter, entered text is compared to the expected line (TypingComparisonUtils — not strict equals; punctuation and similar characters may be tolerated). On success, both show zones advance; the exercise continues line by line.
 9. Optional UI: shuffle order, show phrase, typing tip — see module toolbar and toggles in code.
 10. When all lines are completed, a full-window modal banner shows "Hurraa! Completed!" (see DialogModule). Clicking the banner (or waiting 10 seconds) dismisses the overlay and returns to the resource selection card inside the module (not the same as exiting the whole application).

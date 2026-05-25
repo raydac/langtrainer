@@ -9,6 +9,7 @@ Bundled files are normally registered in common/jsons/index.json (see index_json
         "description" : "Description of the dialog shown as tooltip",
         "langA" : human-readable name of language A as string,
         "langB" : human-readable name of language B as string,
+        "rtl" : [ "Hebrew" ],
         "lines" : [
             {
                 "A" : text line in language A,
@@ -25,6 +26,16 @@ Bundled files are normally registered in common/jsons/index.json (see index_json
     Optional field "modules" is an array of module id strings (LangTrainerModuleId names: DIALOG,
     FLY_GAME, CROSSWORD, BRICKS). If omitted or empty, every module may use the resource. If present,
     only listed modules show the resource in their bundled pickers.
+
+    Optional field "rtl" is an array of human-readable language names that should be treated as
+    right-to-left. Values are compared case-insensitively with "langA" and "langB". If the field is
+    omitted, empty, or does not contain the selected language, modules keep the default
+    left-to-right behavior.
+
+    Example:
+       "langA" : "English",
+       "langB" : "Hebrew",
+       "rtl" : [ "Hebrew" ]
 
     There can be special field "inputEqu" in the JSON file, it contains array of objects and its example below
 

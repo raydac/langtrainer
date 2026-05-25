@@ -125,6 +125,22 @@ public final class PhraseFlashBanner {
     return new Dimension(viewW, viewH);
   }
 
+  private static Font resolvePhraseFont(
+      final String expectedFaceText,
+      final String partnerFaceText,
+      final float phraseFontSize) {
+    if (PhraseFlashBanner.hasRightToLeftEmbedding(expectedFaceText)
+        || PhraseFlashBanner.hasRightToLeftEmbedding(partnerFaceText)) {
+      return LangTrainerFonts.SYSTEM_MONOSPACED.atPoints(phraseFontSize)
+          .deriveFont(Font.BOLD, phraseFontSize);
+    }
+    return LangTrainerFonts.MONO_NL_BOLD.atPoints(phraseFontSize);
+  }
+
+  private static boolean hasRightToLeftEmbedding(final String text) {
+    return text != null && text.indexOf('\u202B') >= 0;
+  }
+
   public void dismiss() {
     if (this.flipTimer != null) {
       this.flipTimer.stop();
@@ -189,7 +205,8 @@ public final class PhraseFlashBanner {
     face.setFocusable(false);
     face.setOpaque(true);
     face.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
-    face.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(phraseFontSize));
+    face.setFont(PhraseFlashBanner.resolvePhraseFont(
+        expectedFaceText, partnerFaceText, phraseFontSize));
     final Dimension viewSize = PhraseFlashBanner.computeFaceViewportSize(
         owner, face.getFont(), expectedFaceText, partnerFaceText);
     final int viewW = viewSize.width;

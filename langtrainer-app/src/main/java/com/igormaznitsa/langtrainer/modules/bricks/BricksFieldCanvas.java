@@ -1,5 +1,6 @@
 package com.igormaznitsa.langtrainer.modules.bricks;
 
+import com.igormaznitsa.langtrainer.engine.TextDirectionSupport;
 import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -67,6 +68,7 @@ final class BricksFieldCanvas extends JPanel {
   private int dragOffsetY;
   private int dragPointerX;
   private int dragPointerY;
+  private boolean rightToLeft;
 
   private FieldHost host;
 
@@ -123,6 +125,14 @@ final class BricksFieldCanvas extends JPanel {
     this.recomputeLayoutAndRepaint();
   }
 
+  void setRightToLeft(final boolean rightToLeft) {
+    if (this.rightToLeft == rightToLeft) {
+      return;
+    }
+    this.rightToLeft = rightToLeft;
+    this.recomputeLayoutAndRepaint();
+  }
+
   void setDraggingFromPromote(
       final int id,
       final float grabFracX,
@@ -167,7 +177,11 @@ final class BricksFieldCanvas extends JPanel {
   }
 
   Font layoutFont() {
-    return LangTrainerFonts.MONO_NL_REGULAR.atPoints(BRICK_FONT_PT * this.brickScale);
+    return TextDirectionSupport.fontForDirection(
+        LangTrainerFonts.MONO_NL_REGULAR,
+        Font.PLAIN,
+        this.rightToLeft,
+        BRICK_FONT_PT * this.brickScale);
   }
 
   Rectangle buildBricksUnionInCanvas() {
@@ -250,7 +264,8 @@ final class BricksFieldCanvas extends JPanel {
   }
 
   private void ensureBaseMeasures() {
-    this.baseBrickFont = LangTrainerFonts.MONO_NL_REGULAR.atPoints(BRICK_FONT_PT);
+    this.baseBrickFont = TextDirectionSupport.fontForDirection(
+        LangTrainerFonts.MONO_NL_REGULAR, Font.PLAIN, this.rightToLeft, BRICK_FONT_PT);
     this.baseBrickH = BrickImageRenderer.measureBrickHeightPx(this.baseBrickFont);
     final int n = this.wordTokens.size();
     this.baseBrickW = new int[n];
@@ -323,7 +338,7 @@ final class BricksFieldCanvas extends JPanel {
   }
 
   private int buildOriginX() {
-    return INNER_PAD + ZONE_LINE + BUILD_ZONE_EXTRA_LEFT_PAD;
+    return INNER_PAD + ZONE_LINE + (this.rightToLeft ? 0 : BUILD_ZONE_EXTRA_LEFT_PAD);
   }
 
   private int buildInnerWidth() {
@@ -394,6 +409,9 @@ final class BricksFieldCanvas extends JPanel {
       final int originY,
       final int innerW,
       final int excludeId) {
+    if (this.rightToLeft) {
+      return this.flowPlaceRightToLeft(ids, out, originX, originY, innerW, excludeId);
+    }
     int row = 0;
     int x = 0;
     int y = 0;
@@ -412,6 +430,36 @@ final class BricksFieldCanvas extends JPanel {
       }
       out.add(new PlacedBrick(id, originX + x, originY + y, bw, brickDrawH));
       x += bw + hgap;
+    }
+    return new FlowEnd(originX + x, originY + y, row, brickDrawH);
+  }
+
+  private FlowEnd flowPlaceRightToLeft(
+      final List<Integer> ids,
+      final List<PlacedBrick> out,
+      final int originX,
+      final int originY,
+      final int innerW,
+      final int excludeId) {
+    int row = 0;
+    int x = innerW;
+    int y = 0;
+    final int hgap = Math.max(1, Math.round(BrickImageRenderer.BRICK_FLOW_H_GAP * this.brickScale));
+    final int brickDrawH = Math.max(1, Math.round(this.baseBrickH * this.brickScale));
+    for (final Integer idObj : ids) {
+      final int id = idObj;
+      if (id == excludeId) {
+        continue;
+      }
+      final int bw = Math.max(1, Math.round(this.baseBrickW[id] * this.brickScale));
+      if (x < innerW && x - bw < 0) {
+        row++;
+        x = innerW;
+        y += brickDrawH + ROW_V_GAP;
+      }
+      x -= bw;
+      out.add(new PlacedBrick(id, originX + x, originY + y, bw, brickDrawH));
+      x -= hgap;
     }
     return new FlowEnd(originX + x, originY + y, row, brickDrawH);
   }
@@ -437,8 +485,15 @@ final class BricksFieldCanvas extends JPanel {
     int x;
     int y;
     if (this.buildPlaced.isEmpty()) {
-      x = buildOriginX;
+      x = this.rightToLeft ? buildOriginX + buildInnerW - this.buildSuffixW : buildOriginX;
       y = buildOriginY;
+    } else if (this.rightToLeft) {
+      x = buildEnd.nextX() - this.buildSuffixW;
+      y = buildEnd.y();
+      if (x < buildOriginX) {
+        y += buildEnd.brickDrawH() + ROW_V_GAP;
+        x = buildOriginX + buildInnerW - this.buildSuffixW;
+      }
     } else {
       x = buildEnd.nextX();
       y = buildEnd.y();
@@ -598,13 +653,13 @@ final class BricksFieldCanvas extends JPanel {
           if (a.y != b.y) {
             return Integer.compare(a.y, b.y);
           }
-          return Integer.compare(a.x, b.x);
+          return this.rightToLeft ? Integer.compare(b.x, a.x) : Integer.compare(a.x, b.x);
         });
     int insert = 0;
     for (final PlacedBrick b : ordered) {
       final int mid = b.x + b.w / 2;
       final boolean rowHit = p.y >= b.y - 2 && p.y < b.y + b.h + 2;
-      if (rowHit && p.x < mid) {
+      if (rowHit && (this.rightToLeft ? p.x > mid : p.x < mid)) {
         return insert;
       }
       insert++;

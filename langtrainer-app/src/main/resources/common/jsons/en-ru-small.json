@@ -1,6 +1,6 @@
 {
-  "path": "Eng-Rus",
-  "menuName": "English-Russian Small Talk",
+  "path": "English-Russian",
+  "menuName": "Small Talk",
   "description": "Simple test dialog for EN-RU translation training",
   "langA": "English",
   "langB": "Russian",

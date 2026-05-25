@@ -1,12 +1,12 @@
 {
-  "path": "Eng-Rus",
+  "path": "English-Russian",
   "modules": [
     "DIALOG",
     "FLY_GAME",
     "BRICKS",
     "CROSSWORD"
   ],
-  "menuName": "EN-RU Cardinal Directions (test)",
+  "menuName": "Cardinal Directions (test)",
   "description": "Russian–English compass points and phrases with hyphens (north-west, северо-запад) for tip, auto-enter, and bricks",
   "langA": "English",
   "langB": "Russian",

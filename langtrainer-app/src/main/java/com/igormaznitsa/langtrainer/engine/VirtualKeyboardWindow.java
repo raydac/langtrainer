@@ -27,6 +27,7 @@ import javax.swing.DefaultListCellRenderer;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JPanel;
 import javax.swing.JToggleButton;
@@ -40,6 +41,9 @@ public final class VirtualKeyboardWindow {
   private static final Color SPECIAL_KEY_COLOR = new Color(255, 224, 179);
   private static final Color KEY_TEXT_COLOR = Color.BLACK;
   private static final Font KEY_FONT = LangTrainerFonts.MONO_NL_SEMI_BOLD.atPoints(18.0f);
+  private static final Font SYSTEM_KEY_FONT =
+      LangTrainerFonts.SYSTEM_MONOSPACED.atPoints(18.0f).deriveFont(Font.BOLD, 18.0f);
+  private static final List<KeyboardLanguage> SYSTEM_FONT_LANGUAGES = List.of(KeyboardLanguage.HEB);
   private static final int KEY_MIN_WIDTH = 52;
   private static final int KEY_HEIGHT = 52;
   private static final int KEY_HORIZONTAL_PADDING = 12;
@@ -67,20 +71,25 @@ public final class VirtualKeyboardWindow {
     this.dialog = new JDialog(owner, "Virtual Keyboard");
     this.dialog.setUndecorated(true);
     this.dialog.setLayout(new BorderLayout(0, 0));
+    this.dialog.setAutoRequestFocus(false);
+    this.dialog.setFocusableWindowState(false);
     this.charConsumer = charConsumer;
     this.onHide = onHide;
 
     this.languages = KeyboardLanguage.normalize(supportedLanguages);
     this.currentLanguage = this.resolveInitialLanguage(this.languages);
     this.languageComboBox = new JComboBox<>(this.languages.toArray(KeyboardLanguage[]::new));
+    VirtualKeyboardWindow.configureMouseOnly(this.languageComboBox);
     this.languageComboBox.setToolTipText("Select a language");
     this.languageComboBox.setPrototypeDisplayValue(this.findLanguageWithLongestAbbreviation());
 
     this.shiftButton = new JToggleButton(
         new ImageIcon(ImageResourceLoader.loadImage("/images/capitalization.png")));
+    VirtualKeyboardWindow.configureMouseOnly(this.shiftButton);
     this.shiftButton.setToolTipText("Shift");
 
     this.keysPanel = new JPanel();
+    VirtualKeyboardWindow.configureMouseOnly(this.keysPanel);
     this.keysPanel.setBackground(BACKGROUND);
     this.initDialog();
   }
@@ -103,55 +112,10 @@ public final class VirtualKeyboardWindow {
     this.dialog.dispose();
   }
 
-  private void initDialog() {
-    this.dialog.setModal(false);
-    this.dialog.setResizable(false);
-    this.dialog.setAlwaysOnTop(false);
-    this.dialog.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
-    this.dialog.setLocationByPlatform(true);
-    this.dialog.getRootPane().setBorder(
-        BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(BACKGROUND.darker(), 2),
-            BorderFactory.createLineBorder(BACKGROUND, 4)));
-
-    final JPanel topPanel = new JPanel();
-    topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.X_AXIS));
-    topPanel.add(Box.createHorizontalGlue());
-    topPanel.setBackground(BACKGROUND);
-
-    topPanel.setBorder(BorderFactory.createEmptyBorder(4, 0, 8, 0));
-    this.installWindowDragging(topPanel);
-
-    final DefaultListCellRenderer languageRenderer = new DefaultListCellRenderer();
-    this.languageComboBox.setRenderer((list, value, index, isSelected, cellHasFocus) ->
-        languageRenderer.getListCellRendererComponent(
-            list,
-            value == null ? "" : value.getAbbreviation(),
-            index,
-            isSelected,
-            cellHasFocus));
-    this.applyLanguageComboBoxSize();
-    this.languageComboBox.addActionListener(event -> this.changeLanguage());
-    this.shiftButton.addActionListener(event -> this.doRebuildKeys());
-    final JButton hideButton =
-        new JButton(new ImageIcon(ImageResourceLoader.loadImage("/images/cross.png")));
-    hideButton.setToolTipText("Hide keyboard");
-    hideButton.addActionListener(event -> {
-      this.hide();
-      this.onHide.run();
-    });
-
-    topPanel.add(this.languageComboBox);
-    topPanel.add(this.shiftButton);
-    topPanel.add(hideButton);
-
-    this.dialog.add(topPanel, BorderLayout.NORTH);
-    this.dialog.add(this.keysPanel, BorderLayout.CENTER);
-    this.dialog.addComponentListener(new ComponentAdapter() {
-      @Override
-      public void componentHidden(final ComponentEvent event) {
-        VirtualKeyboardWindow.this.onHide.run();
-      }
-    });
+  private static void configureMouseOnly(final JComponent component) {
+    component.setFocusable(false);
+    component.setRequestFocusEnabled(false);
+    component.setVerifyInputWhenFocusTarget(false);
   }
 
   private void changeLanguage() {
@@ -181,31 +145,89 @@ public final class VirtualKeyboardWindow {
     this.keysPanel.repaint();
   }
 
+  private void initDialog() {
+    this.dialog.setModal(false);
+    this.dialog.setResizable(false);
+    this.dialog.setAlwaysOnTop(false);
+    this.dialog.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
+    this.dialog.setLocationByPlatform(true);
+    this.dialog.getRootPane().setBorder(
+        BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(BACKGROUND.darker(), 2),
+            BorderFactory.createLineBorder(BACKGROUND, 4)));
+
+    final JPanel topPanel = new JPanel();
+    VirtualKeyboardWindow.configureMouseOnly(topPanel);
+    topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.X_AXIS));
+    topPanel.add(Box.createHorizontalGlue());
+    topPanel.setBackground(BACKGROUND);
+
+    topPanel.setBorder(BorderFactory.createEmptyBorder(4, 0, 8, 0));
+    this.installWindowDragging(topPanel);
+
+    final DefaultListCellRenderer languageRenderer = new DefaultListCellRenderer();
+    this.languageComboBox.setRenderer((list, value, index, isSelected, cellHasFocus) ->
+        languageRenderer.getListCellRendererComponent(
+            list,
+            value == null ? "" : value.getAbbreviation(),
+            index,
+            isSelected,
+            cellHasFocus));
+    this.applyLanguageComboBoxSize();
+    this.languageComboBox.addActionListener(event -> this.changeLanguage());
+    this.shiftButton.addActionListener(event -> this.doRebuildKeys());
+    final JButton hideButton =
+        new JButton(new ImageIcon(ImageResourceLoader.loadImage("/images/cross.png")));
+    VirtualKeyboardWindow.configureMouseOnly(hideButton);
+    hideButton.setToolTipText("Hide keyboard");
+    hideButton.addActionListener(event -> {
+      this.hide();
+      this.onHide.run();
+    });
+
+    topPanel.add(this.languageComboBox);
+    topPanel.add(this.shiftButton);
+    topPanel.add(hideButton);
+
+    this.dialog.add(topPanel, BorderLayout.NORTH);
+    this.dialog.add(this.keysPanel, BorderLayout.CENTER);
+    this.dialog.addComponentListener(new ComponentAdapter() {
+      @Override
+      public void componentHidden(final ComponentEvent event) {
+        VirtualKeyboardWindow.this.onHide.run();
+      }
+    });
+  }
+
   private JPanel makeRowPanel(final String row) {
     final List<Character> symbols = row.chars().mapToObj(code -> (char) code).toList();
     if (symbols.contains(' ')) {
       return this.makeBottomRowPanel(symbols);
     }
     final JPanel panel = new JPanel(new GridLayout(1, symbols.size(), 4, 2));
+    VirtualKeyboardWindow.configureMouseOnly(panel);
     symbols.forEach(symbol -> panel.add(this.makeCharButton(symbol)));
     return panel;
   }
 
   private JPanel makeBottomRowPanel(final List<Character> symbols) {
     final JPanel rowPanel = new JPanel(new BorderLayout(4, 0));
+    VirtualKeyboardWindow.configureMouseOnly(rowPanel);
     final List<Character> symbolsWithoutSpace = new ArrayList<>(symbols);
     symbolsWithoutSpace.remove(Character.valueOf(' '));
     final int middleIndex = symbolsWithoutSpace.size() / 2;
 
     final JPanel leftPanel = new JPanel(new GridLayout(1, Math.max(1, middleIndex), 4, 2));
+    VirtualKeyboardWindow.configureMouseOnly(leftPanel);
     symbolsWithoutSpace.subList(0, middleIndex)
         .forEach(symbol -> leftPanel.add(this.makeCharButton(symbol)));
 
     final JPanel centerPanel = new JPanel(new BorderLayout());
+    VirtualKeyboardWindow.configureMouseOnly(centerPanel);
     centerPanel.add(this.makeCharButton(' '), BorderLayout.CENTER);
 
     final int rightSize = symbolsWithoutSpace.size() - middleIndex;
     final JPanel rightPanel = new JPanel(new GridLayout(1, Math.max(1, rightSize), 4, 2));
+    VirtualKeyboardWindow.configureMouseOnly(rightPanel);
     symbolsWithoutSpace.subList(middleIndex, symbolsWithoutSpace.size())
         .forEach(symbol -> rightPanel.add(this.makeCharButton(symbol)));
 
@@ -213,15 +235,6 @@ public final class VirtualKeyboardWindow {
     rowPanel.add(centerPanel, BorderLayout.CENTER);
     rowPanel.add(rightPanel, BorderLayout.EAST);
     return rowPanel;
-  }
-
-  private JButton makeCharButton(final char symbol) {
-    final char mapped = this.applyShift(symbol);
-    final JButton button = new JButton(this.toButtonText(mapped));
-    this.styleKeyButton(button, mapped);
-    button.setFocusable(false);
-    button.addActionListener(event -> this.charConsumer.accept(mapped));
-    return button;
   }
 
   private String toButtonText(final char symbol) {
@@ -241,21 +254,13 @@ public final class VirtualKeyboardWindow {
         Character.toLowerCase(symbol);
   }
 
-  private void styleKeyButton(final JButton button, final char symbol) {
-    button.setFont(KEY_FONT);
-    if (symbol == ' ') {
-      this.applySpaceButtonSize(button);
-    } else {
-      final Dimension buttonSize = this.resolveKeySize(button);
-      button.setPreferredSize(buttonSize);
-      button.setMinimumSize(buttonSize);
-      button.setMaximumSize(buttonSize);
-    }
-    button.setForeground(KEY_TEXT_COLOR);
-    button.setBackground(this.resolveKeyBackground(symbol));
-    button.setOpaque(true);
-    button.setBorderPainted(true);
-    button.setContentAreaFilled(true);
+  private JButton makeCharButton(final char symbol) {
+    final char mapped = this.applyShift(symbol);
+    final JButton button = new JButton(this.toButtonText(mapped));
+    this.styleKeyButton(button, mapped);
+    VirtualKeyboardWindow.configureMouseOnly(button);
+    button.addActionListener(event -> this.charConsumer.accept(mapped));
+    return button;
   }
 
   private Dimension resolveKeySize(final JButton button) {
@@ -284,6 +289,27 @@ public final class VirtualKeyboardWindow {
       return LETTER_KEY_COLOR;
     }
     return SPECIAL_KEY_COLOR;
+  }
+
+  private void styleKeyButton(final JButton button, final char symbol) {
+    button.setFont(this.resolveKeyFont());
+    if (symbol == ' ') {
+      this.applySpaceButtonSize(button);
+    } else {
+      final Dimension buttonSize = this.resolveKeySize(button);
+      button.setPreferredSize(buttonSize);
+      button.setMinimumSize(buttonSize);
+      button.setMaximumSize(buttonSize);
+    }
+    button.setForeground(KEY_TEXT_COLOR);
+    button.setBackground(this.resolveKeyBackground(symbol));
+    button.setOpaque(true);
+    button.setBorderPainted(true);
+    button.setContentAreaFilled(true);
+  }
+
+  private Font resolveKeyFont() {
+    return SYSTEM_FONT_LANGUAGES.contains(this.currentLanguage) ? SYSTEM_KEY_FONT : KEY_FONT;
   }
 
   private KeyboardLanguage resolveInitialLanguage(final List<KeyboardLanguage> availableLanguages) {

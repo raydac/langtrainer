@@ -14,7 +14,9 @@ import com.igormaznitsa.langtrainer.engine.DialogLine;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
 import com.igormaznitsa.langtrainer.engine.LangResourceJson;
+import com.igormaznitsa.langtrainer.engine.TextDirectionSupport;
 import com.igormaznitsa.langtrainer.ui.InputEquivalenceEnglishPresets;
+import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -28,6 +30,7 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
+import java.awt.KeyboardFocusManager;
 import java.awt.Rectangle;
 import java.io.File;
 import java.io.IOException;
@@ -60,10 +63,14 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.TitledBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellEditor;
+import javax.swing.text.JTextComponent;
 
 public final class EditorModule extends AbstractLangTrainerModule {
 
@@ -91,6 +98,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private final JTextArea fieldDescription = EditorModule.makeGrowingTextArea();
   private final JTextField fieldLangA = new JTextField();
   private final JTextField fieldLangB = new JTextField();
+  private final JTextField fieldRtl = new JTextField();
   private final JCheckBox checkShuffled = new JCheckBox("Shuffled");
 
   private final DefaultTableModel linesModel =
@@ -127,6 +135,9 @@ public final class EditorModule extends AbstractLangTrainerModule {
     this.fieldPath.setToolTipText(
         "Optional menu path (JSON field \"path\"). Segments separated by / or \\ only"
             + " (e.g. travel/russian-english/50 words). Omitted from saved JSON when empty.");
+    this.fieldRtl.setToolTipText(
+        "Optional comma-separated RTL languages (JSON field \"rtl\"), matched case-insensitively"
+            + " against Language A and Language B.");
     this.modulesChecksPanel.setOpaque(false);
     for (final LangTrainerModuleId moduleId : LangTrainerModuleId.values()) {
       final JCheckBox box = new JCheckBox(moduleId.name());
@@ -146,6 +157,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     this.fieldDescription.setWrapStyleWord(true);
     this.configureLinesTable();
     this.configureEquivPairTable();
+    this.attachDirectionRefreshers();
     this.checkShuffled.setToolTipText(
         "JSON root field \"shuffled\": when true, a module starts with line order randomization on if allowed.");
     this.buildUi();
@@ -229,6 +241,71 @@ public final class EditorModule extends AbstractLangTrainerModule {
       }
     }
     return List.copyOf(out);
+  }
+
+  private void refreshLanguageDirectionFields() {
+    final List<String> rtl = EditorModule.splitCommaSeparated(this.fieldRtl.getText());
+    final boolean langARtl = TextDirectionSupport.isRightToLeft(this.fieldLangA.getText(), rtl);
+    final boolean langBRtl = TextDirectionSupport.isRightToLeft(this.fieldLangB.getText(), rtl);
+    TextDirectionSupport.applyToTextComponent(this.fieldLangA, langARtl);
+    TextDirectionSupport.applyToTextComponent(this.fieldLangB, langBRtl);
+    this.fieldLangA.setFont(this.resolveEditorTextFont(langARtl));
+    this.fieldLangB.setFont(this.resolveEditorTextFont(langBRtl));
+    this.applyLineColumnDirection(this.linesTableCellField, this.linesTable.getEditingColumn());
+    this.linesTable.repaint();
+  }
+
+  private Font resolveEditorTextFont(final boolean rtl) {
+    final Font fallback = this.linesTableCellField.getFont();
+    final float size = this.editorFontSizePoints < 0f && fallback != null
+        ? fallback.getSize2D()
+        : this.editorFontSizePoints;
+    return TextDirectionSupport.fontForDirection(
+        LangTrainerFonts.MONO_NL_REGULAR, Font.PLAIN, rtl, size);
+  }
+
+  private void attachDirectionRefreshers() {
+    final DocumentListener listener = new DocumentListener() {
+      @Override
+      public void insertUpdate(final DocumentEvent event) {
+        EditorModule.this.refreshLanguageDirectionFields();
+      }
+
+      @Override
+      public void removeUpdate(final DocumentEvent event) {
+        EditorModule.this.refreshLanguageDirectionFields();
+      }
+
+      @Override
+      public void changedUpdate(final DocumentEvent event) {
+        EditorModule.this.refreshLanguageDirectionFields();
+      }
+    };
+    this.fieldLangA.getDocument().addDocumentListener(listener);
+    this.fieldLangB.getDocument().addDocumentListener(listener);
+    this.fieldRtl.getDocument().addDocumentListener(listener);
+  }
+
+  private void applyLineColumnDirection(final JTextField field, final int column) {
+    final boolean rtl = this.isLineColumnRightToLeft(column);
+    TextDirectionSupport.applyToTextComponent(field, rtl);
+    field.setFont(this.resolveEditorTextFont(rtl));
+  }
+
+  private boolean isLineColumnRightToLeft(final int column) {
+    return TextDirectionSupport.isRightToLeft(
+        this.resolveLineColumnLanguage(column),
+        EditorModule.splitCommaSeparated(this.fieldRtl.getText()));
+  }
+
+  private String resolveLineColumnLanguage(final int column) {
+    if (column == 1) {
+      return this.fieldLangA.getText();
+    }
+    if (column == 2) {
+      return this.fieldLangB.getText();
+    }
+    return "";
   }
 
   private static Optional<String> validateEquivTokenListSyntax(final String raw) {
@@ -362,13 +439,50 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private void configureLinesTable() {
     this.linesTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     this.linesTable.getTableHeader().setReorderingAllowed(false);
-    this.linesTable.setDefaultEditor(
-        String.class, new DefaultCellEditor(this.linesTableCellField));
+    this.linesTable.setDefaultEditor(String.class, this.makeLinesTableCellEditor());
+    this.linesTable.setDefaultRenderer(String.class, this.makeLinesTableCellRenderer());
     this.linesTable.setFillsViewportHeight(true);
     this.linesTable.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
     this.configureIdColumnWidth(this.linesTable, 36);
     this.linesTable.getColumnModel().getColumn(1).setPreferredWidth(280);
     this.linesTable.getColumnModel().getColumn(2).setPreferredWidth(280);
+  }
+
+  private DefaultCellEditor makeLinesTableCellEditor() {
+    return new DefaultCellEditor(this.linesTableCellField) {
+      @Override
+      public Component getTableCellEditorComponent(
+          final JTable table,
+          final Object value,
+          final boolean selected,
+          final int row,
+          final int column) {
+        final Component component =
+            super.getTableCellEditorComponent(table, value, selected, row, column);
+        EditorModule.this.applyLineColumnDirection(EditorModule.this.linesTableCellField, column);
+        return component;
+      }
+    };
+  }
+
+  private DefaultTableCellRenderer makeLinesTableCellRenderer() {
+    return new DefaultTableCellRenderer() {
+      @Override
+      public Component getTableCellRendererComponent(
+          final JTable table,
+          final Object value,
+          final boolean selected,
+          final boolean hasFocus,
+          final int row,
+          final int column) {
+        final Component component = super.getTableCellRendererComponent(
+            table, value, selected, hasFocus, row, column);
+        final boolean rtl = EditorModule.this.isLineColumnRightToLeft(column);
+        this.setFont(EditorModule.this.resolveEditorTextFont(rtl));
+        TextDirectionSupport.applyToLabel(this, rtl);
+        return component;
+      }
+    };
   }
 
   private void configureIdColumnWidth(final JTable table, final int width) {
@@ -480,6 +594,18 @@ public final class EditorModule extends AbstractLangTrainerModule {
     generalBlock.add(this.fieldLangB, gbc);
 
     gbc.gridy = 11;
+    gbc.weightx = 1.0;
+    gbc.weighty = 0.0;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    generalBlock.add(EditorModule.label("RTL languages (optional, comma-separated)"), gbc);
+
+    gbc.gridy = 12;
+    gbc.weightx = 1.0;
+    gbc.weighty = 0.0;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    generalBlock.add(this.fieldRtl, gbc);
+
+    gbc.gridy = 13;
     gbc.weightx = 1.0;
     gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -767,6 +893,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     this.fieldDescription.setText("");
     this.fieldLangA.setText("");
     this.fieldLangB.setText("");
+    this.fieldRtl.setText("");
     this.checkShuffled.setSelected(false);
     this.linesModel.setRowCount(0);
     this.linesModel.addRow(new Object[] {0, "", ""});
@@ -788,6 +915,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     this.fieldDescription.setText(def.description());
     this.fieldLangA.setText(def.langA());
     this.fieldLangB.setText(def.langB());
+    this.fieldRtl.setText(EditorModule.joinCommaSeparated(def.rtl()));
     this.checkShuffled.setSelected(def.shuffled());
     this.linesModel.setRowCount(0);
     for (final DialogLine line : def.lines()) {
@@ -825,6 +953,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
         this.fieldDescription.getText().strip(),
         this.fieldLangA.getText().strip(),
         this.fieldLangB.getText().strip(),
+        EditorModule.splitCommaSeparated(this.fieldRtl.getText()),
         lines,
         this.inputEquivalenceRowsFromTable(),
         this.checkShuffled.isSelected(),
@@ -974,6 +1103,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
         t.setFont(f.deriveFont(this.editorFontSizePoints));
       }
     }
+    this.refreshLanguageDirectionFields();
     this.syncEditorTableRowHeights();
     this.rootPanel.revalidate();
     this.rootPanel.repaint();
@@ -1092,6 +1222,41 @@ public final class EditorModule extends AbstractLangTrainerModule {
   @Override
   public List<KeyboardLanguage> getSupportedLanguages() {
     return KeyboardLanguage.VIRTUAL_BOARD_ALL;
+  }
+
+  @Override
+  public void onCharClick(final char symbol) {
+    if (this.insertIntoSelectedTableCell(this.linesTable, symbol)) {
+      return;
+    }
+    this.insertIntoSelectedTableCell(this.equivPairTable, symbol);
+  }
+
+  private boolean insertIntoSelectedTableCell(final JTable table, final char symbol) {
+    if (!this.isTableFocusContext(table)) {
+      return false;
+    }
+    final int row = table.getSelectedRow();
+    final int col = table.getSelectedColumn();
+    if (row < 0 || col < 0 || !table.isCellEditable(row, col)) {
+      return false;
+    }
+    if (!table.isEditing() || table.getEditingRow() != row || table.getEditingColumn() != col) {
+      table.editCellAt(row, col);
+    }
+    final Component editor = table.getEditorComponent();
+    if (editor instanceof JTextComponent text && text.isEditable()) {
+      text.requestFocusInWindow();
+      text.replaceSelection(Character.toString(symbol));
+      return true;
+    }
+    return false;
+  }
+
+  private boolean isTableFocusContext(final JTable table) {
+    final Component focus =
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+    return focus == table || focus != null && SwingUtilities.isDescendingFrom(focus, table);
   }
 
   @Override

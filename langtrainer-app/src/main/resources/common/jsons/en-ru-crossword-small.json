@@ -1,6 +1,6 @@
 {
-  "path": "Eng-Rus",
-  "menuName": "English-Russian Crossword Small",
+  "path": "English-Russian",
+  "menuName": "Crossword Small",
   "description": "Expanded EN-RU vocabulary with longer, abstract, and academic terms for crossword training",
   "langA": "English",
   "langB": "Russian",

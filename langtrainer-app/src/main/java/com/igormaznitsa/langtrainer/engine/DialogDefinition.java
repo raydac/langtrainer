@@ -9,6 +9,7 @@ public record DialogDefinition(
     String description,
     String langA,
     String langB,
+    List<String> rtl,
     List<DialogLine> lines,
     List<InputEquivalenceRow> inputEqu,
     boolean shuffled,
@@ -16,6 +17,7 @@ public record DialogDefinition(
     List<String> modules
 ) {
   public DialogDefinition {
+    rtl = isEmpty(rtl) ? List.of() : List.copyOf(rtl);
     inputEqu = inputEqu == null ? List.of() : List.copyOf(inputEqu);
     modules = isEmpty(modules) ? null : List.copyOf(modules);
   }
@@ -28,6 +30,6 @@ public record DialogDefinition(
       final List<DialogLine> lines,
       final List<InputEquivalenceRow> inputEqu,
       final boolean shuffled) {
-    this(menuName, description, langA, langB, lines, inputEqu, shuffled, null, null);
+    this(menuName, description, langA, langB, null, lines, inputEqu, shuffled, null, null);
   }
 }

@@ -35,6 +35,7 @@ Module FLY GAME
  +--------------------------------------------------------------------------+
 
  6.4. The user must enter the correct word before the aircraft leaves the playable area on the right.
+6.4a. If the selected typing language is listed in JSON "rtl", the hidden input field and visible typed-answer overlay use right-to-left ordering.
  6.5. Aim / feedback position reflects how close the typed word is to the expected answer (see Fly game typing slot logic).
  6.6. On Enter: if correct, the aircraft is cleared and the next word starts; if incorrect, input may be adjusted without advancing.
  6.7. If time runs out before a correct answer, the correct translation is shown briefly (ANSWER_SHOW_MS in code), then the same word is repeated.

@@ -13,6 +13,7 @@ import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
 import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
+import com.igormaznitsa.langtrainer.engine.TextDirectionSupport;
 import com.igormaznitsa.langtrainer.modules.dialog.InputEquivalenceSupport;
 import com.igormaznitsa.langtrainer.text.PhraseWordSupport;
 import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
@@ -187,6 +188,8 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private JButton endGameButton;
   private List<WordPlacement> placements = List.of();
   private boolean inputInLangA;
+  private boolean targetInputRightToLeft;
+  private boolean translationRightToLeft;
   private boolean gameFinished;
   private boolean revealMode;
   private boolean allCellsFilled;
@@ -500,7 +503,9 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
 
   private Font resolveCellFontForViewport(final PaintViewport viewport) {
     final float baseSize = Math.max(12f, viewport.cellSize() * 0.62f);
-    return CELL_FONT.deriveFont(baseSize);
+    return this.targetInputRightToLeft
+        ? LangTrainerFonts.SYSTEM_MONOSPACED.atPoints(baseSize).deriveFont(Font.BOLD, baseSize)
+        : CELL_FONT.deriveFont(baseSize);
   }
 
   private void applyCrosswordQualityHints(final Graphics2D g2) {
@@ -688,7 +693,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     if (!this.isEditableCell(row, col)) {
       final WordPlacement word = this.resolveWordForCell(row, col);
       final Point editable =
-          word == null ? null : this.firstEditableCellInPlacement(word, 0);
+          word == null ? null : this.initialEditableCellInPlacement(word);
       if (editable == null) {
         return;
       }
@@ -793,14 +798,14 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     if (word == null) {
       return;
     }
-    final int offset =
-        word.horizontal() ? this.selectedCol - word.col() : this.selectedRow - word.row();
-    for (int nextOffset = offset + 1; nextOffset < word.word().length(); nextOffset++) {
-      final int nextRow = word.row() + (word.horizontal() ? 0 : nextOffset);
-      final int nextCol = word.col() + (word.horizontal() ? nextOffset : 0);
-      if (this.isEditableCell(nextRow, nextCol)) {
-        this.selectedRow = nextRow;
-        this.selectedCol = nextCol;
+    final int index = this.letterIndexAt(word, this.selectedRow, this.selectedCol);
+    for (int nextIndex = index + 1;
+         nextIndex >= 0 && nextIndex < word.word().length();
+         nextIndex++) {
+      final Point cell = this.cellAt(word, nextIndex);
+      if (this.isEditableCell(cell.x, cell.y)) {
+        this.selectedRow = cell.x;
+        this.selectedCol = cell.y;
         return;
       }
     }
@@ -830,9 +835,8 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
 
   private boolean isWordCorrect(final WordPlacement placement) {
     for (int i = 0; i < placement.word().length(); i++) {
-      final int row = placement.row() + (placement.horizontal() ? 0 : i);
-      final int col = placement.col() + (placement.horizontal() ? i : 0);
-      if (this.userInput[row][col] != this.solution[row][col]) {
+      final Point cell = this.cellAt(placement, i);
+      if (this.userInput[cell.x][cell.y] != this.solution[cell.x][cell.y]) {
         return false;
       }
     }
@@ -842,9 +846,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private List<Point> collectWordCells(final WordPlacement placement) {
     final List<Point> cells = new ArrayList<>(placement.word().length());
     for (int i = 0; i < placement.word().length(); i++) {
-      final int row = placement.row() + (placement.horizontal() ? 0 : i);
-      final int col = placement.col() + (placement.horizontal() ? i : 0);
-      cells.add(new Point(row, col));
+      cells.add(this.cellAt(placement, i));
     }
     return cells;
   }
@@ -863,6 +865,9 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     }
     final String selected = (String) chooser.getSelectedItem();
     this.inputInLangA = definition.langA().equals(selected);
+    this.targetInputRightToLeft = TextDirectionSupport.isRightToLeft(definition, this.inputInLangA);
+    this.translationRightToLeft =
+        TextDirectionSupport.isRightToLeft(definition, !this.inputInLangA);
     this.startCrossword(definition);
   }
 
@@ -992,8 +997,9 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private void placeSingleWord(final WordPlacement placement) {
     final String word = placement.word();
     for (int i = 0; i < word.length(); i++) {
-      final int row = placement.row() + (placement.horizontal() ? 0 : i);
-      final int col = placement.col() + (placement.horizontal() ? i : 0);
+      final Point cell = this.cellAt(placement, i);
+      final int row = cell.x;
+      final int col = cell.y;
       final char ch = word.charAt(i);
       this.solution[row][col] = ch;
       this.fillableCells.add(new Point(row, col));
@@ -1001,7 +1007,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
         this.userInput[row][col] = ch;
       }
     }
-    this.startCells.add(new Point(placement.row(), placement.col()));
+    this.startCells.add(this.resolveStartCell(placement));
   }
 
   private void selectStartOfLongestWord() {
@@ -1011,7 +1017,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
                 Comparator.comparingInt((WordPlacement placement) -> placement.word().length())
                     .thenComparingInt(WordPlacement::row)
                     .thenComparingInt(WordPlacement::col))
-            .map(placement -> this.firstEditableCellInPlacement(placement, 0))
+            .map(this::initialEditableCellInPlacement)
             .orElse(null);
     if (selected != null) {
       this.selectedRow = selected.x;
@@ -1050,12 +1056,16 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     if (rawWord == null || rawTranslation == null) {
       return null;
     }
-    final String word = rawWord.trim().toUpperCase(Locale.ROOT);
+    final String word = this.normalizeCrosswordWord(rawWord);
     final String translation = rawTranslation.trim();
     if (word.isEmpty() || translation.isEmpty()) {
       return null;
     }
     return new WordPair(word, translation);
+  }
+
+  private String normalizeCrosswordWord(final String rawWord) {
+    return rawWord.trim().toUpperCase(Locale.ROOT);
   }
 
   private boolean isSingleWord(final String word) {
@@ -1289,14 +1299,13 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     int minCol = BOARD_SIZE;
     int maxCol = -1;
     for (final WordPlacement placement : placements) {
-      final int endRow =
-          placement.row() + (placement.horizontal() ? 0 : placement.word().length() - 1);
-      final int endCol =
-          placement.col() + (placement.horizontal() ? placement.word().length() - 1 : 0);
-      minRow = Math.min(minRow, placement.row());
-      maxRow = Math.max(maxRow, endRow);
-      minCol = Math.min(minCol, placement.col());
-      maxCol = Math.max(maxCol, endCol);
+      final int lastIndex = placement.word().length() - 1;
+      final int endRow = this.cellRowAt(placement, lastIndex);
+      final int endCol = this.cellColAt(placement, lastIndex);
+      minRow = Math.min(minRow, Math.min(placement.row(), endRow));
+      maxRow = Math.max(maxRow, Math.max(placement.row(), endRow));
+      minCol = Math.min(minCol, Math.min(placement.col(), endCol));
+      maxCol = Math.max(maxCol, Math.max(placement.col(), endCol));
     }
     if (maxRow < 0) {
       return Integer.MAX_VALUE;
@@ -1325,7 +1334,11 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
         for (final AnchorCell anchor : anchors) {
           final boolean horizontal = !anchor.horizontal();
           final int row = horizontal ? anchor.row() : anchor.row() - letterIndex;
-          final int col = horizontal ? anchor.col() - letterIndex : anchor.col();
+          final int col = horizontal
+              ? (this.targetInputRightToLeft
+                 ? anchor.col() + letterIndex
+                 : anchor.col() - letterIndex)
+              : anchor.col();
           final PlacementKey placementKey = new PlacementKey(row, col, horizontal);
           if (!seen.add(placementKey)) {
             continue;
@@ -1356,13 +1369,12 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private void addPlacementAnchors(
       final WordPlacement placement, final Map<Character, Set<AnchorCell>> boardAnchors) {
     for (int i = 0; i < placement.word().length(); i++) {
-      final int row = placement.row() + (placement.horizontal() ? 0 : i);
-      final int col = placement.col() + (placement.horizontal() ? i : 0);
+      final Point cell = this.cellAt(placement, i);
       final char ch = placement.word().charAt(i);
       if (this.isJoinerChar(ch)) {
         continue;
       }
-      final AnchorCell anchor = new AnchorCell(row, col, placement.horizontal());
+      final AnchorCell anchor = new AnchorCell(cell.x, cell.y, placement.horizontal());
       boardAnchors.computeIfAbsent(ch, x -> new HashSet<>()).add(anchor);
     }
   }
@@ -1376,12 +1388,11 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     int letterConnectivity = 0;
     final int center = BOARD_SIZE / 2;
     for (int i = 0; i < placement.word().length(); i++) {
-      final int row = placement.row() + (placement.horizontal() ? 0 : i);
-      final int col = placement.col() + (placement.horizontal() ? i : 0);
-      if (board[row][col] != 0) {
+      final Point cell = this.cellAt(placement, i);
+      if (board[cell.x][cell.y] != 0) {
         intersections++;
       }
-      centerDistance += Math.abs(row - center) + Math.abs(col - center);
+      centerDistance += Math.abs(cell.x - center) + Math.abs(cell.y - center);
       letterConnectivity += letterFrequency.getOrDefault(placement.word().charAt(i), 0L).intValue();
     }
     return intersections * 10_000 + letterConnectivity * 10 - centerDistance;
@@ -1390,9 +1401,8 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private int countIntersections(final WordPlacement placement, final char[][] board) {
     int intersections = 0;
     for (int i = 0; i < placement.word().length(); i++) {
-      final int row = placement.row() + (placement.horizontal() ? 0 : i);
-      final int col = placement.col() + (placement.horizontal() ? i : 0);
-      if (board[row][col] != 0) {
+      final Point cell = this.cellAt(placement, i);
+      if (board[cell.x][cell.y] != 0) {
         intersections++;
       }
     }
@@ -1400,9 +1410,16 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   }
 
   private WordPlacement makeCenteredPlacement(final WordPair word, final boolean horizontal) {
-    final int row = horizontal ? BOARD_SIZE / 2 : BOARD_SIZE / 2 - word.word().length() / 2;
-    final int col = horizontal ? BOARD_SIZE / 2 - word.word().length() / 2 : BOARD_SIZE / 2;
-    return new WordPlacement(row, col, horizontal, word.word(), word.translation());
+    if (horizontal) {
+      final int row = BOARD_SIZE / 2;
+      final int col = this.targetInputRightToLeft
+          ? BOARD_SIZE / 2 + (word.word().length() - 1) / 2
+          : BOARD_SIZE / 2 - word.word().length() / 2;
+      return new WordPlacement(row, col, true, word.word(), word.translation());
+    }
+    final int row = BOARD_SIZE / 2 - word.word().length() / 2;
+    final int col = BOARD_SIZE / 2;
+    return new WordPlacement(row, col, false, word.word(), word.translation());
   }
 
   private List<WordPair> rankWordsForStart(
@@ -1435,25 +1452,38 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private boolean canPlace(final WordPlacement placement, final char[][] board) {
     final String word = placement.word();
     for (int i = 0; i < word.length(); i++) {
-      final int row = placement.row() + (placement.horizontal() ? 0 : i);
-      final int col = placement.col() + (placement.horizontal() ? i : 0);
-      if (this.notInsideBoard(row, col)) {
+      final Point cell = this.cellAt(placement, i);
+      if (this.notInsideBoard(cell.x, cell.y)) {
         return false;
       }
-      final char existing = board[row][col];
+      final char existing = board[cell.x][cell.y];
       if (existing != 0 && existing != word.charAt(i)) {
         return false;
       }
-      if (existing == 0 && !this.neighborsAreClean(row, col, placement.horizontal(), board)) {
+      if (existing == 0
+          && !this.neighborsAreClean(cell.x, cell.y, placement.horizontal(), board)) {
         return false;
       }
     }
-    final int beforeRow = placement.row() - (placement.horizontal() ? 0 : 1);
-    final int beforeCol = placement.col() - (placement.horizontal() ? 1 : 0);
-    final int afterRow = placement.row() + (placement.horizontal() ? 0 : word.length());
-    final int afterCol = placement.col() + (placement.horizontal() ? word.length() : 0);
-    return this.isEmptyOrOutside(beforeRow, beforeCol, board) &&
-        this.isEmptyOrOutside(afterRow, afterCol, board);
+    return this.isWordCapCellFree(placement, board, true)
+        && this.isWordCapCellFree(placement, board, false);
+  }
+
+  private boolean isWordCapCellFree(
+      final WordPlacement placement, final char[][] board, final boolean beforeWord) {
+    if (placement.horizontal()) {
+      if (this.targetInputRightToLeft) {
+        final int capCol =
+            beforeWord ? placement.col() + 1 : placement.col() - placement.word().length();
+        return this.isEmptyOrOutside(placement.row(), capCol, board);
+      }
+      final int capCol =
+          beforeWord ? placement.col() - 1 : placement.col() + placement.word().length();
+      return this.isEmptyOrOutside(placement.row(), capCol, board);
+    }
+    final int capRow =
+        beforeWord ? placement.row() - 1 : placement.row() + placement.word().length();
+    return this.isEmptyOrOutside(capRow, placement.col(), board);
   }
 
   private boolean neighborsAreClean(
@@ -1475,9 +1505,8 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
 
   private void applyPlacement(final WordPlacement placement, final char[][] board) {
     for (int i = 0; i < placement.word().length(); i++) {
-      final int row = placement.row() + (placement.horizontal() ? 0 : i);
-      final int col = placement.col() + (placement.horizontal() ? i : 0);
-      board[row][col] = placement.word().charAt(i);
+      final Point cell = this.cellAt(placement, i);
+      board[cell.x][cell.y] = placement.word().charAt(i);
     }
   }
 
@@ -1519,13 +1548,16 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private Point firstEditableCellInPlacement(
       final WordPlacement placement, final int startOffset) {
     for (int i = Math.max(0, startOffset); i < placement.word().length(); i++) {
-      final int row = placement.row() + (placement.horizontal() ? 0 : i);
-      final int col = placement.col() + (placement.horizontal() ? i : 0);
-      if (this.isEditableCell(row, col)) {
-        return new Point(row, col);
+      final Point cell = this.cellAt(placement, i);
+      if (this.isEditableCell(cell.x, cell.y)) {
+        return cell;
       }
     }
     return null;
+  }
+
+  private Point initialEditableCellInPlacement(final WordPlacement placement) {
+    return this.firstEditableCellInPlacement(placement, 0);
   }
 
   private void refreshTranslationLabel() {
@@ -1534,8 +1566,13 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
       this.translationLabel.setText("No word selected");
       return;
     }
+    TextDirectionSupport.applyToLabel(this.translationLabel, this.translationRightToLeft);
+    this.translationLabel.setFont(TextDirectionSupport.fontForDirection(
+        LangTrainerFonts.MONO_NL_BOLD, Font.BOLD, this.translationRightToLeft, 34f));
     this.translationLabel.setText(
-        "Translation: " + word.translation().toUpperCase(Locale.ROOT));
+        "Translation: "
+            + TextDirectionSupport.bidiEmbedding(
+            word.translation().toUpperCase(Locale.ROOT), this.translationRightToLeft));
   }
 
   private WordPlacement resolveWordForCell(final int row, final int col) {
@@ -1546,7 +1583,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
       return null;
     }
     final List<WordPlacement> startedHere = matched.stream()
-        .filter(placement -> placement.row() == row && placement.col() == col)
+        .filter(placement -> this.isStartCell(row, col, placement))
         .toList();
     if (startedHere.size() == 1) {
       return startedHere.get(0);
@@ -1569,10 +1606,51 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     return matched.get(0);
   }
 
+  private Point resolveStartCell(final WordPlacement placement) {
+    final Point editable = this.initialEditableCellInPlacement(placement);
+    return editable == null ? new Point(placement.row(), placement.col()) : editable;
+  }
+
+  private boolean isStartCell(final int row, final int col, final WordPlacement placement) {
+    final Point start = this.resolveStartCell(placement);
+    return start.x == row && start.y == col;
+  }
+
+  private int cellRowAt(final WordPlacement placement, final int letterIndex) {
+    return placement.horizontal() ? placement.row() : placement.row() + letterIndex;
+  }
+
+  private int cellColAt(final WordPlacement placement, final int letterIndex) {
+    if (!placement.horizontal()) {
+      return placement.col();
+    }
+    return this.targetInputRightToLeft
+        ? placement.col() - letterIndex
+        : placement.col() + letterIndex;
+  }
+
+  private Point cellAt(final WordPlacement placement, final int letterIndex) {
+    return new Point(this.cellRowAt(placement, letterIndex),
+        this.cellColAt(placement, letterIndex));
+  }
+
+  private int letterIndexAt(final WordPlacement placement, final int row, final int col) {
+    if (placement.horizontal()) {
+      return this.targetInputRightToLeft ? placement.col() - col : col - placement.col();
+    }
+    return row - placement.row();
+  }
+
   private boolean cellBelongsToWord(final int row, final int col, final WordPlacement placement) {
     if (placement.horizontal()) {
-      return row == placement.row() && col >= placement.col() &&
-          col < placement.col() + placement.word().length();
+      if (row != placement.row()) {
+        return false;
+      }
+      if (!this.targetInputRightToLeft) {
+        return col >= placement.col() && col < placement.col() + placement.word().length();
+      }
+      final int leftCol = placement.col() - (placement.word().length() - 1);
+      return col <= placement.col() && col >= leftCol;
     }
     return col == placement.col() && row >= placement.row() &&
         row < placement.row() + placement.word().length();

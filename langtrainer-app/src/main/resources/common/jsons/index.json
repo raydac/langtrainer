@@ -28,6 +28,9 @@
       "resource": "/common/jsons/sw-rus-travel-phrases.json"
     },
     {
+      "resource": "/common/jsons/en-he-small.json"
+    },
+    {
       "resource": "/common/jsons/en-ru-crossword-small.json"
     }
   ]

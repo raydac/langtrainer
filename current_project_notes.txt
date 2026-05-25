@@ -1,4 +1,8 @@
 ## 1. Implementation Progress
+- Added optional JSON `rtl` language list support, Hebrew virtual keyboard layout, module RTL text-direction behavior with system monospace font fallback, and bundled English-Hebrew sample resource.
+- Editor A/B line table renderers and cell editors now apply RTL direction/font per column based on Language A/Language B and the JSON `rtl` list.
+- Virtual keyboard trigger, window, and controls are non-focusable/mouse-only; opening the keyboard restores the previous module focus, and key clicks insert into focused text components or focused editor grid cells before falling back to module-specific character handling.
+- Crossword RTL horizontal words are laid out right-to-left on the grid during generation and play; the rightmost editable cell is the typing start and the cursor advances leftward.
 - Added external Estonian-Russian pronouns teaching resource at `pub/externals/est-rus/est-rus-pronouns.json`.
 - Default external resources now live under the OS-specific per-user app config folder, with `LANGTRAINER_EXTERNALS` still overriding the path.
 - External resource config folder detection uses Apache Commons Lang `SystemUtils` for OS and user-home facts, with local logic only for app-specific path conventions.
@@ -25,6 +29,12 @@
 - Replaced Gson JSON processing with Jackson databind; `github-api` already uses Jackson so the app avoids shipping a second JSON library.
 
 ## 2. Architecture & Technical Discoveries
+- JSON `rtl` values are matched case-insensitively against `langA`/`langB`; default behavior stays LTR when absent or unmatched.
+- `TextDirectionSupport` centralizes Swing component orientation/alignment and bidi embedding for module text surfaces.
+- RTL module text surfaces use `LangTrainerFonts.SYSTEM_MONOSPACED` because embedded JetBrains Mono can miss scripts such as Hebrew or Arabic.
+- Editor line table column 1 follows Language A direction and column 2 follows Language B direction in both display and active cell editing.
+- `VirtualKeyboardWindow` uses a non-focusable `JDialog` plus non-focusable Swing controls; `LangTrainerApplication` makes the toolbar trigger non-focusable, restores the previous module focus after showing the keyboard, inserts virtual characters into focused `JTextComponent`s, and `EditorModule` starts editing focused selected table cells on virtual key clicks.
+- Crossword `placement.col()` is the anchor for letter index 0: rightmost cell for RTL horizontal words, leftmost for LTR; `cellAt` / `cellColAt` map indices to grid coordinates for build, validation, and typing.
 - External Estonian resource includes `DIALOG`, `FLY_GAME`, `CROSSWORD`, and `BRICKS`, mixing single-word pronouns with short multi-word phrases so different modules have usable rows.
 - `InputEquivalenceSupport` uses positional matching when `key` and `value` lists have equal sizes, and any-key-to-any-value matching otherwise.
 - Equal-size rows where `key` and `value` contain the same token set now act as equivalence classes, allowing compact reciprocal substitutions in JSON.

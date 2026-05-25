@@ -15,6 +15,7 @@ import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
 import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
+import com.igormaznitsa.langtrainer.engine.TextDirectionSupport;
 import com.igormaznitsa.langtrainer.text.PhraseWordSupport;
 import com.igormaznitsa.langtrainer.text.TypingPhraseFormatter;
 import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
@@ -589,10 +590,12 @@ public final class DialogModule extends AbstractLangTrainerModule {
       return;
     }
     final DialogLine line = this.activeDialog.lines().get(this.currentLineOrdinal);
-    final String expected = PhraseFlashBanner.normalizeLineBreaksForDisplay(
-        this.userWritesToA ? line.a() : line.b());
-    final String partner = PhraseFlashBanner.normalizeLineBreaksForDisplay(
-        this.userWritesToA ? line.b() : line.a());
+    final String expected = TextDirectionSupport.bidiEmbedding(
+        PhraseFlashBanner.normalizeLineBreaksForDisplay(this.userWritesToA ? line.a() : line.b()),
+        this.isSideRightToLeft(this.userWritesToA));
+    final String partner = TextDirectionSupport.bidiEmbedding(
+        PhraseFlashBanner.normalizeLineBreaksForDisplay(this.userWritesToA ? line.b() : line.a()),
+        this.isSideRightToLeft(!this.userWritesToA));
     this.phraseFlashBanner.show(
         owner,
         expected,
@@ -750,6 +753,12 @@ public final class DialogModule extends AbstractLangTrainerModule {
     } else {
       this.tipZone.setText(snippet);
     }
+    TextDirectionSupport.applyToLabel(this.tipZone, this.isSideRightToLeft(this.userWritesToA));
+    this.tipZone.setFont(TextDirectionSupport.fontForDirection(
+        LangTrainerFonts.MONO_NL_BOLD,
+        Font.BOLD,
+        this.isSideRightToLeft(this.userWritesToA),
+        18f));
     this.tipZone.setVisible(true);
     this.tipZone.repaint();
   }
@@ -809,32 +818,31 @@ public final class DialogModule extends AbstractLangTrainerModule {
   }
 
   private void applyWorkbenchStyles(final boolean sessionFinished) {
-    this.styleShowZone(this.showA, this.userWritesToA, sessionFinished);
-    this.styleShowZone(this.showB, !this.userWritesToA, sessionFinished);
-    this.styleWorkTarget(this.inputA, this.userWritesToA, sessionFinished);
-    this.styleWorkTarget(this.inputB, !this.userWritesToA, sessionFinished);
+    this.styleShowZone(this.showA, true, this.userWritesToA, sessionFinished);
+    this.styleShowZone(this.showB, false, !this.userWritesToA, sessionFinished);
+    this.styleWorkTarget(this.inputA, true, this.userWritesToA, sessionFinished);
+    this.styleWorkTarget(this.inputB, false, !this.userWritesToA, sessionFinished);
   }
 
   private void styleShowZone(
       final JTextArea area,
+      final boolean sideA,
       final boolean isWorkSide,
       final boolean sessionFinished) {
-    final Font base = LangTrainerFonts.MONO_NL_BOLD.atPoints(INPUT_FONT_SIZE);
     area.setEditable(false);
     area.setFocusable(false);
+    this.applyTextDirection(area, sideA);
+    area.setFont(this.resolveTextFont(sideA));
     if (sessionFinished) {
-      area.setFont(base);
       area.setBackground(new Color(225, 225, 225));
       area.setForeground(Color.DARK_GRAY);
       syncViewportBackground(area);
       return;
     }
     if (isWorkSide) {
-      area.setFont(base);
       area.setBackground(ZONE_WORK_BG);
       area.setForeground(Color.BLACK);
     } else {
-      area.setFont(base);
       area.setBackground(ZONE_TARGET_BG);
       area.setForeground(ZONE_TARGET_FG);
     }
@@ -843,13 +851,14 @@ public final class DialogModule extends AbstractLangTrainerModule {
 
   private void styleWorkTarget(
       final JTextArea area,
+      final boolean sideA,
       final boolean isWorkZone,
       final boolean sessionFinished) {
-    final Font base = LangTrainerFonts.MONO_NL_BOLD.atPoints(INPUT_FONT_SIZE);
+    this.applyTextDirection(area, sideA);
+    area.setFont(this.resolveTextFont(sideA));
     if (sessionFinished) {
       area.setEditable(false);
       area.setFocusable(false);
-      area.setFont(base);
       area.setBackground(new Color(225, 225, 225));
       area.setForeground(Color.DARK_GRAY);
       area.setCaretColor(Color.DARK_GRAY);
@@ -859,14 +868,12 @@ public final class DialogModule extends AbstractLangTrainerModule {
     if (isWorkZone) {
       area.setEditable(true);
       area.setFocusable(true);
-      area.setFont(base);
       area.setBackground(ZONE_WORK_BG);
       area.setForeground(Color.BLACK);
       area.setCaretColor(Color.BLACK);
     } else {
       area.setEditable(false);
       area.setFocusable(false);
-      area.setFont(base);
       area.setBackground(ZONE_TARGET_BG);
       area.setForeground(ZONE_TARGET_FG);
       area.setCaretColor(ZONE_TARGET_FG);
@@ -1057,6 +1064,19 @@ public final class DialogModule extends AbstractLangTrainerModule {
 
   private JTextArea focusedInput() {
     return this.userWritesToA ? this.inputA : this.inputB;
+  }
+
+  private boolean isSideRightToLeft(final boolean sideA) {
+    return TextDirectionSupport.isRightToLeft(this.activeDialog, sideA);
+  }
+
+  private void applyTextDirection(final JTextArea area, final boolean sideA) {
+    TextDirectionSupport.applyToTextComponent(area, this.isSideRightToLeft(sideA));
+  }
+
+  private Font resolveTextFont(final boolean sideA) {
+    return TextDirectionSupport.fontForDirection(
+        LangTrainerFonts.MONO_NL_BOLD, Font.BOLD, this.isSideRightToLeft(sideA), INPUT_FONT_SIZE);
   }
 
   private void showCard(final String card) {

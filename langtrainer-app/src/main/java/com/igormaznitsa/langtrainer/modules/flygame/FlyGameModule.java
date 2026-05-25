@@ -14,6 +14,7 @@ import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
 import com.igormaznitsa.langtrainer.engine.LangTrainerApplication;
 import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
+import com.igormaznitsa.langtrainer.engine.TextDirectionSupport;
 import com.igormaznitsa.langtrainer.modules.dialog.InputEquivalenceSupport;
 import com.igormaznitsa.langtrainer.text.TypingComparisonUtils;
 import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
@@ -25,6 +26,7 @@ import java.awt.Cursor;
 import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -288,6 +290,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
               definition.description(),
               definition.langA(),
               definition.langB(),
+              definition.rtl(),
               playable,
               definition.inputEqu(),
               definition.shuffled(),
@@ -530,10 +533,12 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         return;
       }
       final DialogLine line = this.dialog.lines().get(this.currentLineOrdinal);
-      final String expected = PhraseFlashBanner.normalizeLineBreaksForDisplay(
-          this.userTypesA ? line.a() : line.b());
-      final String partner = PhraseFlashBanner.normalizeLineBreaksForDisplay(
-          this.userTypesA ? line.b() : line.a());
+      final String expected = TextDirectionSupport.bidiEmbedding(
+          PhraseFlashBanner.normalizeLineBreaksForDisplay(this.userTypesA ? line.a() : line.b()),
+          this.isTypingRightToLeft());
+      final String partner = TextDirectionSupport.bidiEmbedding(
+          PhraseFlashBanner.normalizeLineBreaksForDisplay(this.userTypesA ? line.b() : line.a()),
+          this.isSideRightToLeft(!this.userTypesA));
       this.gameFrozenForPhraseBanner = true;
       this.repaintSkyFrame();
       this.phraseFlashBanner.show(
@@ -792,6 +797,8 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       this.dialog = definition;
       this.userTypesA = userTypesAFlag;
       this.onVictoryReturnToSelect = returnToSelect;
+      TextDirectionSupport.applyToTextComponent(this.input, this.isTypingRightToLeft());
+      this.input.setFont(this.resolveTypingFont(18f, Font.PLAIN));
       final int lineCount = definition.lines().size();
       if (lineCount == 0) {
         JOptionPane.showMessageDialog(this, "Word list is empty.", "Fly game",
@@ -1085,6 +1092,25 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
       return this.paused;
     }
 
+    private boolean isTypingRightToLeft() {
+      return this.isSideRightToLeft(this.userTypesA);
+    }
+
+    private boolean isSideRightToLeft(final boolean sideA) {
+      return TextDirectionSupport.isRightToLeft(this.dialog, sideA);
+    }
+
+    private Font resolveTypingFont(final float sizePt, final int rtlStyle) {
+      return TextDirectionSupport.fontForDirection(
+          LangTrainerFonts.MONO_NL_BOLD, rtlStyle, this.isTypingRightToLeft(), sizePt);
+    }
+
+    private Font resolvePromptFont(final float sizePt, final int rtlStyle) {
+      return TextDirectionSupport.fontForDirection(
+          LangTrainerFonts.MONO_NL_BOLD, rtlStyle, this.isSideRightToLeft(!this.userTypesA),
+          sizePt);
+    }
+
     private static final class Cloud {
       final double y;
       final double speed;
@@ -1162,8 +1188,14 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
           final int x,
           final int y,
           final FontMetrics fm,
-          final int interCharGapPx) {
+          final int interCharGapPx,
+          final boolean rightToLeft) {
         if (s == null || s.isEmpty()) {
+          return;
+        }
+        if (rightToLeft) {
+          SkyCanvas.drawOverlayLineWithInterCharGapsRightToLeft(
+              g2, s, x, y, fm, interCharGapPx);
           return;
         }
         int cx = x;
@@ -1178,6 +1210,29 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
           final String piece = s.substring(i, i + len);
           g2.drawString(piece, cx, y);
           cx += fm.stringWidth(piece);
+          i += len;
+        }
+      }
+
+      private static void drawOverlayLineWithInterCharGapsRightToLeft(
+          final Graphics2D g2,
+          final String s,
+          final int x,
+          final int y,
+          final FontMetrics fm,
+          final int interCharGapPx) {
+        int cx = x + SkyCanvas.overlayLineWidthWithInterCharGaps(fm, s, interCharGapPx);
+        int i = 0;
+        boolean first = true;
+        while (i < s.length()) {
+          final int len = Character.charCount(s.codePointAt(i));
+          final String piece = s.substring(i, i + len);
+          if (!first) {
+            cx -= interCharGapPx;
+          }
+          first = false;
+          cx -= fm.stringWidth(piece);
+          g2.drawString(piece, cx, y);
           i += len;
         }
       }
@@ -1313,7 +1368,8 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
 
           final String prompt = GameBoard.this.currentPrompt();
           if (!prompt.isEmpty()) {
-            g2.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(SkyCanvas.scaleFont(w, 14f, 28f)));
+            g2.setFont(GameBoard.this.resolvePromptFont(
+                SkyCanvas.scaleFont(w, 14f, 28f), Font.BOLD));
             final FontMetrics fm = g2.getFontMetrics();
             final int pw = fm.stringWidth(prompt);
             final int px = Math.max(8, Math.min(w - pw - 8, hx - pw / 2));
@@ -1355,7 +1411,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         final String merged = GameBoard.this.input.getText();
         final String displayFull = FlyTypingSlotFormatter.overlayDisplayUpper(expected, merged);
         final float fontPt = SkyCanvas.scaleFont(w, 26f, FLY_INPUT_OVERLAY_FONT_PT);
-        g2.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(fontPt));
+        g2.setFont(GameBoard.this.resolveTypingFont(fontPt, Font.BOLD));
         final FontMetrics fm = g2.getFontMetrics();
         final int maxLineW = Math.max(40, w - 32);
         final String visiblePrefix =
@@ -1370,10 +1426,22 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         if (!draw.isEmpty()) {
           g2.setColor(INPUT_TEXT_COLOR_SHADOW);
           SkyCanvas.drawOverlayLineWithInterCharGaps(
-              g2, draw, tx + 2, ty + 2, fm, FLY_OVERLAY_INTER_CHAR_GAP_PX);
+              g2,
+              draw,
+              tx + 2,
+              ty + 2,
+              fm,
+              FLY_OVERLAY_INTER_CHAR_GAP_PX,
+              GameBoard.this.isTypingRightToLeft());
           g2.setColor(INPUT_TEXT_COLOR);
           SkyCanvas.drawOverlayLineWithInterCharGaps(
-              g2, draw, tx, ty, fm, FLY_OVERLAY_INTER_CHAR_GAP_PX);
+              g2,
+              draw,
+              tx,
+              ty,
+              fm,
+              FLY_OVERLAY_INTER_CHAR_GAP_PX,
+              GameBoard.this.isTypingRightToLeft());
         }
       }
 
@@ -1439,8 +1507,8 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         g2.fillRect(0, 0, w, h);
         g2.setComposite(AlphaComposite.SrcOver);
         g2.setColor(Color.WHITE);
-        g2.setFont(
-            LangTrainerFonts.MONO_NL_BOLD.atPoints(SkyCanvas.scaleFont(w, 18f, 36f)));
+        g2.setFont(GameBoard.this.resolveTypingFont(
+            SkyCanvas.scaleFont(w, 18f, 36f), Font.BOLD));
         final String msg = "Answer: " + GameBoard.this.answerBannerText();
         final FontMetrics fm = g2.getFontMetrics();
         final int maxLineW = Math.max(120, w - 80);

@@ -34,6 +34,12 @@ public final class LangResourceJson {
     root.put("description", definition.description());
     root.put("langA", definition.langA());
     root.put("langB", definition.langB());
+    if (!definition.rtl().isEmpty()) {
+      final ArrayNode rtl = root.putArray("rtl");
+      for (final String language : definition.rtl()) {
+        rtl.add(language);
+      }
+    }
     if (!isBlank(definition.path())) {
       root.put("path", definition.path().strip());
     }
@@ -93,11 +99,29 @@ public final class LangResourceJson {
         requireNonNullElse(def.description(), ""),
         requireNonNullElse(def.langA(), ""),
         requireNonNullElse(def.langB(), ""),
+        normalizeStringList(def.rtl()),
         lines,
         def.inputEqu(),
         def.shuffled(),
         stripToNull(def.path()),
         normalizeModules(def.modules()));
+  }
+
+  private static List<String> normalizeStringList(final List<String> raw) {
+    if (isEmpty(raw)) {
+      return List.of();
+    }
+    final List<String> out = new ArrayList<>();
+    for (final String value : raw) {
+      if (isBlank(value)) {
+        continue;
+      }
+      final String normalized = value.strip();
+      if (out.stream().noneMatch(existing -> existing.equalsIgnoreCase(normalized))) {
+        out.add(normalized);
+      }
+    }
+    return List.copyOf(out);
   }
 
   private static List<String> normalizeModules(final List<String> raw) {

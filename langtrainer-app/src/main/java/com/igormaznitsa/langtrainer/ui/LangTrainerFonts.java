@@ -14,6 +14,7 @@ import java.util.Objects;
  */
 public enum LangTrainerFonts {
 
+  SYSTEM_MONOSPACED(null),
   MONO_NL_REGULAR("/fonts/JetBrainsMonoNL-Regular.ttf"),
   MONO_NL_SEMI_BOLD("/fonts/JetBrainsMonoNL-SemiBold.ttf"),
   MONO_NL_BOLD("/fonts/JetBrainsMonoNL-Bold.ttf"),
@@ -22,11 +23,15 @@ public enum LangTrainerFonts {
   private final Font baseFont;
 
   LangTrainerFonts(final String classpath) {
-    try {
-      this.baseFont = LangTrainerFonts.loadAndRegister(classpath);
-    } catch (final FontFormatException | IOException e) {
-      throw new ExceptionInInitializerError(
-          new IllegalStateException("Can't load JetBrains Mono NL: " + classpath, e));
+    if (classpath == null) {
+      this.baseFont = new Font(Font.MONOSPACED, Font.PLAIN, 12);
+    } else {
+      try {
+        this.baseFont = LangTrainerFonts.loadAndRegister(classpath);
+      } catch (final FontFormatException | IOException e) {
+        throw new ExceptionInInitializerError(
+            new IllegalStateException("Can't load JetBrains Mono NL: " + classpath, e));
+      }
     }
   }
 

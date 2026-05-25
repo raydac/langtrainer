@@ -201,6 +201,8 @@ public final class LangTrainerApplication {
       this.keyboardButton.setToolTipText("Show virtual keyboard");
       this.keyboardButton.setFont(this.keyboardButton.getFont().deriveFont(Font.BOLD, 24.0f));
       this.keyboardButton.setFocusPainted(false);
+      this.keyboardButton.setFocusable(false);
+      this.keyboardButton.setRequestFocusEnabled(false);
       this.keyboardButton.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
       this.keyboardButton.addActionListener(event -> this.showVirtualKeyboard());
       rightButtons.add(this.keyboardButton);
@@ -332,6 +334,7 @@ public final class LangTrainerApplication {
     if (this.activeModule == null || !this.activeModule.isVirtualKeyboardToolbarButtonShown()) {
       return;
     }
+    final Component focusBeforeKeyboard = this.resolveModuleFocusOwner();
     if (this.virtualKeyboardWindow == null) {
       final List<KeyboardLanguage> supported = this.activeModule.getSupportedLanguages();
       this.virtualKeyboardWindow =
@@ -344,6 +347,19 @@ public final class LangTrainerApplication {
     this.virtualKeyboardWindow.show();
     if (this.keyboardButton != null) {
       this.keyboardButton.setVisible(false);
+    }
+    this.restoreModuleFocus(focusBeforeKeyboard);
+  }
+
+  private Component resolveModuleFocusOwner() {
+    final Component focus =
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().getPermanentFocusOwner();
+    return focus != null && SwingUtilities.isDescendingFrom(focus, this.mainFrame) ? focus : null;
+  }
+
+  private void restoreModuleFocus(final Component focusBeforeKeyboard) {
+    if (focusBeforeKeyboard != null && focusBeforeKeyboard.isShowing()) {
+      SwingUtilities.invokeLater(focusBeforeKeyboard::requestFocusInWindow);
     }
   }
 
@@ -373,9 +389,22 @@ public final class LangTrainerApplication {
   }
 
   private void onCharInput(final char symbol) {
+    if (this.insertVirtualCharIntoFocusedTextComponent(symbol)) {
+      return;
+    }
     if (this.activeModule != null) {
       this.activeModule.onCharClick(symbol);
     }
+  }
+
+  private boolean insertVirtualCharIntoFocusedTextComponent(final char symbol) {
+    final Component focus =
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+    if (focus instanceof JTextComponent text && text.isEditable() && text.isEnabled()) {
+      text.replaceSelection(Character.toString(symbol));
+      return true;
+    }
+    return false;
   }
 
   private boolean dispatchTypedChar(final KeyEvent event) {
