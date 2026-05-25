@@ -1,5 +1,6 @@
 1.1.0 (SNAPSHOT)
  - Added external JSON resources support with local loading, OS-specific default storage, configurable storage path through `LANGTRAINER_EXTERNALS`, and GitHub sync from module resource selectors.
+ - Improved crossword board scaling so wide puzzles can use rectangular work areas while keeping cells square.
  - Replaced Gson JSON processing with Jackson databind already used by the GitHub API dependency.
 
 1.0.0 (23-may-2026)

@@ -155,16 +155,13 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   }
 
   private void layoutBoardByHostSize(final int hostWidth, final int hostHeight) {
-    final int targetSide = Math.min(hostWidth, hostHeight);
-    if (targetSide <= 0) {
+    if (hostWidth <= 0 || hostHeight <= 0) {
       return;
     }
-    final int side = Math.max(BOARD_SIZE, targetSide - (targetSide % BOARD_SIZE));
-    final int x = (hostWidth - side) / 2;
-    final int y = (hostHeight - side) / 2;
-    if (this.boardPanel.getX() != x || this.boardPanel.getY() != y ||
-        this.boardPanel.getWidth() != side || this.boardPanel.getHeight() != side) {
-      this.boardPanel.setBounds(x, y, side, side);
+
+    if (this.boardPanel.getX() != 0 || this.boardPanel.getY() != 0 ||
+        this.boardPanel.getWidth() != hostWidth || this.boardPanel.getHeight() != hostHeight) {
+      this.boardPanel.setBounds(0, 0, hostWidth, hostHeight);
     }
   }
 

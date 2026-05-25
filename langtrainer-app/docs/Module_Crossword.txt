@@ -6,7 +6,7 @@ Module Crossword
 3. User selects target input language (language he types in crossword cells)
 4. Module takes all valid single-word lines from selected target language in resource
 5. Crossword builder tries to place as many words as possible (not guaranteed 100% for every dataset)
-6. Board is rendered as one canvas and scaled to bounding box of used cells to fill available space better
+6. Board is rendered as one rectangular canvas; square cells are scaled to the bounding box of used cells to fill available space better
 7. Single interaction mode: arrows move selection, typing enters a letter into selected cell
 8. Backspace/Delete clears currently selected working cell
 9. At intersections, current typing route is locked by direction and does not unexpectedly switch

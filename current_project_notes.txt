@@ -9,7 +9,7 @@
 - Resource selector now places `Sync Lessons` at the right edge of the bottom action bar to reduce accidental clicks.
 - Resource selectors label the primary action as `Start`, show large action icons, place `Open from file` immediately before `Sync Lessons`, add action tooltips, and disable `Start` unless a resource row is selected.
 - DRY refactor: shared resource selector button wiring/styling and local JSON resource open/merge helpers now live in common support code.
-- Crossword board now scales to the largest square that fits the work area instead of capping itself at 80%, reducing unused space below the field.
+- Crossword board now uses the full rectangular work area while keeping cells square, so wide puzzles can render larger instead of being constrained by a square panel.
 - Security hardening: GitHub sync allows existing resource folders but refuses dangerous broad targets (root, home, common home folders, working/project roots) and preserves a `.langtrainer-external-sync` ownership marker; external indexes reject symlinked resource paths; help links only open HTTP(S) URLs.
 - External GitHub sync failures now show a Swing alert, log stack traces, and still load existing local resources when possible.
 - Fixed external resource loading to merge both `common/jsons/index.json` and root-level `index.json` in local externals folders.
