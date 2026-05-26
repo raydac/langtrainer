@@ -4,6 +4,7 @@ import static java.util.Collections.shuffle;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 
 /**
@@ -82,14 +83,15 @@ final class FlyLeitnerSession {
     if (this.finished) {
       return true;
     }
-    final Card card = this.findCard(ordinal);
-    if (card == null) {
+    final Optional<Card> card = this.findCard(ordinal);
+    if (card.isEmpty()) {
       return this.finished;
     }
-    if (card.box >= LEITNER_MAX_BOX) {
-      this.active.remove(card);
+    final Card foundCard = card.get();
+    if (foundCard.box >= LEITNER_MAX_BOX) {
+      this.active.remove(foundCard);
     } else {
-      card.box++;
+      foundCard.box++;
     }
     if (this.active.isEmpty()) {
       this.bucketIndex++;
@@ -106,10 +108,7 @@ final class FlyLeitnerSession {
     if (this.finished) {
       return;
     }
-    final Card card = this.findCard(ordinal);
-    if (card != null) {
-      card.box = 0;
-    }
+    this.findCard(ordinal).ifPresent(card -> card.box = 0);
   }
 
   int bucketCount() {
@@ -132,13 +131,13 @@ final class FlyLeitnerSession {
     return !this.finished && !this.active.isEmpty();
   }
 
-  private Card findCard(final int ordinal) {
+  private Optional<Card> findCard(final int ordinal) {
     for (final Card c : this.active) {
       if (c.ordinal == ordinal) {
-        return c;
+        return Optional.of(c);
       }
     }
-    return null;
+    return Optional.empty();
   }
 
   private static final class Card {

@@ -109,7 +109,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   private List<DialogLine> exercises = List.of();
   private int exerciseIndex;
   private List<String> wordTokens = List.of();
-  private String fixedEndSuffix;
+  private String fixedEndSuffix = "";
   private String cueLineText = "";
   private String targetLineText = "";
   private int pendingBrickId = -1;
@@ -282,13 +282,13 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     this.targetRightToLeft = false;
     this.cueRightToLeft = false;
     this.wordTokens = List.of();
-    this.fixedEndSuffix = null;
+    this.fixedEndSuffix = "";
     this.buildIds.clear();
     this.poolIds.clear();
     this.historyLines.clear();
     this.cueLabel.setText(" ");
     this.rebuildHistoryBrickList();
-    this.fieldCanvas.bindLists(List.of(), List.of(), List.of(), null);
+    this.fieldCanvas.bindLists(List.of(), List.of(), List.of(), "");
     this.fieldCanvas.setRightToLeft(false);
     this.fieldCanvas.setBuildBrickFill(BUILD_PARTIAL_BG);
     this.repaint();
@@ -384,7 +384,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   }
 
   private void syncFieldCanvas() {
-    final String buildSuffix = this.completionFlyActive ? null : this.fixedEndSuffix;
+    final String buildSuffix = this.completionFlyActive ? "" : this.fixedEndSuffix;
     this.fieldCanvas.bindLists(this.poolIds, this.buildIds, this.wordTokens, buildSuffix);
     this.fieldCanvas.setBuildBrickFill(this.buildTileFillColor());
   }
@@ -440,7 +440,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     row.setAlignmentX(
         this.targetRightToLeft ? Component.RIGHT_ALIGNMENT : Component.LEFT_ALIGNMENT);
     final BricksPhraseSupport.Parts parts = BricksPhraseSupport.parsePhrase(phrase);
-    if (this.targetRightToLeft && parts.fixedEndSuffix() != null) {
+    if (this.targetRightToLeft && !parts.fixedEndSuffix().isEmpty()) {
       row.add(
           new JLabel(
               BrickImageRenderer.renderIcon(
@@ -449,7 +449,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     for (final String word : this.visualWordOrder(parts.wordTokens())) {
       row.add(new JLabel(BrickImageRenderer.renderIcon(word, BUILD_CORRECT_BG, font)));
     }
-    if (!this.targetRightToLeft && parts.fixedEndSuffix() != null) {
+    if (!this.targetRightToLeft && !parts.fixedEndSuffix().isEmpty()) {
       row.add(
           new JLabel(
               BrickImageRenderer.renderIcon(

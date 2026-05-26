@@ -15,11 +15,11 @@ final class BricksPhraseSupport {
 
   static Parts parsePhrase(final String line) {
     if (line == null || line.isBlank()) {
-      return new Parts(List.of(), null);
+      return new Parts(List.of(), "");
     }
     final List<String> raw = new ArrayList<>(PhraseWordSupport.splitWords(line));
     if (raw.isEmpty()) {
-      return new Parts(List.of(), null);
+      return new Parts(List.of(), "");
     }
     String trailingSuffix = null;
     while (!raw.isEmpty()) {
@@ -91,10 +91,10 @@ final class BricksPhraseSupport {
    */
   private static String displayableFixedSuffix(final String trailing) {
     if (trailing == null || trailing.isEmpty()) {
-      return null;
+      return "";
     }
     if (trailing.codePoints().allMatch(cp -> cp == '.')) {
-      return null;
+      return "";
     }
     return trailing;
   }
@@ -131,6 +131,7 @@ final class BricksPhraseSupport {
   record Parts(List<String> wordTokens, String fixedEndSuffix) {
     Parts {
       wordTokens = List.copyOf(wordTokens);
+      fixedEndSuffix = fixedEndSuffix == null ? "" : fixedEndSuffix;
     }
   }
 }

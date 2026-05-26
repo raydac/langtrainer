@@ -112,12 +112,12 @@ public final class InputEquivalenceSupport {
     for (final InputEquivalenceRow row : rules) {
       final List<String> keys = row.key();
       final List<String> vals = row.value();
-      final String matched =
+      final Optional<String> matched =
           isEquivalenceClass(keys, vals) || keys.size() != vals.size()
               ? matchAnyKeyToExpectedValue(typed, expectedChar, keys, vals)
               : matchPositional(typed, expectedChar, keys, vals);
-      if (matched != null) {
-        return Optional.of(matched);
+      if (matched.isPresent()) {
+        return matched;
       }
     }
     return Optional.empty();
@@ -127,7 +127,7 @@ public final class InputEquivalenceSupport {
     return keys.size() == vals.size() && Set.copyOf(keys).equals(Set.copyOf(vals));
   }
 
-  private static String matchPositional(
+  private static Optional<String> matchPositional(
       final String typed,
       final String expectedChar,
       final List<String> keys,
@@ -139,26 +139,26 @@ public final class InputEquivalenceSupport {
       if (!sameSlotOrLetterCaseInsensitive(vals.get(i), expectedChar)) {
         continue;
       }
-      return alignMappedLetterCaseToExpected(vals.get(i), expectedChar);
+      return Optional.of(alignMappedLetterCaseToExpected(vals.get(i), expectedChar));
     }
-    return null;
+    return Optional.empty();
   }
 
-  private static String matchAnyKeyToExpectedValue(
+  private static Optional<String> matchAnyKeyToExpectedValue(
       final String typed,
       final String expectedChar,
       final List<String> keys,
       final List<String> vals) {
     if (!keys.stream()
         .anyMatch(k -> sameSlotOrLetterCaseInsensitive(typed, k))) {
-      return null;
+      return Optional.empty();
     }
     for (final String v : vals) {
       if (sameSlotOrLetterCaseInsensitive(v, expectedChar)) {
-        return alignMappedLetterCaseToExpected(v, expectedChar);
+        return Optional.of(alignMappedLetterCaseToExpected(v, expectedChar));
       }
     }
-    return null;
+    return Optional.empty();
   }
 
   public static void applyAfterInsert(

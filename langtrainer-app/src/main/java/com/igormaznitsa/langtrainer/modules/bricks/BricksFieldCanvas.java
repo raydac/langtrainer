@@ -16,6 +16,7 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
@@ -46,8 +47,8 @@ final class BricksFieldCanvas extends JPanel {
   private Color buildBrickFill;
   private List<String> wordTokens = List.of();
   private String fixedEndSuffix;
-  private List<Integer> poolIds;
-  private List<Integer> buildIds;
+  private List<Integer> poolIds = List.of();
+  private List<Integer> buildIds = List.of();
   private int buildSuffixX;
   private int buildSuffixY;
   private int buildSuffixW;
@@ -222,40 +223,37 @@ final class BricksFieldCanvas extends JPanel {
     return this.resolveDropAtCanvasPoint(p);
   }
 
-  BrickPick pickBrickAtCanvasPoint(final Point canvasPoint) {
+  Optional<BrickPick> pickBrickAtCanvasPoint(final Point canvasPoint) {
     this.ensureLayoutLists();
     for (final PlacedBrick b : this.poolPlaced) {
       if (b.contains(canvasPoint)) {
-        return new BrickPick(
+        return Optional.of(new BrickPick(
             b.id,
             canvasPoint.x - b.x,
             canvasPoint.y - b.y,
             b.w,
-            b.h);
+            b.h));
       }
     }
     for (final PlacedBrick b : this.buildPlaced) {
       if (b.contains(canvasPoint)) {
-        return new BrickPick(
+        return Optional.of(new BrickPick(
             b.id,
             canvasPoint.x - b.x,
             canvasPoint.y - b.y,
             b.w,
-            b.h);
+            b.h));
       }
     }
-    return null;
+    return Optional.empty();
   }
 
   private void onMousePressedLocal(final MouseEvent e) {
     if (this.draggingId >= 0 || this.host == null) {
       return;
     }
-    final BrickPick pick = this.pickBrickAtCanvasPoint(e.getPoint());
-    if (pick == null) {
-      return;
-    }
-    this.host.onFieldBrickPressed(pick, e.getLocationOnScreen());
+    this.pickBrickAtCanvasPoint(e.getPoint())
+        .ifPresent(pick -> this.host.onFieldBrickPressed(pick, e.getLocationOnScreen()));
   }
 
   private void onMouseReleasedLocal(final MouseEvent e) {

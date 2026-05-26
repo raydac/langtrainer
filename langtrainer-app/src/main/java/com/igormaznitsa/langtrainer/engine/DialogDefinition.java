@@ -19,7 +19,7 @@ public record DialogDefinition(
   public DialogDefinition {
     rtl = isEmpty(rtl) ? List.of() : List.copyOf(rtl);
     inputEqu = inputEqu == null ? List.of() : List.copyOf(inputEqu);
-    modules = isEmpty(modules) ? null : List.copyOf(modules);
+    modules = isEmpty(modules) ? List.of() : List.copyOf(modules);
   }
 
   public DialogDefinition(

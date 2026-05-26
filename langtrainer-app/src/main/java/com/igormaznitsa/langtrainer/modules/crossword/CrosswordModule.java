@@ -42,7 +42,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
@@ -207,11 +206,12 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
         return;
       }
       final Set<GridEdge> edges = new HashSet<>();
-      final PaintViewport viewport = this.resolvePaintViewport();
-      if (viewport == null) {
+      final Optional<PaintViewport> viewport = this.resolvePaintViewport();
+      if (viewport.isEmpty()) {
         return;
       }
-      final Font drawFont = this.resolveCellFontForViewport(viewport);
+      final PaintViewport paintViewport = viewport.get();
+      final Font drawFont = this.resolveCellFontForViewport(paintViewport);
       g2.setFont(drawFont);
       final FontMetrics metrics = g2.getFontMetrics(drawFont);
       for (int row = 0; row < BOARD_SIZE; row++) {
@@ -219,14 +219,14 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
           if (!this.isFillable(row, col)) {
             continue;
           }
-          final CellRect cell = this.resolveCellRect(row, col, viewport);
+          final CellRect cell = this.resolveCellRect(row, col, paintViewport);
           this.paintCellBackground(g2, row, col, cell);
           this.paintCellText(g2, row, col, cell, metrics);
           this.collectCellEdges(edges, row, col);
         }
       }
-      this.paintGridEdges(g2, edges, viewport);
-      this.paintSelectedCellAim(g2, viewport);
+      this.paintGridEdges(g2, edges, paintViewport);
+      this.paintSelectedCellAim(g2, paintViewport);
     } finally {
       g2.dispose();
     }
@@ -610,9 +610,9 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     return viewport.offsetY() + (gridY - viewport.minRow()) * viewport.cellSize();
   }
 
-  private PaintViewport resolvePaintViewport() {
+  private Optional<PaintViewport> resolvePaintViewport() {
     if (this.fillableCells.isEmpty()) {
-      return null;
+      return Optional.empty();
     }
     int minRow = BOARD_SIZE;
     int maxRow = -1;
@@ -635,7 +635,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     final int actualH = usedRows * cellSize;
     final int offsetX = (this.boardPanel.getWidth() - actualW) / 2;
     final int offsetY = (this.boardPanel.getHeight() - actualH) / 2;
-    return new PaintViewport(minRow, minCol, cellSize, offsetX, offsetY);
+    return Optional.of(new PaintViewport(minRow, minCol, cellSize, offsetX, offsetY));
   }
 
   private void finishGenerationProgress() {
@@ -671,29 +671,29 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     if (this.generationInProgress || this.gameFinished || this.revealMode) {
       return;
     }
-    final PaintViewport viewport = this.resolvePaintViewport();
-    if (viewport == null) {
+    final Optional<PaintViewport> viewport = this.resolvePaintViewport();
+    if (viewport.isEmpty()) {
       return;
     }
-    final int relativeX = x - viewport.offsetX();
-    final int relativeY = y - viewport.offsetY();
+    final PaintViewport paintViewport = viewport.get();
+    final int relativeX = x - paintViewport.offsetX();
+    final int relativeY = y - paintViewport.offsetY();
     if (relativeX < 0 || relativeY < 0) {
       return;
     }
-    int col = viewport.minCol() + relativeX / viewport.cellSize();
-    int row = viewport.minRow() + relativeY / viewport.cellSize();
+    int col = paintViewport.minCol() + relativeX / paintViewport.cellSize();
+    int row = paintViewport.minRow() + relativeY / paintViewport.cellSize();
     if (this.notInsideBoard(row, col) || !this.isFillable(row, col)) {
       return;
     }
     if (!this.isEditableCell(row, col)) {
-      final WordPlacement word = this.resolveWordForCell(row, col);
-      final Point editable =
-          word == null ? null : this.initialEditableCellInPlacement(word);
-      if (editable == null) {
+      final Optional<Point> editable = this.resolveWordForCell(row, col)
+          .flatMap(this::initialEditableCellInPlacement);
+      if (editable.isEmpty()) {
         return;
       }
-      row = editable.x;
-      col = editable.y;
+      row = editable.get().x;
+      col = editable.get().y;
     }
     this.selectedRow = row;
     this.selectedCol = col;
@@ -783,21 +783,24 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
         && this.cellBelongsToWord(this.selectedRow, this.selectedCol, this.lockedTypingWord)) {
       return;
     }
-    this.lockedTypingWord = this.resolveWordForCell(this.selectedRow, this.selectedCol);
+    this.resolveWordForCell(this.selectedRow, this.selectedCol)
+        .ifPresentOrElse(
+            word -> this.lockedTypingWord = word,
+            () -> this.lockedTypingWord = null);
   }
 
   private void moveCursorToNextCellInWord() {
-    final WordPlacement word = this.lockedTypingWord != null
-        ? this.lockedTypingWord
-        : this.resolveWordForCell(this.selectedRow, this.selectedCol);
-    if (word == null) {
+    final Optional<WordPlacement> word = this.lockedTypingWord == null
+        ? this.resolveWordForCell(this.selectedRow, this.selectedCol)
+        : Optional.of(this.lockedTypingWord);
+    if (word.isEmpty()) {
       return;
     }
-    final int index = this.letterIndexAt(word, this.selectedRow, this.selectedCol);
+    final int index = this.letterIndexAt(word.get(), this.selectedRow, this.selectedCol);
     for (int nextIndex = index + 1;
-         nextIndex >= 0 && nextIndex < word.word().length();
+         nextIndex >= 0 && nextIndex < word.get().word().length();
          nextIndex++) {
-      final Point cell = this.cellAt(word, nextIndex);
+      final Point cell = this.cellAt(word.get(), nextIndex);
       if (this.isEditableCell(cell.x, cell.y)) {
         this.selectedRow = cell.x;
         this.selectedCol = cell.y;
@@ -1006,17 +1009,15 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   }
 
   private void selectStartOfLongestWord() {
-    final Point selected =
-        this.placements.stream()
-            .max(
-                Comparator.comparingInt((WordPlacement placement) -> placement.word().length())
-                    .thenComparingInt(WordPlacement::row)
-                    .thenComparingInt(WordPlacement::col))
-            .map(this::initialEditableCellInPlacement)
-            .orElse(null);
-    if (selected != null) {
-      this.selectedRow = selected.x;
-      this.selectedCol = selected.y;
+    final Optional<Point> selected = this.placements.stream()
+        .max(
+            Comparator.comparingInt((WordPlacement placement) -> placement.word().length())
+                .thenComparingInt(WordPlacement::row)
+                .thenComparingInt(WordPlacement::col))
+        .flatMap(this::initialEditableCellInPlacement);
+    if (selected.isPresent()) {
+      this.selectedRow = selected.get().x;
+      this.selectedCol = selected.get().y;
       return;
     }
     this.fillableCells.stream()
@@ -1036,7 +1037,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private List<WordPair> extractSingleWordPairs(final DialogDefinition definition) {
     final List<WordPair> candidates = definition.lines().stream()
         .map(this::toWordPair)
-        .filter(Objects::nonNull)
+        .flatMap(Optional::stream)
         .filter(pair -> this.isSingleWord(pair.word()))
         .toList();
     final List<String> vocabulary = candidates.stream().map(WordPair::word).toList();
@@ -1045,18 +1046,18 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
         .toList();
   }
 
-  private WordPair toWordPair(final DialogLine line) {
+  private Optional<WordPair> toWordPair(final DialogLine line) {
     final String rawWord = this.inputInLangA ? line.a() : line.b();
     final String rawTranslation = this.inputInLangA ? line.b() : line.a();
     if (rawWord == null || rawTranslation == null) {
-      return null;
+      return Optional.empty();
     }
     final String word = this.normalizeCrosswordWord(rawWord);
     final String translation = rawTranslation.trim();
     if (word.isEmpty() || translation.isEmpty()) {
-      return null;
+      return Optional.empty();
     }
-    return new WordPair(word, translation);
+    return Optional.of(new WordPair(word, translation));
   }
 
   private String normalizeCrosswordWord(final String rawWord) {
@@ -1241,16 +1242,16 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     if (placed.isEmpty()) {
       return Integer.MIN_VALUE;
     }
-    final Bounds bounds = this.resolveBounds(board);
-    if (bounds == null) {
-      return Integer.MIN_VALUE;
-    }
-    final int area = bounds.height() * bounds.width();
-    final int perimeter = bounds.height() + bounds.width();
-    return placed.size() * 1_000_000 - area * 200 - perimeter * 20;
+    return this.resolveBounds(board)
+        .map(bounds -> {
+          final int area = bounds.height() * bounds.width();
+          final int perimeter = bounds.height() + bounds.width();
+          return placed.size() * 1_000_000 - area * 200 - perimeter * 20;
+        })
+        .orElse(Integer.MIN_VALUE);
   }
 
-  private Bounds resolveBounds(final char[][] board) {
+  private Optional<Bounds> resolveBounds(final char[][] board) {
     int minRow = BOARD_SIZE;
     int maxRow = -1;
     int minCol = BOARD_SIZE;
@@ -1267,9 +1268,9 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
       }
     }
     if (maxRow < 0) {
-      return null;
+      return Optional.empty();
     }
-    return new Bounds(minRow, maxRow, minCol, maxCol);
+    return Optional.of(new Bounds(minRow, maxRow, minCol, maxCol));
   }
 
   private boolean isBetterPlacementSet(
@@ -1540,24 +1541,25 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     return this.isFillable(row, col) && !this.isJoinerCell(row, col);
   }
 
-  private Point firstEditableCellInPlacement(
+  private Optional<Point> firstEditableCellInPlacement(
       final WordPlacement placement, final int startOffset) {
     for (int i = Math.max(0, startOffset); i < placement.word().length(); i++) {
       final Point cell = this.cellAt(placement, i);
       if (this.isEditableCell(cell.x, cell.y)) {
-        return cell;
+        return Optional.of(cell);
       }
     }
-    return null;
+    return Optional.empty();
   }
 
-  private Point initialEditableCellInPlacement(final WordPlacement placement) {
+  private Optional<Point> initialEditableCellInPlacement(final WordPlacement placement) {
     return this.firstEditableCellInPlacement(placement, 0);
   }
 
   private void refreshTranslationLabel() {
-    final WordPlacement word = this.resolveWordForCell(this.selectedRow, this.selectedCol);
-    if (word == null) {
+    final Optional<WordPlacement> word =
+        this.resolveWordForCell(this.selectedRow, this.selectedCol);
+    if (word.isEmpty()) {
       this.translationLabel.setHorizontalAlignment(SwingConstants.CENTER);
       this.translationLabel.setText("No word selected");
       return;
@@ -1569,43 +1571,43 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     this.translationLabel.setText(
         "Translation: "
             + TextDirectionSupport.bidiEmbedding(
-            word.translation().toUpperCase(Locale.ROOT), this.translationRightToLeft));
+            word.get().translation().toUpperCase(Locale.ROOT), this.translationRightToLeft));
   }
 
-  private WordPlacement resolveWordForCell(final int row, final int col) {
+  private Optional<WordPlacement> resolveWordForCell(final int row, final int col) {
     final List<WordPlacement> matched = this.placements.stream()
         .filter(placement -> this.cellBelongsToWord(row, col, placement))
         .toList();
     if (matched.isEmpty()) {
-      return null;
+      return Optional.empty();
     }
     final List<WordPlacement> startedHere = matched.stream()
         .filter(placement -> this.isStartCell(row, col, placement))
         .toList();
     if (startedHere.size() == 1) {
-      return startedHere.get(0);
+      return Optional.of(startedHere.get(0));
     }
     if (startedHere.size() > 1) {
       final List<WordPlacement> preferredStarted = startedHere.stream()
           .filter(placement -> placement.horizontal() == this.preferredHorizontalDirection)
           .toList();
       if (!preferredStarted.isEmpty()) {
-        return preferredStarted.get(0);
+        return Optional.of(preferredStarted.get(0));
       }
-      return startedHere.get(0);
+      return Optional.of(startedHere.get(0));
     }
     final List<WordPlacement> directionMatched = matched.stream()
         .filter(placement -> placement.horizontal() == this.preferredHorizontalDirection)
         .toList();
     if (!directionMatched.isEmpty()) {
-      return directionMatched.get(0);
+      return Optional.of(directionMatched.get(0));
     }
-    return matched.get(0);
+    return Optional.of(matched.get(0));
   }
 
   private Point resolveStartCell(final WordPlacement placement) {
-    final Point editable = this.initialEditableCellInPlacement(placement);
-    return editable == null ? new Point(placement.row(), placement.col()) : editable;
+    return this.initialEditableCellInPlacement(placement)
+        .orElseGet(() -> new Point(placement.row(), placement.col()));
   }
 
   private boolean isStartCell(final int row, final int col, final WordPlacement placement) {

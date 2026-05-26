@@ -126,7 +126,7 @@ public final class LangResourceJson {
 
   private static List<String> normalizeModules(final List<String> raw) {
     if (isEmpty(raw)) {
-      return null;
+      return List.of();
     }
     final List<String> out = new ArrayList<>();
     for (final String moduleId : raw) {
@@ -143,6 +143,6 @@ public final class LangResourceJson {
         out.add(id);
       }
     }
-    return out.isEmpty() ? null : List.copyOf(out);
+    return List.copyOf(out);
   }
 }

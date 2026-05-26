@@ -749,6 +749,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
       this.tipZone.setText(snippet);
     }
     TextDirectionSupport.applyToLabel(this.tipZone, this.isSideRightToLeft(this.userWritesToA));
+    this.tipZone.setHorizontalAlignment(SwingConstants.CENTER);
     this.tipZone.setFont(TextDirectionSupport.fontForDirection(
         LangTrainerFonts.MONO_NL_BOLD,
         Font.BOLD,

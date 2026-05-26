@@ -968,9 +968,8 @@ public final class EditorModule extends AbstractLangTrainerModule {
   }
 
   private void applyModulesToUi(final List<String> modules) {
-    final List<String> allowed = modules == null ? List.of() : modules;
     for (final Map.Entry<LangTrainerModuleId, JCheckBox> entry : this.moduleCheckboxes.entrySet()) {
-      entry.getValue().setSelected(allowed.contains(entry.getKey().name()));
+      entry.getValue().setSelected(modules.contains(entry.getKey().name()));
     }
   }
 
@@ -981,7 +980,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
         selected.add(entry.getKey().name());
       }
     }
-    return selected.isEmpty() ? null : List.copyOf(selected);
+    return List.copyOf(selected);
   }
 
   private void loadFromUser() {

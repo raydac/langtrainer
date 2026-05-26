@@ -1,12 +1,14 @@
 ## 1. Implementation Progress
+- Null handling cleanup: resource module lists now normalize to empty lists; several internal "not found" helpers use `Optional` instead of returning `null`.
 - RTL support: JSON `rtl` list, Hebrew keyboard layout, module/editor/Bricks/Crossword behavior, expanded `en-he-small` sample.
 - External lessons: OS default folder, `LANGTRAINER_EXTERNALS`, GitHub sync, hardened sync paths, dual `index.json` merge, source icons, opened files shared across compatible modules.
 - Resource selectors: `Start` / `Open from file` / `Sync Lessons` layout, tooltips, Start disabled until a row is selected.
 - Virtual keyboard stays mouse-only to preserve typing focus; header row uses fixed control height.
-- Crossword: rectangular board scaling; translation hint stays centered.
+- Crossword: rectangular board scaling; translation hint stays centered; dialog tip re-centers after text-direction updates.
 - Gson replaced with Jackson; bundled classpath UI icons; optional JetBrains Mono with system monospace fallback.
 
 ## 2. Architecture & Technical Discoveries
+- `DialogDefinition.modules()` is always non-null; an empty list means the resource is visible to all modules.
 - `TextDirectionSupport` centralizes RTL orientation, alignment, and bidi embedding; RTL surfaces prefer `LangTrainerFonts.SYSTEM_MONOSPACED`.
 - Crossword RTL: `placement.col()` anchors letter 0 (rightmost for horizontal RTL); re-apply `CENTER` on translation label after direction setup.
 - Bricks RTL: mirrored build-strip margins; completion fly uses visible history width, not spacer width.
@@ -35,6 +37,7 @@
 ## 8. User Advice and Recommendations
 - Keep changelog entries compact and short; include only important user-facing information and avoid overloading the changelog with implementation details.
 - Regularly review `current_project_notes.txt`, record note-review/cleanup actions, and compact or remove records that are outdated, repetitive, or no longer useful.
+- Prefer avoiding direct `null` where practical; use empty collections for collection results and `Optional` for absent values when it improves functional, fluent handling.
 
 ## 9. Notes Maintenance Log
 - 2026-05-26: Reviewed and compacted notes (~78 to ~40 lines); merged RTL/external-resource bullets; removed changelog/README/meta duplicates and resolved one-off bugfix history.
