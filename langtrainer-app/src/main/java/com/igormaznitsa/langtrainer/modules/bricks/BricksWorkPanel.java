@@ -4,6 +4,7 @@ import com.igormaznitsa.langtrainer.engine.DialogDefinition;
 import com.igormaznitsa.langtrainer.engine.DialogLine;
 import com.igormaznitsa.langtrainer.engine.TextDirectionSupport;
 import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
+import com.igormaznitsa.langtrainer.ui.PhraseFlashBanner;
 import java.awt.AWTEvent;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -21,6 +22,7 @@ import java.awt.PointerInfo;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.event.AWTEventListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -41,6 +43,7 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
 import javax.swing.JOptionPane;
@@ -80,6 +83,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
 
   private final Runnable onExitToSelect;
   private final JLabel cueLabel = new JLabel(" ", SwingConstants.CENTER);
+  private final JButton showPhraseButton = new JButton("Show");
   private final JPanel dropCanvas;
   private final JPanel poolBuildStack;
   private final JPanel historyZone;
@@ -92,6 +96,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
    * Flies solved phrase from build strip into history.
    */
   private final JLabel completionFlyGhost = new JLabel();
+  private final PhraseFlashBanner phraseFlashBanner = new PhraseFlashBanner();
   private final Random random = new Random();
   private final List<Integer> buildIds = new ArrayList<>();
   private final List<Integer> poolIds = new ArrayList<>();
@@ -118,11 +123,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   private float pendingGrabFracX;
   private float pendingGrabFracY;
   private int draggingId = -1;
-  private boolean pendingPromotePosted;  private final AWTEventListener globalDragMouseListener = this::onGlobalMouseWhileDragging;
-  private Timer dragGhostPollTimer;
-  private JPanel dragRootGlass;
-  private Component savedGlassPane;
-  private boolean savedGlassWasVisible;
+  private boolean pendingPromotePosted;
   BricksWorkPanel(final Runnable onExitToSelect) {
     this.onExitToSelect = Objects.requireNonNull(onExitToSelect, "onExitToSelect");
     this.setLayout(new BorderLayout(8, 8));
@@ -135,6 +136,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     this.cueLabel.setBorder(BorderFactory.createCompoundBorder(
         BorderFactory.createLineBorder(ZONE_BORDER, 1, true),
         BorderFactory.createEmptyBorder(12, 14, 12, 14)));
+    this.configureShowPhraseButton();
 
     this.fieldCanvas =
         new BricksFieldCanvas(
@@ -199,8 +201,38 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
           }
         });
 
-    this.add(this.cueLabel, BorderLayout.NORTH);
+    final JPanel topBar = new JPanel(new BorderLayout(8, 0));
+    topBar.setOpaque(false);
+    topBar.add(this.cueLabel, BorderLayout.CENTER);
+    topBar.add(this.showPhraseButton, BorderLayout.EAST);
+    this.add(topBar, BorderLayout.NORTH);
     this.add(this.layered, BorderLayout.CENTER);
+  }  private final AWTEventListener globalDragMouseListener = this::onGlobalMouseWhileDragging;
+  private Timer dragGhostPollTimer;
+  private JPanel dragRootGlass;
+  private Component savedGlassPane;
+  private boolean savedGlassWasVisible;
+
+  void resetToIdle() {
+    this.cancelPendingOrActiveDrag();
+    this.stopCompletionFlyAnimation();
+    this.phraseFlashBanner.dismiss();
+    this.definition = null;
+    this.exercises = List.of();
+    this.exerciseIndex = 0;
+    this.targetRightToLeft = false;
+    this.cueRightToLeft = false;
+    this.wordTokens = List.of();
+    this.fixedEndSuffix = "";
+    this.buildIds.clear();
+    this.poolIds.clear();
+    this.historyLines.clear();
+    this.cueLabel.setText(" ");
+    this.rebuildHistoryBrickList();
+    this.fieldCanvas.bindLists(List.of(), List.of(), List.of(), "");
+    this.fieldCanvas.setRightToLeft(false);
+    this.fieldCanvas.setBuildBrickFill(BUILD_PARTIAL_BG);
+    this.repaint();
   }
 
   static List<DialogLine> filterMultiWordTargetLines(
@@ -273,26 +305,42 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     return spacerOrigin.y + Math.max(0, (slotHeight - contentHeight) / 2);
   }
 
-  void resetToIdle() {
-    this.cancelPendingOrActiveDrag();
-    this.stopCompletionFlyAnimation();
-    this.definition = null;
-    this.exercises = List.of();
-    this.exerciseIndex = 0;
-    this.targetRightToLeft = false;
-    this.cueRightToLeft = false;
-    this.wordTokens = List.of();
-    this.fixedEndSuffix = "";
-    this.buildIds.clear();
-    this.poolIds.clear();
-    this.historyLines.clear();
-    this.cueLabel.setText(" ");
-    this.rebuildHistoryBrickList();
-    this.fieldCanvas.bindLists(List.of(), List.of(), List.of(), "");
-    this.fieldCanvas.setRightToLeft(false);
-    this.fieldCanvas.setBuildBrickFill(BUILD_PARTIAL_BG);
-    this.repaint();
+  private void configureShowPhraseButton() {
+    this.showPhraseButton.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(16f));
+    this.showPhraseButton.setOpaque(true);
+    this.showPhraseButton.setContentAreaFilled(true);
+    this.showPhraseButton.setBackground(PhraseFlashBanner.SHOW_ACTION_BUTTON_BG);
+    this.showPhraseButton.setForeground(PhraseFlashBanner.SHOW_ACTION_BUTTON_FG);
+    this.showPhraseButton.setFocusPainted(false);
+    this.showPhraseButton.setHorizontalAlignment(SwingConstants.CENTER);
+    this.showPhraseButton.setBorder(BorderFactory.createCompoundBorder(
+        BorderFactory.createLineBorder(PhraseFlashBanner.SHOW_ACTION_BUTTON_BORDER, 2, true),
+        BorderFactory.createEmptyBorder(8, 16, 8, 16)));
+    this.showPhraseButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    this.showPhraseButton.setToolTipText(
+        "Flash the phrase and translation for 5s (alternating each second)");
+    this.showPhraseButton.addActionListener(event -> this.showCurrentPhraseBanner());
   }
+
+  private void showCurrentPhraseBanner() {
+    if (this.definition == null || this.targetLineText.isEmpty()) {
+      return;
+    }
+    final Window owner = SwingUtilities.getWindowAncestor(this);
+    if (owner == null) {
+      return;
+    }
+    this.cancelPendingOrActiveDrag();
+    final String expected = TextDirectionSupport.bidiEmbedding(
+        PhraseFlashBanner.normalizeLineBreaksForDisplay(this.targetLineText),
+        this.targetRightToLeft);
+    final String partner = TextDirectionSupport.bidiEmbedding(
+        PhraseFlashBanner.normalizeLineBreaksForDisplay(this.cueLineText),
+        this.cueRightToLeft);
+    this.phraseFlashBanner.show(owner, expected, partner, this::layoutLayeredBody);
+  }
+
+
 
   void startSession(
       final DialogDefinition definition,

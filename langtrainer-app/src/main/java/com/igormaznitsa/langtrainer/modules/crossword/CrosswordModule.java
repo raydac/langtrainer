@@ -1053,7 +1053,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
       return Optional.empty();
     }
     final String word = this.normalizeCrosswordWord(rawWord);
-    final String translation = rawTranslation.trim();
+    final String translation = rawTranslation.strip();
     if (word.isEmpty() || translation.isEmpty()) {
       return Optional.empty();
     }
@@ -1061,7 +1061,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   }
 
   private String normalizeCrosswordWord(final String rawWord) {
-    return rawWord.trim().toUpperCase(Locale.ROOT);
+    return rawWord.strip().toUpperCase(Locale.ROOT);
   }
 
   private boolean isSingleWord(final String word) {

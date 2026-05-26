@@ -4,12 +4,14 @@
 - External lessons: OS default folder, `LANGTRAINER_EXTERNALS`, GitHub sync, hardened sync paths, dual `index.json` merge, source icons, opened files shared across compatible modules.
 - Resource selectors: `Start` / `Open from file` / `Sync Lessons` layout, tooltips, Start disabled until a row is selected.
 - Virtual keyboard stays mouse-only to preserve typing focus; header row uses fixed control height.
+- Bricks module has a `Show` help flash button beside the cue; it reveals the current target phrase and translation through `PhraseFlashBanner`.
 - Crossword: rectangular board scaling; translation hint stays centered; dialog tip re-centers after text-direction updates.
 - Gson replaced with Jackson; bundled classpath UI icons; optional JetBrains Mono with system monospace fallback.
 
 ## 2. Architecture & Technical Discoveries
 - `DialogDefinition.modules()` is always non-null; an empty list means the resource is visible to all modules.
 - `TextDirectionSupport` centralizes RTL orientation, alignment, and bidi embedding; RTL surfaces prefer `LangTrainerFonts.SYSTEM_MONOSPACED`.
+- Text boundary cleanup uses `String.strip()` instead of `trim()` so Unicode whitespace is handled consistently.
 - Crossword RTL: `placement.col()` anchors letter 0 (rightmost for horizontal RTL); re-apply `CENTER` on translation label after direction setup.
 - Bricks RTL: mirrored build-strip margins; completion fly uses visible history width, not spacer width.
 - External index merges `<externals>/common/jsons/index.json` and `<externals>/index.json`; entries may be absolute or relative to the index file.

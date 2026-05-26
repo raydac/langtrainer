@@ -84,7 +84,7 @@ public final class PhraseWordSupport {
     if (line == null || line.isBlank()) {
       return List.of();
     }
-    final String[] parts = line.trim().split("\\s+");
+    final String[] parts = line.strip().split("\\s+");
     final List<String> words = new ArrayList<>();
     for (final String part : parts) {
       if (!part.isEmpty()) {
