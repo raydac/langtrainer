@@ -1,68 +1,28 @@
 ## 1. Implementation Progress
-- Added optional JSON `rtl` language list support, Hebrew virtual keyboard layout, module RTL text-direction behavior with system monospace font fallback, and bundled English-Hebrew sample resource.
-- Editor A/B line table renderers and cell editors now apply RTL direction/font per column based on Language A/Language B and the JSON `rtl` list.
-- Bricks RTL completion animation now flies the solved row toward the right-aligned visible history slot and keeps fixed sentence suffixes at the visual RTL leading edge.
-- Virtual keyboard trigger, window, and controls are non-focusable/mouse-only; opening the keyboard restores the previous module focus, and key clicks insert into focused text components or focused editor grid cells before falling back to module-specific character handling.
-- Crossword RTL horizontal words are laid out right-to-left on the grid during generation and play; the rightmost editable cell is the typing start and the cursor advances leftward.
-- Added external Estonian-Russian pronouns teaching resource at `pub/externals/est-rus/est-rus-pronouns.json`.
-- Default external resources now live under the OS-specific per-user app config folder, with `LANGTRAINER_EXTERNALS` still overriding the path.
-- External resource config folder detection uses Apache Commons Lang `SystemUtils` for OS and user-home facts, with local logic only for app-specific path conventions.
-- Replaced low-risk self-written null/blank/root-cause/suffix checks with Apache Commons Lang helpers in resource sync, JSON loading, editor save, image loading, and help URL validation paths; avoid deprecated Commons Lang 3.20 `StringUtils`/`ObjectUtils` APIs (use `Strings.CI`/`Strings.CS`, `getIfNull`, or JDK `Objects.requireNonNullElse` instead).
-- Updated `CHANGELOG.txt` 1.1.0 entry to mention the `LANGTRAINER_EXTERNALS` configurable storage path.
-- Normalized `est-rus-pronouns.json`: variants start uppercase and sentence/question phrases carry terminal punctuation.
-- External GitHub sync success now shows an info dialog with loaded, removed, and updated file counts.
-- Resource selector now places `Sync Lessons` at the right edge of the bottom action bar to reduce accidental clicks.
-- Resource selectors label the primary action as `Start`, show large action icons, place `Open from file` immediately before `Sync Lessons`, add action tooltips, and disable `Start` unless a resource row is selected.
-- DRY refactor: shared resource selector button wiring/styling and local JSON resource open/merge helpers now live in common support code.
-- Crossword board now uses the full rectangular work area while keeping cells square, so wide puzzles can render larger instead of being constrained by a square panel.
-- Security hardening: GitHub sync allows existing resource folders but refuses dangerous broad targets (root, home, common home folders, working/project roots) and preserves a `.langtrainer-external-sync` ownership marker; external indexes reject symlinked resource paths; help links only open HTTP(S) URLs.
-- External GitHub sync failures now show a Swing alert, log stack traces, and still load existing local resources when possible.
-- Fixed external resource loading to merge both `common/jsons/index.json` and root-level `index.json` in local externals folders.
-- Consolidated `CHANGELOG.txt` 1.0.1 external-resource notes into one unreleased feature entry and refined global changelog-maintenance Cursor rule.
-- Resource selectors now carry resource source metadata and use painted high-contrast icons for bundled, synced external, and file-menu lesson rows instead of `*` text markers.
-- File-menu opened resources are stored in a shared in-memory registry and materialized per module only when `isResourceAllowed` accepts them, so compatible opened files follow module switching.
-- Runtime UI assets now resolve from `src/main/resources`; missing PNG references were replaced with bundled SVG icons, the stale splash manifest entry was removed, and missing JetBrains Mono TTFs fall back to system monospaced fonts.
-- Virtual keyboard header controls now use a fixed shared height for the language selector, Shift, and close buttons.
-- Optimized Russian `inputEqu` resources by representing `е/Е/ё/Ё` as a single equivalence-class row.
-- Expanded `README.md` with GitHub project description, Java/Maven requirements, build, and start commands.
-- Added `CHANGELOG.txt` 1.0.0 summary of implemented application features.
-- Fixed assembly resources: descriptor include patterns, launcher path quoting, AppImage desktop entry, bundled JRE usage, and macOS icon reference.
-- Dialog typing tips now show the expected text instead of a dash placeholder after the current phrase is fully entered.
-- Fixed Bricks completion animation leaving a lone `?` suffix brick on the build strip while the solved row flies into history.
-- Added `GitHubFolderSynchronizer` to mirror a public GitHub folder into a local folder synchronously.
-- Added app-wide external resource support: module resource selectors load the configured externals folder, can sync it from GitHub, and refresh lists asynchronously.
-- Replaced Gson JSON processing with Jackson databind; `github-api` already uses Jackson so the app avoids shipping a second JSON library.
+- RTL support: JSON `rtl` list, Hebrew keyboard layout, module/editor/Bricks/Crossword behavior, expanded `en-he-small` sample.
+- External lessons: OS default folder, `LANGTRAINER_EXTERNALS`, GitHub sync, hardened sync paths, dual `index.json` merge, source icons, opened files shared across compatible modules.
+- Resource selectors: `Start` / `Open from file` / `Sync Lessons` layout, tooltips, Start disabled until a row is selected.
+- Virtual keyboard stays mouse-only to preserve typing focus; header row uses fixed control height.
+- Crossword: rectangular board scaling; translation hint stays centered.
+- Gson replaced with Jackson; bundled classpath UI icons; optional JetBrains Mono with system monospace fallback.
 
 ## 2. Architecture & Technical Discoveries
-- JSON `rtl` values are matched case-insensitively against `langA`/`langB`; default behavior stays LTR when absent or unmatched.
-- `TextDirectionSupport` centralizes Swing component orientation/alignment and bidi embedding for module text surfaces.
-- RTL module text surfaces use `LangTrainerFonts.SYSTEM_MONOSPACED` because embedded JetBrains Mono can miss scripts such as Hebrew or Arabic.
-- Editor line table column 1 follows Language A direction and column 2 follows Language B direction in both display and active cell editing.
-- Bricks history rows and completion ghost use the same visual order for RTL: fixed suffix first, then word tokens reversed for left-to-right pixel drawing while logical correctness stays unchanged. The animation target is computed from the visible `historyStackLayered` width, not the BoxLayout spacer width.
-- Bricks build strip drag margin is mirrored: `buildLeadingPad()` for LTR (left), `buildTrailingPad()` for RTL (right); RTL flow anchors to `buildFlowRightX()` so bricks stop before the comfort margin.
-- `VirtualKeyboardWindow` uses a non-focusable `JDialog` plus non-focusable Swing controls; `LangTrainerApplication` makes the toolbar trigger non-focusable, restores the previous module focus after showing the keyboard, inserts virtual characters into focused `JTextComponent`s, and `EditorModule` starts editing focused selected table cells on virtual key clicks.
-- Crossword `placement.col()` is the anchor for letter index 0: rightmost cell for RTL horizontal words, leftmost for LTR; `cellAt` / `cellColAt` map indices to grid coordinates for build, validation, and typing.
-- External Estonian resource includes `DIALOG`, `FLY_GAME`, `CROSSWORD`, and `BRICKS`, mixing single-word pronouns with short multi-word phrases so different modules have usable rows.
-- `InputEquivalenceSupport` uses positional matching when `key` and `value` lists have equal sizes, and any-key-to-any-value matching otherwise.
-- Equal-size rows where `key` and `value` contain the same token set now act as equivalence classes, allowing compact reciprocal substitutions in JSON.
-- Maven must be run as `mvn22`.
-- Assembly descriptors must use `**/*` include patterns so root-level launcher files are packaged.
-- GitHub folder sync uses Hub4j `org.kohsuke:github-api` anonymously through the GitHub Contents API.
-- `langtrainer-app` declares Apache Commons Lang directly because production code uses `SystemUtils`; Commons Text already pulls the same 3.20.0 version transitively.
-- App JSON resource parsing and writing uses Jackson databind 2.21.0; `DialogLine` maps uppercase JSON fields with `@JsonProperty("A")` and `@JsonProperty("B")`.
-- `ExternalResourceSupport.syncAndLoadAsync` reports sync failures through `JOptionPane` and Java Util Logging; local external resources remain visible if loading succeeds after a failed sync.
-- `GitHubFolderSynchronizer` rejects non-portable GitHub paths before local writes: traversal segments, separators, control characters, Windows-reserved names/chars, trailing dots/spaces, and case-insensitive collisions.
-- External resources merge entries from `<externals>/common/jsons/index.json` and `<externals>/index.json`; `<externals>` defaults to an OS-specific app config path (`%APPDATA%\LangTrainer\externals`, `~/Library/Application Support/LangTrainer/externals`, or `$XDG_CONFIG_HOME/langtrainer/externals`) and can be overridden by Java property or environment variable `LANGTRAINER_EXTERNALS`.
-- Resource entries in `index.json` may be absolute (`/common/jsons/file.json`) or relative to the `index.json` file location (`./folder/file.json`).
+- `TextDirectionSupport` centralizes RTL orientation, alignment, and bidi embedding; RTL surfaces prefer `LangTrainerFonts.SYSTEM_MONOSPACED`.
+- Crossword RTL: `placement.col()` anchors letter 0 (rightmost for horizontal RTL); re-apply `CENTER` on translation label after direction setup.
+- Bricks RTL: mirrored build-strip margins; completion fly uses visible history width, not spacer width.
+- External index merges `<externals>/common/jsons/index.json` and `<externals>/index.json`; entries may be absolute or relative to the index file.
+- `GitHubFolderSynchronizer` uses anonymous GitHub API, rejects unsafe sync targets and non-portable paths; sync failures still show local resources when load succeeds.
+- `InputEquivalenceSupport`: positional match when key/value sizes match, otherwise any-key; equal token sets act as equivalence classes.
+- Build with `mvn22`; assembly descriptors need `**/*` includes; JSON via Jackson databind 2.21.
 
 ## 3. Technical Debt & Refactoring
-- `langtrainer-app` currently has no test source tree; input equivalence behavior would benefit from focused unit tests.
+- No `langtrainer-app` test sources yet; `InputEquivalenceSupport` is a good first unit-test target.
 
 ## 4. Current Work In Progress
 - None.
 
 ## 5. Known Issues & Limitations
-- No known issues from the current `inputEqu` optimization.
+- None.
 
 ## 6. Open Questions & Pending Decisions
 - None.
@@ -74,3 +34,7 @@
 
 ## 8. User Advice and Recommendations
 - Keep changelog entries compact and short; include only important user-facing information and avoid overloading the changelog with implementation details.
+- Regularly review `current_project_notes.txt`, record note-review/cleanup actions, and compact or remove records that are outdated, repetitive, or no longer useful.
+
+## 9. Notes Maintenance Log
+- 2026-05-26: Reviewed and compacted notes (~78 to ~40 lines); merged RTL/external-resource bullets; removed changelog/README/meta duplicates and resolved one-off bugfix history.
