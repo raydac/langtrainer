@@ -95,8 +95,6 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
 
   private final DefaultListModel<DialogListEntry> listModel = new DefaultListModel<>();
   private final Set<String> expandedClasspathFolders = new HashSet<>();
-  private final List<DialogListEntry.DialogResourceRow> externalClasspathResourceRows =
-      new ArrayList<>();
   private ClasspathResourceIndexTree classpathResourceTree;
   private ClasspathResourceIndexTree externalResourceTree = ClasspathResourceIndexTree.empty();
   private final JPanel rootPanel = new JPanel(new CardLayout());
@@ -172,7 +170,6 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
         .ifPresent(resource -> {
           ExternalResourceSupport.mergeOpenedResource(
               this.listModel,
-              this.externalClasspathResourceRows,
               list,
               resource.definition(),
               this::rebuildCrosswordResourceListModel);
@@ -252,9 +249,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     this.classpathResourceTree.materializeInto(this.listModel, this.expandedClasspathFolders);
     ExternalResourceSupport.materializeLocalTree(
         this.externalResourceTree, this.listModel, this.expandedClasspathFolders);
-    for (final DialogListEntry.DialogResourceRow row : this.externalClasspathResourceRows) {
-      this.listModel.addElement(row);
-    }
+    ExternalResourceSupport.materializeOpenedFileRows(this, this.listModel);
   }
 
   private void onClasspathFolderRowClicked(final DialogListEntry.DialogFolderRow folder) {
@@ -1563,10 +1558,12 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private void refreshTranslationLabel() {
     final WordPlacement word = this.resolveWordForCell(this.selectedRow, this.selectedCol);
     if (word == null) {
+      this.translationLabel.setHorizontalAlignment(SwingConstants.CENTER);
       this.translationLabel.setText("No word selected");
       return;
     }
     TextDirectionSupport.applyToLabel(this.translationLabel, this.translationRightToLeft);
+    this.translationLabel.setHorizontalAlignment(SwingConstants.CENTER);
     this.translationLabel.setFont(TextDirectionSupport.fontForDirection(
         LangTrainerFonts.MONO_NL_BOLD, Font.BOLD, this.translationRightToLeft, 34f));
     this.translationLabel.setText(

@@ -24,7 +24,6 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListCellRenderer;
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -49,6 +48,7 @@ public final class VirtualKeyboardWindow {
   private static final int KEY_HORIZONTAL_PADDING = 12;
   private static final int KEY_LABEL_MIN_WIDTH = 72;
   private static final int SPACE_KEY_MIN_WIDTH = 180;
+  private static final int HEADER_CONTROL_HEIGHT = 42;
   private static final int LANGUAGE_COMBO_EXTRA_WIDTH = 48;
   private static KeyboardLanguage lastSelectedLanguage = KeyboardLanguage.ENG;
 
@@ -83,8 +83,8 @@ public final class VirtualKeyboardWindow {
     this.languageComboBox.setToolTipText("Select a language");
     this.languageComboBox.setPrototypeDisplayValue(this.findLanguageWithLongestAbbreviation());
 
-    this.shiftButton = new JToggleButton(
-        new ImageIcon(ImageResourceLoader.loadImage("/images/capitalization.png")));
+    this.shiftButton =
+        new JToggleButton(ImageResourceLoader.loadIcon("/images/capitalization.svg", 28, 28));
     VirtualKeyboardWindow.configureMouseOnly(this.shiftButton);
     this.shiftButton.setToolTipText("Shift");
 
@@ -174,10 +174,12 @@ public final class VirtualKeyboardWindow {
             cellHasFocus));
     this.applyLanguageComboBoxSize();
     this.languageComboBox.addActionListener(event -> this.changeLanguage());
+    this.applyHeaderButtonSize(this.shiftButton);
     this.shiftButton.addActionListener(event -> this.doRebuildKeys());
     final JButton hideButton =
-        new JButton(new ImageIcon(ImageResourceLoader.loadImage("/images/cross.png")));
+        new JButton(ImageResourceLoader.loadIcon("/images/cross.svg", 28, 28));
     VirtualKeyboardWindow.configureMouseOnly(hideButton);
+    this.applyHeaderButtonSize(hideButton);
     hideButton.setToolTipText("Hide keyboard");
     hideButton.addActionListener(event -> {
       this.hide();
@@ -337,10 +339,17 @@ public final class VirtualKeyboardWindow {
         .orElse(0);
     final Dimension preferredSize = this.languageComboBox.getPreferredSize();
     final int width = Math.max(preferredSize.width, longestLabelWidth + LANGUAGE_COMBO_EXTRA_WIDTH);
-    final Dimension fixedSize = new Dimension(width, preferredSize.height);
+    final Dimension fixedSize = new Dimension(width, HEADER_CONTROL_HEIGHT);
     this.languageComboBox.setMinimumSize(fixedSize);
     this.languageComboBox.setPreferredSize(fixedSize);
     this.languageComboBox.setMaximumSize(fixedSize);
+  }
+
+  private void applyHeaderButtonSize(final JComponent button) {
+    final Dimension fixedSize = new Dimension(HEADER_CONTROL_HEIGHT, HEADER_CONTROL_HEIGHT);
+    button.setMinimumSize(fixedSize);
+    button.setPreferredSize(fixedSize);
+    button.setMaximumSize(fixedSize);
   }
 
   private void installWindowDragging(final JPanel dragArea) {

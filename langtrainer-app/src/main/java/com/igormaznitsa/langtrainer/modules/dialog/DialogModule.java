@@ -108,8 +108,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
 
   private final DefaultListModel<DialogListEntry> dialogListModel = new DefaultListModel<>();
   private final Set<String> expandedClasspathFolders = new HashSet<>();
-  private final List<DialogListEntry.DialogResourceRow> externalClasspathResourceRows =
-      new ArrayList<>();
   private ClasspathResourceIndexTree classpathResourceTree;
   private ClasspathResourceIndexTree externalResourceTree = ClasspathResourceIndexTree.empty();
   private final JPanel rootPanel = new JPanel(new CardLayout());
@@ -167,9 +165,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
         this.dialogListModel, this.expandedClasspathFolders);
     ExternalResourceSupport.materializeLocalTree(
         this.externalResourceTree, this.dialogListModel, this.expandedClasspathFolders);
-    for (final DialogListEntry.DialogResourceRow row : this.externalClasspathResourceRows) {
-      this.dialogListModel.addElement(row);
-    }
+    ExternalResourceSupport.materializeOpenedFileRows(this, this.dialogListModel);
   }
 
   private void onClasspathFolderRowClicked(final DialogListEntry.DialogFolderRow folder) {
@@ -570,7 +566,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
         .ifPresent(resource -> {
           ExternalResourceSupport.mergeOpenedResource(
               this.dialogListModel,
-              this.externalClasspathResourceRows,
               list,
               resource.definition(),
               this::rebuildDialogResourceListModel);

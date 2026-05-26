@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.logging.Level;
@@ -39,6 +40,8 @@ public final class ExternalResourceSupport {
   private static final String APP_CONFIG_FOLDER_NAME = "LangTrainer";
   private static final String EXTERNAL_RESOURCES_FOLDER_NAME = "externals";
   private static final String EXTERNAL_FOLDER_PATH_KEY_PREFIX = "external:";
+  private static final List<DialogListEntry.DialogResourceRow> OPENED_FILE_RESOURCE_ROWS =
+      new CopyOnWriteArrayList<>();
 
   private ExternalResourceSupport() {
   }
@@ -52,6 +55,14 @@ public final class ExternalResourceSupport {
       final javax.swing.DefaultListModel<DialogListEntry> model,
       final java.util.Set<String> expandedFolderPathKeys) {
     tree.materializeInto(model, expandedFolderPathKeys, true, EXTERNAL_FOLDER_PATH_KEY_PREFIX);
+  }
+
+  public static void materializeOpenedFileRows(
+      final AbstractLangTrainerModule module,
+      final DefaultListModel<DialogListEntry> model) {
+    OPENED_FILE_RESOURCE_ROWS.stream()
+        .filter(row -> module.isResourceAllowed(row.definition()))
+        .forEach(model::addElement);
   }
 
   public static Optional<OpenedResource> openResourceFromFile(
@@ -73,14 +84,13 @@ public final class ExternalResourceSupport {
 
   public static void mergeOpenedResource(
       final DefaultListModel<DialogListEntry> model,
-      final List<DialogListEntry.DialogResourceRow> externalRows,
       final JList<DialogListEntry> list,
       final DialogDefinition loaded,
       final Runnable onListRefreshNeeded) {
-    DialogListEntry.mergeExternalResourceRow(
-        externalRows, DialogListEntry.externalResourceRow(loaded));
+    DialogListEntry.mergeFileResourceRow(
+        OPENED_FILE_RESOURCE_ROWS, DialogListEntry.fileResourceRow(loaded));
     onListRefreshNeeded.run();
-    final int index = DialogListEntry.indexOfExternalResourceMenuName(model, loaded.menuName());
+    final int index = DialogListEntry.indexOfFileResourceMenuName(model, loaded.menuName());
     if (index >= 0) {
       list.setSelectedIndex(index);
     }

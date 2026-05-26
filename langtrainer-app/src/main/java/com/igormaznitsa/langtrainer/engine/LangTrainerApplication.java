@@ -1,6 +1,5 @@
 package com.igormaznitsa.langtrainer.engine;
 
-import static com.igormaznitsa.langtrainer.engine.EngineUtils.loadResourceImage;
 import static org.apache.commons.lang3.Strings.CI;
 
 import com.igormaznitsa.langtrainer.Modules;
@@ -61,7 +60,7 @@ public final class LangTrainerApplication {
   public LangTrainerApplication() {
     this.mainFrame = new JFrame("LangTrainer");
     try {
-      this.mainFrame.setIconImage(loadResourceImage("/images/icon.png"));
+      this.mainFrame.setIconImage(ImageResourceLoader.loadImage("/images/icon.svg", 64, 64));
     } catch (Exception ex) {
       System.err.println("Can't load app icon");
     }

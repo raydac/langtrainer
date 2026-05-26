@@ -13,7 +13,6 @@ import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
 import java.awt.CardLayout;
 import java.io.File;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -31,8 +30,6 @@ public final class BricksModule extends AbstractLangTrainerModule {
   private static final String CARD_WORK = "work";
   private final DefaultListModel<DialogListEntry> listModel = new DefaultListModel<>();
   private final Set<String> expandedClasspathFolders = new HashSet<>();
-  private final List<DialogListEntry.DialogResourceRow> externalClasspathResourceRows =
-      new ArrayList<>();
   private final JPanel rootPanel = new JPanel(new CardLayout());
   private final BricksWorkPanel workPanel;
   private final ClasspathResourceIndexTree classpathResourceTree;
@@ -62,9 +59,7 @@ public final class BricksModule extends AbstractLangTrainerModule {
     this.classpathResourceTree.materializeInto(this.listModel, this.expandedClasspathFolders);
     ExternalResourceSupport.materializeLocalTree(
         this.externalResourceTree, this.listModel, this.expandedClasspathFolders);
-    for (final DialogListEntry.DialogResourceRow row : this.externalClasspathResourceRows) {
-      this.listModel.addElement(row);
-    }
+    ExternalResourceSupport.materializeOpenedFileRows(this, this.listModel);
   }
 
   private void onClasspathFolderRowClicked(final DialogListEntry.DialogFolderRow folder) {
@@ -131,7 +126,6 @@ public final class BricksModule extends AbstractLangTrainerModule {
         .ifPresent(resource -> {
           ExternalResourceSupport.mergeOpenedResource(
               this.listModel,
-              this.externalClasspathResourceRows,
               list,
               resource.definition(),
               this::rebuildResourceListModel);

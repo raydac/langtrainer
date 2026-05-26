@@ -88,8 +88,6 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
 
   private final DefaultListModel<DialogListEntry> listModel = new DefaultListModel<>();
   private final Set<String> expandedClasspathFolders = new HashSet<>();
-  private final List<DialogListEntry.DialogResourceRow> externalClasspathResourceRows =
-      new ArrayList<>();
   private ClasspathResourceIndexTree classpathResourceTree;
   private ClasspathResourceIndexTree externalResourceTree = ClasspathResourceIndexTree.empty();
   private final JPanel rootPanel = new JPanel(new java.awt.CardLayout());
@@ -114,9 +112,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
     this.classpathResourceTree.materializeInto(this.listModel, this.expandedClasspathFolders);
     ExternalResourceSupport.materializeLocalTree(
         this.externalResourceTree, this.listModel, this.expandedClasspathFolders);
-    for (final DialogListEntry.DialogResourceRow row : this.externalClasspathResourceRows) {
-      this.listModel.addElement(row);
-    }
+    ExternalResourceSupport.materializeOpenedFileRows(this, this.listModel);
   }
 
   private void onClasspathFolderRowClicked(final DialogListEntry.DialogFolderRow folder) {
@@ -252,7 +248,6 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
         .ifPresent(resource -> {
           ExternalResourceSupport.mergeOpenedResource(
               this.listModel,
-              this.externalClasspathResourceRows,
               list,
               resource.definition(),
               this::rebuildFlyResourceListModel);

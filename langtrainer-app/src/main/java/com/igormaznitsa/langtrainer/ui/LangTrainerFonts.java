@@ -5,45 +5,50 @@ import java.awt.FontFormatException;
 import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Objects;
+import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- * JetBrains Mono NL faces from {@code /fonts/*.ttf}. Each constant is one registered physical weight.
- * The JVM runs enum initialization (constructor for every constant) the first time this type is used,
- * e.g. the first {@code LangTrainerFonts.MONO_NL_…} access when modules build their UI.
+ * Font palette for module UIs. Bundled JetBrains Mono NL faces are used when present, otherwise the
+ * JVM monospaced font keeps the application self-contained.
  */
 public enum LangTrainerFonts {
 
-  SYSTEM_MONOSPACED(null),
-  MONO_NL_REGULAR("/fonts/JetBrainsMonoNL-Regular.ttf"),
-  MONO_NL_SEMI_BOLD("/fonts/JetBrainsMonoNL-SemiBold.ttf"),
-  MONO_NL_BOLD("/fonts/JetBrainsMonoNL-Bold.ttf"),
-  MONO_NL_EXTRA_BOLD("/fonts/JetBrainsMonoNL-ExtraBold.ttf");
+  SYSTEM_MONOSPACED(null, Font.PLAIN),
+  MONO_NL_REGULAR("/fonts/JetBrainsMonoNL-Regular.ttf", Font.PLAIN),
+  MONO_NL_SEMI_BOLD("/fonts/JetBrainsMonoNL-SemiBold.ttf", Font.BOLD),
+  MONO_NL_BOLD("/fonts/JetBrainsMonoNL-Bold.ttf", Font.BOLD),
+  MONO_NL_EXTRA_BOLD("/fonts/JetBrainsMonoNL-ExtraBold.ttf", Font.BOLD);
+
+  private static final Logger LOG = Logger.getLogger(LangTrainerFonts.class.getName());
 
   private final Font baseFont;
 
-  LangTrainerFonts(final String classpath) {
-    if (classpath == null) {
-      this.baseFont = new Font(Font.MONOSPACED, Font.PLAIN, 12);
-    } else {
-      try {
-        this.baseFont = LangTrainerFonts.loadAndRegister(classpath);
-      } catch (final FontFormatException | IOException e) {
-        throw new ExceptionInInitializerError(
-            new IllegalStateException("Can't load JetBrains Mono NL: " + classpath, e));
+  LangTrainerFonts(final String classpath, final int fallbackStyle) {
+    this.baseFont = classpath == null
+        ? fallbackFont(fallbackStyle)
+        : loadAndRegister(classpath).orElseGet(() -> fallbackFont(fallbackStyle));
+  }
+
+  private static Optional<Font> loadAndRegister(final String classpath) {
+    final GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+    try (InputStream in = LangTrainerFonts.class.getResourceAsStream(classpath)) {
+      if (in == null) {
+        LOG.warning("Bundled font resource is missing, using system font: " + classpath);
+        return Optional.empty();
       }
+      final Font base = Font.createFont(Font.TRUETYPE_FONT, in);
+      ge.registerFont(base);
+      return Optional.of(base);
+    } catch (final FontFormatException | IOException ex) {
+      LOG.log(Level.WARNING, "Can't load bundled font, using system font: " + classpath, ex);
+      return Optional.empty();
     }
   }
 
-  private static Font loadAndRegister(final String classpath)
-      throws FontFormatException, IOException {
-    final GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-    try (InputStream in = LangTrainerFonts.class.getResourceAsStream(classpath)) {
-      Objects.requireNonNull(in, "Missing resource: " + classpath);
-      final Font base = Font.createFont(Font.TRUETYPE_FONT, in);
-      ge.registerFont(base);
-      return base;
-    }
+  private static Font fallbackFont(final int style) {
+    return new Font(Font.MONOSPACED, style, 12);
   }
 
   public Font atPoints(final float sizePt) {

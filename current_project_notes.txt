@@ -19,6 +19,10 @@
 - External GitHub sync failures now show a Swing alert, log stack traces, and still load existing local resources when possible.
 - Fixed external resource loading to merge both `common/jsons/index.json` and root-level `index.json` in local externals folders.
 - Consolidated `CHANGELOG.txt` 1.0.1 external-resource notes into one unreleased feature entry and refined global changelog-maintenance Cursor rule.
+- Resource selectors now carry resource source metadata and use painted high-contrast icons for bundled, synced external, and file-menu lesson rows instead of `*` text markers.
+- File-menu opened resources are stored in a shared in-memory registry and materialized per module only when `isResourceAllowed` accepts them, so compatible opened files follow module switching.
+- Runtime UI assets now resolve from `src/main/resources`; missing PNG references were replaced with bundled SVG icons, the stale splash manifest entry was removed, and missing JetBrains Mono TTFs fall back to system monospaced fonts.
+- Virtual keyboard header controls now use a fixed shared height for the language selector, Shift, and close buttons.
 - Optimized Russian `inputEqu` resources by representing `е/Е/ё/Ё` as a single equivalence-class row.
 - Expanded `README.md` with GitHub project description, Java/Maven requirements, build, and start commands.
 - Added `CHANGELOG.txt` 1.0.0 summary of implemented application features.

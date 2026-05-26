@@ -1,6 +1,7 @@
 package com.igormaznitsa.langtrainer.engine;
 
 import static com.igormaznitsa.langtrainer.engine.ImageResourceLoader.loadIcon;
+import static java.util.Objects.requireNonNull;
 
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
@@ -50,6 +51,14 @@ public final class ResourceListSelectPanel {
   private static final Icon START_ICON = loadIcon("/images/action-start.svg", 26, 26);
   private static final Icon OPEN_FROM_FILE_ICON = loadIcon("/images/action-open-file.svg", 26, 26);
   private static final Icon SYNC_GITHUB_ICON = loadIcon("/images/action-sync-github.svg", 26, 26);
+  private static final Icon EMBEDDED_RESOURCE_ICON =
+      new ResourceSourceIcon(new Color(55, 71, 79), new Color(117, 117, 117), ResourceGlyph.DOT);
+  private static final Icon EXTERNAL_RESOURCE_ICON =
+      new ResourceSourceIcon(new Color(74, 20, 140), new Color(123, 31, 162),
+          ResourceGlyph.SYNC);
+  private static final Icon FILE_RESOURCE_ICON =
+      new ResourceSourceIcon(new Color(230, 126, 34), new Color(245, 166, 35),
+          ResourceGlyph.FOLDER);
   private static final Color START_BUTTON_BG = new Color(46, 125, 50);
   private static final Color OPEN_BUTTON_BG = new Color(25, 118, 210);
   private static final Color SYNC_BUTTON_BG = new Color(123, 31, 162);
@@ -180,6 +189,14 @@ public final class ResourceListSelectPanel {
       return icon;
     }
     return UIManager.getIcon("Tree.closedIcon");
+  }
+
+  private static Icon resourceRowIcon(final DialogListEntry.DialogResourceRow row) {
+    return switch (row.source()) {
+      case EMBEDDED -> EMBEDDED_RESOURCE_ICON;
+      case EXTERNAL -> EXTERNAL_RESOURCE_ICON;
+      case FILE -> FILE_RESOURCE_ICON;
+    };
   }
 
   private static void addDialogSouth(
@@ -391,10 +408,8 @@ public final class ResourceListSelectPanel {
       label.setIconTextGap(8);
       if (value instanceof final DialogListEntry.DialogResourceRow row) {
         final int left = 18 + row.indentLevel() * INDENT_PER_LEVEL;
-        final String rowTitle =
-            (row.fromExternalFile() ? "* " : "") + row.definition().menuName();
-        label.setIcon(null);
-        label.setText(rowTitle);
+        label.setIcon(resourceRowIcon(row));
+        label.setText(row.definition().menuName());
         label.setCursor(Cursor.getDefaultCursor());
         label.setToolTipText(
             "<html><body style='width:280px;'>%s</body></html>".formatted(
@@ -446,10 +461,8 @@ public final class ResourceListSelectPanel {
           cell.setIconTextGap(8);
           if (value instanceof final DialogListEntry.DialogResourceRow row) {
             final int left = 14 + row.indentLevel() * INDENT_PER_LEVEL;
-            final String rowTitle =
-                (row.fromExternalFile() ? "* " : "") + row.definition().menuName();
-            cell.setIcon(null);
-            cell.setText(rowTitle);
+            cell.setIcon(resourceRowIcon(row));
+            cell.setText(row.definition().menuName());
             cell.setCursor(Cursor.getDefaultCursor());
             cell.setToolTipText(row.definition().description());
             cell.setBorder(BorderFactory.createEmptyBorder(10, left, 10, 14));
@@ -596,6 +609,83 @@ public final class ResourceListSelectPanel {
   private record AvailabilityBinding(
       JComponent component,
       BooleanSupplier enabledWhenIdle) {
+  }
+
+  private enum ResourceGlyph {
+    DOT,
+    SYNC,
+    FOLDER
+  }
+
+  private static final class ResourceSourceIcon implements Icon {
+
+    private static final int SIZE = 18;
+    private final Color outline;
+    private final Color accent;
+    private final ResourceGlyph glyph;
+
+    private ResourceSourceIcon(
+        final Color outline, final Color accent, final ResourceGlyph glyph) {
+      this.outline = requireNonNull(outline, "outline must not be null");
+      this.accent = requireNonNull(accent, "accent must not be null");
+      this.glyph = requireNonNull(glyph, "glyph must not be null");
+    }
+
+    @Override
+    public int getIconWidth() {
+      return SIZE;
+    }
+
+    @Override
+    public int getIconHeight() {
+      return SIZE;
+    }
+
+    @Override
+    public void paintIcon(final Component component, final Graphics graphics, final int x,
+                          final int y) {
+      final Graphics2D g2 = (Graphics2D) graphics.create();
+      try {
+        ImageResourceLoader.applyHighQualityDrawingHints(g2);
+        g2.translate(x, y);
+        this.paintDocument(g2);
+        this.paintGlyph(g2);
+      } finally {
+        g2.dispose();
+      }
+    }
+
+    private void paintDocument(final Graphics2D g2) {
+      g2.setColor(new Color(255, 255, 255, 230));
+      g2.fillRoundRect(3, 1, 11, 15, 3, 3);
+      g2.setColor(this.outline);
+      g2.setStroke(new BasicStroke(1.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+      g2.drawRoundRect(3, 1, 11, 15, 3, 3);
+      g2.drawLine(11, 1, 14, 4);
+      g2.drawLine(14, 4, 14, 15);
+    }
+
+    private void paintGlyph(final Graphics2D g2) {
+      g2.setColor(this.accent);
+      switch (this.glyph) {
+        case DOT -> g2.fillOval(10, 10, 6, 6);
+        case SYNC -> this.paintSyncGlyph(g2);
+        case FOLDER -> this.paintFolderGlyph(g2);
+      }
+    }
+
+    private void paintSyncGlyph(final Graphics2D g2) {
+      g2.setStroke(new BasicStroke(1.7f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+      g2.drawArc(8, 9, 8, 7, 40, 210);
+      g2.drawArc(8, 9, 8, 7, 220, 210);
+      g2.fillPolygon(new int[] {14, 17, 15}, new int[] {8, 9, 11}, 3);
+      g2.fillPolygon(new int[] {10, 7, 9}, new int[] {17, 16, 14}, 3);
+    }
+
+    private void paintFolderGlyph(final Graphics2D g2) {
+      g2.fillRoundRect(8, 11, 9, 5, 2, 2);
+      g2.fillRect(9, 9, 4, 3);
+    }
   }
 
   private static final class BusyOverlayPanel extends JPanel {
