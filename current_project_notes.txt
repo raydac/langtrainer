@@ -71,3 +71,6 @@
 - Compile app module with reactor context: `mvn22 -pl langtrainer-app -am compile`.
 - Build app with reactor context: `mvn22 -pl langtrainer-app -am package`.
 - Start app from Maven: `mvn22 -pl langtrainer-app -am exec:java`.
+
+## 8. User Advice and Recommendations
+- Keep changelog entries compact and short; include only important user-facing information and avoid overloading the changelog with implementation details.

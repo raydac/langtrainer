@@ -1,10 +1,9 @@
 1.1.0 (SNAPSHOT)
- - Added optional RTL language support in JSON resources, module text entry/display behavior with system monospace font fallback, Hebrew virtual keyboard layout, and a bundled English-Hebrew sample; editor grid cells follow their A/B language direction, Bricks uses mirrored build-strip drag margins and completion animation within the visible history area, and crossword generation and typing now share the same right-to-left horizontal grid layout.
- - Kept the virtual keyboard trigger and window mouse-only/non-focusable so module typing focus is preserved while opening and clicking virtual keys, including editable text fields and editor grid cells.
- - Added external JSON resources support with local loading, OS-specific default storage, configurable storage path through `LANGTRAINER_EXTERNALS`, GitHub sync from module resource selectors, source-specific resource list icons, and cross-module visibility for opened local JSON files when compatible.
- - Bundled missing application and virtual keyboard icons as classpath resources and made optional custom fonts fall back to the system monospace font when not bundled.
- - Improved crossword board scaling so wide puzzles can use rectangular work areas while keeping cells square.
- - Replaced Gson JSON processing with Jackson databind already used by the GitHub API dependency.
+ - Added optional RTL language support in JSON resources, Hebrew virtual keyboard layout, and a bundled English-Hebrew sample.
+ - Kept the virtual keyboard mouse-only so module typing focus is preserved while using it.
+ - Added external JSON resources with local storage, `LANGTRAINER_EXTERNALS` override, GitHub sync, and opened files shared across compatible modules.
+ - Improved resource list icons and crossword board scaling for wide puzzles.
+ - Replaced Gson with Jackson databind.
 
 1.0.0 (23-may-2026)
  - Initial desktop application for foreign-language training.
