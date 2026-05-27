@@ -112,6 +112,9 @@ public final class TypingPhraseFormatter {
         ei += elen;
         continue;
       }
+      if (li >= letters.length() && !PhraseWordSupport.isIntraWordJoiner(cpE)) {
+        break;
+      }
       out.appendCodePoint(cpE);
       ei += elen;
     }

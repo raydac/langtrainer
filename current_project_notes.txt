@@ -28,6 +28,9 @@
 ## 5. Known Issues & Limitations
 - None.
 
+## 1. Implementation Progress (recent)
+- Fly game backspace: do not re-normalize on document remove (Dialog parity); `mergeLettersIntoExpected` no longer appends trailing sentence punctuation after all letters are typed (punctuation stays overlay-only).
+
 ## 6. Open Questions & Pending Decisions
 - None.
 

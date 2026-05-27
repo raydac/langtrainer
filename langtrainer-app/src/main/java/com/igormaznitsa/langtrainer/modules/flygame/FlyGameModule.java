@@ -667,7 +667,18 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
 
         @Override
         public void removeUpdate(final DocumentEvent event) {
-          GameBoard.this.scheduleFlyDocumentProcessing();
+          if (GameBoard.this.applyingFlyNormalization
+              || GameBoard.this.applyingInputEquivalence) {
+            return;
+          }
+          SwingUtilities.invokeLater(() -> {
+            if (GameBoard.this.dialog == null
+                || GameBoard.this.showingAnswer
+                || GameBoard.this.explodeFramesLeft > 0) {
+              return;
+            }
+            GameBoard.this.repaintSkyFrame();
+          });
         }
 
         @Override
