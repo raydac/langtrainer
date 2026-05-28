@@ -38,8 +38,8 @@ Module FLY GAME
 6.4a. If the selected typing language is listed in JSON "rtl", the hidden input field and visible typed-answer overlay use right-to-left ordering.
  6.5. Aim / feedback position reflects how close the typed word is to the expected answer (see Fly game typing slot logic).
  6.6. On Enter: if correct, the aircraft is cleared and the next word starts; if incorrect, input may be adjusted without advancing.
- 6.7. If time runs out before a correct answer, the correct translation is shown briefly (ANSWER_SHOW_MS in code), then the same word is repeated.
- 6.8. Words are taken from the resource in random order until all have been answered correctly in the session.
+ 6.7. If time runs out before a correct answer, the correct translation is shown briefly (ANSWER_SHOW_MS in code), then the same unfinished word is repeated.
+ 6.8. Words are taken from the resource in random order until all have been answered correctly in the session; each bucket now needs three successful flights per word instead of five.
  6.9. Optional WAV sound effects for start, hit, miss, end (SoundClip / FlyGameSfx) when assets load successfully.
 
 7. UI scales with the window; vector artwork is used where provided. Toolbar on the game field includes close, pause/resume, sound, hint, and keyboard controls as implemented in FlyGameModule.

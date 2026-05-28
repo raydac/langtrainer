@@ -29,6 +29,7 @@ Module Bars
 |+--------------------------------------------------------+|
 +----------------------------------------------------------+
 8. List of language A is on left, list of language B is on right
+8a. At stage start the right list is shuffled against the left list so no phrase pair is already aligned in the same row.
 9. Left list has cyan background and right list has orange background. Foreground is black, text is centered in every bar, bold LangTrainerFonts.SYSTEM_MONOSPACED and bars are scaled to fill visible game area.
 10.User can drag any bar vertically by mouse in its list but only vertically, bar cant change its column. During drag the bar swaps positions with the target bar instead of shifting the whole stack.
 11. Game stage won if user correctly sort lists and left bar stack contains correct variants for right bar stack and in the case background of bars becomes light green and game stage completed and user can't drag bars.

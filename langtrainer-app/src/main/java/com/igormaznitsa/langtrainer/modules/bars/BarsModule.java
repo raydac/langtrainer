@@ -221,7 +221,8 @@ public final class BarsModule extends AbstractLangTrainerModule {
     private final JPanel topPanel = new JPanel(new CardLayout());
     private final JLabel statusLabel = new JLabel(" ", SwingConstants.CENTER);
     private final JButton nextButton = new JButton("NEXT");
-    private final Random random = new Random();    private final BarBoardPanel boardPanel = new BarBoardPanel(this::onStageSolved);
+    private final Random random = new Random();
+    private final BarBoardPanel boardPanel = new BarBoardPanel(this::onStageSolved);
     private List<DialogLine> lines = List.of();
     private int stageStart;
     private int stageEnd;
@@ -354,6 +355,7 @@ public final class BarsModule extends AbstractLangTrainerModule {
     private final Map<Integer, BarEntry> entriesById = new HashMap<>();
     private final List<Integer> leftOrder = new ArrayList<>();
     private final List<Integer> rightOrder = new ArrayList<>();
+    private final Random random = new Random();
     private boolean leftRightToLeft;
     private boolean rightRightToLeft;
     private boolean stageSolved;
@@ -408,14 +410,36 @@ public final class BarsModule extends AbstractLangTrainerModule {
       entries.forEach(entry -> {
         this.entriesById.put(entry.id(), entry);
         this.leftOrder.add(entry.id());
-        this.rightOrder.add(entry.id());
       });
-      Collections.shuffle(this.leftOrder);
-      Collections.shuffle(this.rightOrder);
-      if (this.isSolved() && this.rightOrder.size() > 1) {
-        Collections.rotate(this.rightOrder, 1);
-      }
+      Collections.shuffle(this.leftOrder, this.random);
+      this.rightOrder.addAll(this.makeUnmatchedRightOrder());
       this.repaint();
+    }
+
+    private List<Integer> makeUnmatchedRightOrder() {
+      final ArrayList<Integer> order = new ArrayList<>(this.leftOrder);
+      if (order.size() < 2) {
+        return order;
+      }
+      for (int attempt = 0; attempt < 32; attempt++) {
+        Collections.shuffle(order, this.random);
+        if (!this.hasAlignedBars(order)) {
+          return order;
+        }
+      }
+      order.clear();
+      order.addAll(this.leftOrder);
+      Collections.rotate(order, 1 + this.random.nextInt(order.size() - 1));
+      return order;
+    }
+
+    private boolean hasAlignedBars(final List<Integer> candidateRightOrder) {
+      for (int i = 0; i < this.leftOrder.size(); i++) {
+        if (this.leftOrder.get(i).equals(candidateRightOrder.get(i))) {
+          return true;
+        }
+      }
+      return false;
     }
 
     private void showCompleted() {

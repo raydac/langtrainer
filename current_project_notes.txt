@@ -1,5 +1,6 @@
 ## 1. Implementation Progress
-- Bars module added: shared resource selector, draggable paired A/B bars with centered bold system-monospace LTR/RTL text and swap-on-drag ordering, 7-item stages with overlap, centered `NEXT` stage advance, completion banner, editor/resource module filtering via `BARS`.
+- Bars module added: shared resource selector, draggable paired A/B bars with centered bold system-monospace LTR/RTL text and swap-on-drag ordering, 7-item stages with overlap, deranged start rows, centered `NEXT` stage advance, completion banner, editor/resource module filtering via `BARS`.
+- Fly game repeat pressure reduced by lowering bucket graduation to three successful flights per word; missed timeout words still repeat immediately because they are unfinished.
 - Common bundled lesson text normalized so `A`/`B` entries start with a capitalized cased character.
 - Added Estonian-Russian external shopping lesson with 45 words and store phrases.
 - Null handling cleanup: resource module lists now normalize to empty lists; several internal "not found" helpers use `Optional` instead of returning `null`.
@@ -18,6 +19,7 @@
 - Text boundary cleanup uses `String.strip()` instead of `trim()` so Unicode whitespace is handled consistently.
 - Crossword RTL: `placement.col()` anchors letter 0 (rightmost for horizontal RTL); re-apply `CENTER` on translation label after direction setup.
 - Bricks RTL: mirrored build-strip margins; completion fly uses visible history width, not spacer width.
+- Fly game uses a small bucketed Leitner scheduler (`FlyLeitnerSession`); failed cards stay in practice and missed timeout words retry immediately.
 - External index merges `<externals>/common/jsons/index.json` and `<externals>/index.json`; entries may be absolute or relative to the index file.
 - `GitHubFolderSynchronizer` uses anonymous GitHub API, rejects unsafe sync targets and non-portable paths; sync failures still show local resources when load succeeds.
 - `InputEquivalenceSupport`: positional match when key/value sizes match, otherwise any-key; equal token sets act as equivalence classes.

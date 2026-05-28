@@ -11,7 +11,7 @@ import java.util.Random;
  * Shuffles all line indices, splits them into buckets of at most {@link #BUCKET_CAPACITY}, then
  * applies a Leitner workflow per bucket: correct answers promote a line toward graduation; failures
  * return it to box 0. The next bucket is introduced only after every line in the current bucket
- * has graduated (five successful flights without demotion from the top box).
+ * has graduated (three successful flights without demotion from the top box).
  */
 final class FlyLeitnerSession {
 
@@ -20,7 +20,7 @@ final class FlyLeitnerSession {
    * Box indices {@code 0..LEITNER_MAX_BOX}. A line graduates after a correct answer while in
    * {@code LEITNER_MAX_BOX}.
    */
-  static final int LEITNER_MAX_BOX = 4;
+  static final int LEITNER_MAX_BOX = 2;
 
   private final List<List<Integer>> buckets;
   private final Random random;
