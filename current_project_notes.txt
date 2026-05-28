@@ -1,4 +1,5 @@
 ## 1. Implementation Progress
+- Added Estonian-Russian external shopping lesson with 45 words and store phrases.
 - Null handling cleanup: resource module lists now normalize to empty lists; several internal "not found" helpers use `Optional` instead of returning `null`.
 - RTL support: JSON `rtl` list, Hebrew keyboard layout, module/editor/Bricks/Crossword behavior, expanded `en-he-small` sample.
 - External lessons: OS default folder, `LANGTRAINER_EXTERNALS`, GitHub sync, hardened sync paths, dual `index.json` merge, source icons, opened files shared across compatible modules.
