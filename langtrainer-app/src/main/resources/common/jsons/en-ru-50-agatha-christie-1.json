@@ -2,7 +2,8 @@
   "path": "English-Russian",
   "modules": [
     "DIALOG",
-    "BRICKS"
+    "BRICKS",
+    "BARS"
   ],
   "menuName": "Agatha Christie Style Phrases / Фразы в стиле Агаты Кристи",
   "description": "50 advanced English phrases inspired by Agatha Christie style (no names or places)",

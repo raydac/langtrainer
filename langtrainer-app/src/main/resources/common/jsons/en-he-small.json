@@ -11,107 +11,108 @@
     "DIALOG",
     "FLY_GAME",
     "CROSSWORD",
-    "BRICKS"
+    "BRICKS",
+    "BARS"
   ],
   "lines": [
     {
-      "A": "hello",
+      "A": "Hello",
       "B": "שלום"
     },
     {
-      "A": "house",
+      "A": "House",
       "B": "בית"
     },
     {
-      "A": "sun",
+      "A": "Sun",
       "B": "שמש"
     },
     {
-      "A": "water",
+      "A": "Water",
       "B": "מים"
     },
     {
-      "A": "book",
+      "A": "Book",
       "B": "ספר"
     },
     {
-      "A": "day",
+      "A": "Day",
       "B": "יום"
     },
     {
-      "A": "night",
+      "A": "Night",
       "B": "לילה"
     },
     {
-      "A": "friend",
+      "A": "Friend",
       "B": "חבר"
     },
     {
-      "A": "family",
+      "A": "Family",
       "B": "משפחה"
     },
     {
-      "A": "food",
+      "A": "Food",
       "B": "אוכל"
     },
     {
-      "A": "bread",
+      "A": "Bread",
       "B": "לחם"
     },
     {
-      "A": "milk",
+      "A": "Milk",
       "B": "חלב"
     },
     {
-      "A": "tea",
+      "A": "Tea",
       "B": "תה"
     },
     {
-      "A": "coffee",
+      "A": "Coffee",
       "B": "קפה"
     },
     {
-      "A": "city",
+      "A": "City",
       "B": "עיר"
     },
     {
-      "A": "street",
+      "A": "Street",
       "B": "רחוב"
     },
     {
-      "A": "car",
+      "A": "Car",
       "B": "מכונית"
     },
     {
-      "A": "train",
+      "A": "Train",
       "B": "רכבת"
     },
     {
-      "A": "school",
+      "A": "School",
       "B": "בית ספר"
     },
     {
-      "A": "work",
+      "A": "Work",
       "B": "עבודה"
     },
     {
-      "A": "time",
+      "A": "Time",
       "B": "זמן"
     },
     {
-      "A": "today",
+      "A": "Today",
       "B": "היום"
     },
     {
-      "A": "tomorrow",
+      "A": "Tomorrow",
       "B": "מחר"
     },
     {
-      "A": "yes",
+      "A": "Yes",
       "B": "כן"
     },
     {
-      "A": "no",
+      "A": "No",
       "B": "לא"
     },
     {

@@ -1,15 +1,18 @@
 ## 1. Implementation Progress
+- Bars module added: shared resource selector, draggable paired A/B bars with centered bold system-monospace LTR/RTL text and swap-on-drag ordering, 7-item stages with overlap, centered `NEXT` stage advance, completion banner, editor/resource module filtering via `BARS`.
+- Common bundled lesson text normalized so `A`/`B` entries start with a capitalized cased character.
 - Added Estonian-Russian external shopping lesson with 45 words and store phrases.
 - Null handling cleanup: resource module lists now normalize to empty lists; several internal "not found" helpers use `Optional` instead of returning `null`.
 - RTL support: JSON `rtl` list, Hebrew keyboard layout, module/editor/Bricks/Crossword behavior, expanded `en-he-small` sample.
 - External lessons: OS default folder, `LANGTRAINER_EXTERNALS`, GitHub sync, hardened sync paths, dual `index.json` merge, source icons, opened files shared across compatible modules.
-- Resource selectors: `Start` / `Open from file` / `Sync Lessons` layout, tooltips, Start disabled until a row is selected.
+- Resource selectors: `Start` / `Open from file` / `Sync Lessons` layout, tooltips, uppercase folder labels, Start disabled until a row is selected.
 - Virtual keyboard stays mouse-only to preserve typing focus; header row uses fixed control height.
-- Bricks module has a `Show` help flash button beside the cue; it reveals the current target phrase and translation through `PhraseFlashBanner`.
+- Bricks module has a `Show` help flash button beside the cue; brick text uses bold `LangTrainerFonts.SYSTEM_MONOSPACED`.
 - Crossword: rectangular board scaling; translation hint stays centered; dialog tip re-centers after text-direction updates.
 - Gson replaced with Jackson; bundled classpath UI icons; optional JetBrains Mono with system monospace fallback.
 
 ## 2. Architecture & Technical Discoveries
+- `LangTrainerModuleId` drives Editor module checkboxes automatically; adding a module enum value exposes it in the resource editor.
 - `DialogDefinition.modules()` is always non-null; an empty list means the resource is visible to all modules.
 - `TextDirectionSupport` centralizes RTL orientation, alignment, and bidi embedding; RTL surfaces prefer `LangTrainerFonts.SYSTEM_MONOSPACED`.
 - Text boundary cleanup uses `String.strip()` instead of `trim()` so Unicode whitespace is handled consistently.
@@ -41,6 +44,7 @@
 - Start app from Maven: `mvn22 -pl langtrainer-app -am exec:java`.
 
 ## 8. User Advice and Recommendations
+- Keep module docs in `langtrainer-app/docs/Module_*.txt` synchronized when module behavior changes.
 - Keep changelog entries compact and short; include only important user-facing information and avoid overloading the changelog with implementation details.
 - Regularly review `current_project_notes.txt`, record note-review/cleanup actions, and compact or remove records that are outdated, repetitive, or no longer useful.
 - Prefer avoiding direct `null` where practical; use empty collections for collection results and `Optional` for absent values when it improves functional, fluent handling.

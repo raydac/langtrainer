@@ -1,7 +1,5 @@
 package com.igormaznitsa.langtrainer.modules.bricks;
 
-import com.igormaznitsa.langtrainer.engine.TextDirectionSupport;
-import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -179,11 +177,7 @@ final class BricksFieldCanvas extends JPanel {
   }
 
   Font layoutFont() {
-    return TextDirectionSupport.fontForDirection(
-        LangTrainerFonts.MONO_NL_REGULAR,
-        Font.PLAIN,
-        this.rightToLeft,
-        BRICK_FONT_PT * this.brickScale);
+    return BrickImageRenderer.brickTextFont(BRICK_FONT_PT * this.brickScale);
   }
 
   Rectangle buildBricksUnionInCanvas() {
@@ -263,8 +257,7 @@ final class BricksFieldCanvas extends JPanel {
   }
 
   private void ensureBaseMeasures() {
-    this.baseBrickFont = TextDirectionSupport.fontForDirection(
-        LangTrainerFonts.MONO_NL_REGULAR, Font.PLAIN, this.rightToLeft, BRICK_FONT_PT);
+    this.baseBrickFont = BrickImageRenderer.brickTextFont(BRICK_FONT_PT);
     this.baseBrickH = BrickImageRenderer.measureBrickHeightPx(this.baseBrickFont);
     final int n = this.wordTokens.size();
     this.baseBrickW = new int[n];

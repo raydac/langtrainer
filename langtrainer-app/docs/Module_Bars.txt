@@ -1,0 +1,37 @@
+Module Bars
+------------------
+
+1. It is a child of AbstractLangTrainerModule
+2. On start it shows the same style of resource list as Dialog and Fly game.
+3. The module works with normal dialog JSON resources and supports module filtering through BARS.
+4. The module works with all words and sentences in resource file
+5. All words and sentences are shuffled before game
+6. Every game step processed max 7 words or sentences found in shuffled list
+7. Module shows bars which user can drag by mouse to find their correct position
++----------------------------------------------------------+
+|                                                     +-+  |
+|                                                     +-+  |
+|+--------------------------------------------------------+|
+||                                                        ||
+||  +--------------------------++-----------------------+ ||
+||  |                          ||                       | ||
+||  +--------------------------++-----------------------+ ||
+||  +--------------------------++-----------------------+ ||
+||  |                          ||                       | ||
+||  +--------------------------++-----------------------+ ||
+||  +--------------------------++-----------------------+ ||
+||  |                          ||                       | ||
+||  +--------------------------++-----------------------+ ||
+||  +--------------------------++-----------------------+ ||
+||  |                          ||                       | ||
+||  +--------------------------++-----------------------+ ||
+||                                                        ||
+|+--------------------------------------------------------+|
++----------------------------------------------------------+
+8. List of language A is on left, list of language B is on right
+9. Left list has cyan background and right list has orange background. Foreground is black, text is centered in every bar, bold LangTrainerFonts.SYSTEM_MONOSPACED and bars are scaled to fill visible game area.
+10.User can drag any bar vertically by mouse in its list but only vertically, bar cant change its column. During drag the bar swaps positions with the target bar instead of shifting the whole stack.
+11. Game stage won if user correctly sort lists and left bar stack contains correct variants for right bar stack and in the case background of bars becomes light green and game stage completed and user can't drag bars.
+12. As only game stage completed user sees styled button "NEXT" centered in the top panel instead of the title. It starts next game stage.
+13. Between game stages we repeat 1 phrase by advancing 6 items for a 7-item stage. Stages should not be smaller than 7 phrases.
+14. When there is no more variants then game is ended and we show banner with banner "COMPLETED" and user can close the game module by standard module close button

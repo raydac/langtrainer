@@ -4,12 +4,6 @@
   "description": "Estonian shopping words and everyday store phrases with Russian translations",
   "langA": "Eesti",
   "langB": "Русский",
-  "modules": [
-    "DIALOG",
-    "FLY_GAME",
-    "CROSSWORD",
-    "BRICKS"
-  ],
   "inputEqu": [
     {
       "key": [

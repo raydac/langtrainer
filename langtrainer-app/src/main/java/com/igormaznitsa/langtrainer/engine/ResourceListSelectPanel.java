@@ -19,6 +19,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
@@ -197,6 +198,10 @@ public final class ResourceListSelectPanel {
       case EXTERNAL -> EXTERNAL_RESOURCE_ICON;
       case FILE -> FILE_RESOURCE_ICON;
     };
+  }
+
+  private static String folderRowText(final DialogListEntry.DialogFolderRow folder) {
+    return (folder.expanded() ? "▼ " : "▶ ") + folder.title().toUpperCase(Locale.ROOT);
   }
 
   private static void addDialogSouth(
@@ -428,8 +433,7 @@ public final class ResourceListSelectPanel {
       } else if (value instanceof final DialogListEntry.DialogFolderRow folder) {
         final int left = 18 + folder.depth() * INDENT_PER_LEVEL;
         label.setIcon(folderIcon);
-        final String chevron = folder.expanded() ? "▼ " : "▶ ";
-        label.setText(chevron + folder.title());
+        label.setText(folderRowText(folder));
         label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         label.setToolTipText(null);
         label.setBorder(
@@ -477,8 +481,7 @@ public final class ResourceListSelectPanel {
           } else if (value instanceof final DialogListEntry.DialogFolderRow folder) {
             final int left = 14 + folder.depth() * INDENT_PER_LEVEL;
             cell.setIcon(folderIcon);
-            final String chevron = folder.expanded() ? "▼ " : "▶ ";
-            cell.setText(chevron + folder.title());
+            cell.setText(folderRowText(folder));
             cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             cell.setToolTipText(null);
             cell.setBorder(BorderFactory.createEmptyBorder(10, left, 10, 14));

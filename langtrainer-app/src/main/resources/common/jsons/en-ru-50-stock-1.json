@@ -2,7 +2,8 @@
   "path": "English-Russian",
   "modules": [
     "DIALOG",
-    "BRICKS"
+    "BRICKS",
+    "BARS"
   ],
   "menuName": "Stock Market Advanced Phrases / Продвинутая биржевая терминология",
   "description": "50 advanced stock market phrases in English with Russian translations",

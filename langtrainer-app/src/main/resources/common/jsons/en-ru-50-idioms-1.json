@@ -2,7 +2,8 @@
   "path": "English-Russian",
   "modules": [
     "DIALOG",
-    "BRICKS"
+    "BRICKS",
+    "BARS"
   ],
   "menuName": "English Idioms / Английские идиомы",
   "description": "50 common English idioms with Russian translations",
@@ -11,204 +12,204 @@
   "shuffled": true,
   "lines": [
     {
-      "A": "break the ice",
-      "B": "разрядить обстановку"
+      "A": "Break the ice",
+      "B": "Разрядить обстановку"
     },
     {
-      "A": "hit the nail on the head",
-      "B": "попасть в точку"
+      "A": "Hit the nail on the head",
+      "B": "Попасть в точку"
     },
     {
-      "A": "under the weather",
-      "B": "плохо себя чувствовать"
+      "A": "Under the weather",
+      "B": "Плохо себя чувствовать"
     },
     {
-      "A": "piece of cake",
-      "B": "проще простого"
+      "A": "Piece of cake",
+      "B": "Проще простого"
     },
     {
-      "A": "once in a blue moon",
-      "B": "очень редко"
+      "A": "Once in a blue moon",
+      "B": "Очень редко"
     },
     {
-      "A": "cost an arm and a leg",
-      "B": "стоить очень дорого"
+      "A": "Cost an arm and a leg",
+      "B": "Стоить очень дорого"
     },
     {
-      "A": "spill the beans",
-      "B": "выдать секрет"
+      "A": "Spill the beans",
+      "B": "Выдать секрет"
     },
     {
-      "A": "let the cat out of the bag",
-      "B": "раскрыть тайну"
+      "A": "Let the cat out of the bag",
+      "B": "Раскрыть тайну"
     },
     {
-      "A": "hit the sack",
-      "B": "идти спать"
+      "A": "Hit the sack",
+      "B": "Идти спать"
     },
     {
-      "A": "burn the midnight oil",
-      "B": "работать допоздна"
+      "A": "Burn the midnight oil",
+      "B": "Работать допоздна"
     },
     {
-      "A": "barking up the wrong tree",
-      "B": "идти по ложному следу"
+      "A": "Barking up the wrong tree",
+      "B": "Идти по ложному следу"
     },
     {
-      "A": "cut corners",
-      "B": "делать кое-как"
+      "A": "Cut corners",
+      "B": "Делать кое-как"
     },
     {
-      "A": "get out of hand",
-      "B": "выйти из-под контроля"
+      "A": "Get out of hand",
+      "B": "Выйти из-под контроля"
     },
     {
-      "A": "in the long run",
-      "B": "в долгосрочной перспективе"
+      "A": "In the long run",
+      "B": "В долгосрочной перспективе"
     },
     {
-      "A": "on the same page",
-      "B": "быть на одной волне"
+      "A": "On the same page",
+      "B": "Быть на одной волне"
     },
     {
-      "A": "pull someone's leg",
-      "B": "подшучивать"
+      "A": "Pull someone's leg",
+      "B": "Подшучивать"
     },
     {
-      "A": "the ball is in your court",
-      "B": "теперь твоя очередь"
+      "A": "The ball is in your court",
+      "B": "Теперь твоя очередь"
     },
     {
-      "A": "take it with a grain of salt",
-      "B": "относиться скептически"
+      "A": "Take it with a grain of salt",
+      "B": "Относиться скептически"
     },
     {
-      "A": "a blessing in disguise",
-      "B": "скрытое благо"
+      "A": "A blessing in disguise",
+      "B": "Скрытое благо"
     },
     {
-      "A": "beat around the bush",
-      "B": "ходить вокруг да около"
+      "A": "Beat around the bush",
+      "B": "Ходить вокруг да около"
     },
     {
-      "A": "bite the bullet",
-      "B": "стиснуть зубы и терпеть"
+      "A": "Bite the bullet",
+      "B": "Стиснуть зубы и терпеть"
     },
     {
-      "A": "call it a day",
-      "B": "закончить на сегодня"
+      "A": "Call it a day",
+      "B": "Закончить на сегодня"
     },
     {
-      "A": "cut to the chase",
-      "B": "перейти к сути"
+      "A": "Cut to the chase",
+      "B": "Перейти к сути"
     },
     {
-      "A": "easy does it",
-      "B": "не спеши"
+      "A": "Easy does it",
+      "B": "Не спеши"
     },
     {
-      "A": "get a taste of your own medicine",
-      "B": "получить тем же"
+      "A": "Get a taste of your own medicine",
+      "B": "Получить тем же"
     },
     {
-      "A": "give someone the cold shoulder",
-      "B": "игнорировать кого-то"
+      "A": "Give someone the cold shoulder",
+      "B": "Игнорировать кого-то"
     },
     {
-      "A": "go the extra mile",
-      "B": "сделать больше, чем нужно"
+      "A": "Go the extra mile",
+      "B": "Сделать больше, чем нужно"
     },
     {
-      "A": "hit the road",
-      "B": "отправиться в путь"
+      "A": "Hit the road",
+      "B": "Отправиться в путь"
     },
     {
-      "A": "in hot water",
-      "B": "в неприятностях"
+      "A": "In hot water",
+      "B": "В неприятностях"
     },
     {
-      "A": "keep an eye on",
-      "B": "присматривать"
+      "A": "Keep an eye on",
+      "B": "Присматривать"
     },
     {
-      "A": "miss the point",
-      "B": "не уловить суть"
+      "A": "Miss the point",
+      "B": "Не уловить суть"
     },
     {
-      "A": "no pain, no gain",
-      "B": "без труда не вытащишь и рыбку"
+      "A": "No pain, no gain",
+      "B": "Без труда не вытащишь и рыбку"
     },
     {
-      "A": "on thin ice",
-      "B": "в опасном положении"
+      "A": "On thin ice",
+      "B": "В опасном положении"
     },
     {
-      "A": "pull yourself together",
-      "B": "взять себя в руки"
+      "A": "Pull yourself together",
+      "B": "Взять себя в руки"
     },
     {
-      "A": "so far so good",
-      "B": "пока всё хорошо"
+      "A": "So far so good",
+      "B": "Пока всё хорошо"
     },
     {
-      "A": "speak of the devil",
-      "B": "легок на помине"
+      "A": "Speak of the devil",
+      "B": "Легок на помине"
     },
     {
-      "A": "take the bull by the horns",
-      "B": "взять быка за рога"
+      "A": "Take the bull by the horns",
+      "B": "Взять быка за рога"
     },
     {
-      "A": "the last straw",
-      "B": "последняя капля"
+      "A": "The last straw",
+      "B": "Последняя капля"
     },
     {
-      "A": "time flies",
-      "B": "время летит"
+      "A": "Time flies",
+      "B": "Время летит"
     },
     {
-      "A": "to make matters worse",
-      "B": "в довершение всего"
+      "A": "To make matters worse",
+      "B": "В довершение всего"
     },
     {
-      "A": "under your nose",
-      "B": "прямо под носом"
+      "A": "Under your nose",
+      "B": "Прямо под носом"
     },
     {
-      "A": "up in the air",
-      "B": "неопределённо"
+      "A": "Up in the air",
+      "B": "Неопределённо"
     },
     {
-      "A": "when pigs fly",
-      "B": "когда рак на горе свистнет"
+      "A": "When pigs fly",
+      "B": "Когда рак на горе свистнет"
     },
     {
-      "A": "wrap your head around",
-      "B": "понять, осмыслить"
+      "A": "Wrap your head around",
+      "B": "Понять, осмыслить"
     },
     {
-      "A": "you can't judge a book by its cover",
-      "B": "не суди по обложке"
+      "A": "You can't judge a book by its cover",
+      "B": "Не суди по обложке"
     },
     {
-      "A": "your guess is as good as mine",
-      "B": "я знаю не больше твоего"
+      "A": "Your guess is as good as mine",
+      "B": "Я знаю не больше твоего"
     },
     {
-      "A": "a dime a dozen",
-      "B": "пруд пруди"
+      "A": "A dime a dozen",
+      "B": "Пруд пруди"
     },
     {
-      "A": "back to square one",
-      "B": "снова с начала"
+      "A": "Back to square one",
+      "B": "Снова с начала"
     },
     {
-      "A": "burn bridges",
-      "B": "сжигать мосты"
+      "A": "Burn bridges",
+      "B": "Сжигать мосты"
     },
     {
-      "A": "cry over spilled milk",
-      "B": "плакать над пролитым молоком"
+      "A": "Cry over spilled milk",
+      "B": "Плакать над пролитым молоком"
     }
   ]
 }

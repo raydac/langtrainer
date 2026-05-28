@@ -4,7 +4,8 @@
     "DIALOG",
     "FLY_GAME",
     "BRICKS",
-    "CROSSWORD"
+    "CROSSWORD",
+    "BARS"
   ],
   "menuName": "Cardinal Directions (test)",
   "description": "Russian–English compass points and phrases with hyphens (north-west, северо-запад) for tip, auto-enter, and bricks",
@@ -28,36 +29,36 @@
   ],
   "lines": [
     {
-      "A": "north",
-      "B": "север"
+      "A": "North",
+      "B": "Север"
     },
     {
-      "A": "south",
-      "B": "юг"
+      "A": "South",
+      "B": "Юг"
     },
     {
-      "A": "east",
-      "B": "восток"
+      "A": "East",
+      "B": "Восток"
     },
     {
-      "A": "west",
-      "B": "запад"
+      "A": "West",
+      "B": "Запад"
     },
     {
-      "A": "north-east",
-      "B": "северо-восток"
+      "A": "North-east",
+      "B": "Северо-восток"
     },
     {
-      "A": "north-west",
-      "B": "северо-запад"
+      "A": "North-west",
+      "B": "Северо-запад"
     },
     {
-      "A": "south-east",
-      "B": "юго-восток"
+      "A": "South-east",
+      "B": "Юго-восток"
     },
     {
-      "A": "south-west",
-      "B": "юго-запад"
+      "A": "South-west",
+      "B": "Юго-запад"
     },
     {
       "A": "The wind comes from the north-west.",

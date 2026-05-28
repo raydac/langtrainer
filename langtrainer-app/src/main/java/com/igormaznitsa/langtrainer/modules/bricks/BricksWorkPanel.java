@@ -376,8 +376,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   }
 
   private Font brickFont() {
-    return TextDirectionSupport.fontForDirection(
-        LangTrainerFonts.MONO_NL_REGULAR, Font.PLAIN, this.targetRightToLeft, BRICK_FONT_PT);
+    return BrickImageRenderer.brickTextFont(BRICK_FONT_PT);
   }
 
   private void layoutHistoryStackArea() {

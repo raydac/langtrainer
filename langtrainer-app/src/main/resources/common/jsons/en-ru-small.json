@@ -6,7 +6,8 @@
   "langB": "Russian",
   "modules": [
     "DIALOG",
-    "BRICKS"
+    "BRICKS",
+    "BARS"
   ],
   "lines": [
     {

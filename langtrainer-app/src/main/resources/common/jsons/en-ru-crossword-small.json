@@ -5,116 +5,117 @@
   "langA": "English",
   "langB": "Russian",
   "modules": [
-    "CROSSWORD"
+    "CROSSWORD",
+    "BARS"
   ],
   "lines": [
     {
-      "A": "democracy",
-      "B": "демократия"
+      "A": "Democracy",
+      "B": "Демократия"
     },
     {
-      "A": "phenomenon",
-      "B": "явление"
+      "A": "Phenomenon",
+      "B": "Явление"
     },
     {
-      "A": "literature",
-      "B": "литература"
+      "A": "Literature",
+      "B": "Литература"
     },
     {
-      "A": "philosophy",
-      "B": "философия"
+      "A": "Philosophy",
+      "B": "Философия"
     },
     {
-      "A": "architecture",
-      "B": "архитектура"
+      "A": "Architecture",
+      "B": "Архитектура"
     },
     {
-      "A": "conscience",
-      "B": "совесть"
+      "A": "Conscience",
+      "B": "Совесть"
     },
     {
-      "A": "prosperity",
-      "B": "процветание"
+      "A": "Prosperity",
+      "B": "Процветание"
     },
     {
-      "A": "melancholy",
-      "B": "меланхолия"
+      "A": "Melancholy",
+      "B": "Меланхолия"
     },
     {
-      "A": "hypothesis",
-      "B": "гипотеза"
+      "A": "Hypothesis",
+      "B": "Гипотеза"
     },
     {
-      "A": "trajectory",
-      "B": "траектория"
+      "A": "Trajectory",
+      "B": "Траектория"
     },
     {
-      "A": "compromise",
-      "B": "компромисс"
+      "A": "Compromise",
+      "B": "Компромисс"
     },
     {
-      "A": "vocabulary",
-      "B": "лексика"
+      "A": "Vocabulary",
+      "B": "Лексика"
     },
     {
-      "A": "revolution",
-      "B": "революция"
+      "A": "Revolution",
+      "B": "Революция"
     },
     {
-      "A": "constellation",
-      "B": "созвездие"
+      "A": "Constellation",
+      "B": "Созвездие"
     },
     {
-      "A": "entrepreneur",
-      "B": "предприниматель"
+      "A": "Entrepreneur",
+      "B": "Предприниматель"
     },
     {
-      "A": "bureaucracy",
-      "B": "бюрократия"
+      "A": "Bureaucracy",
+      "B": "Бюрократия"
     },
     {
-      "A": "sovereignty",
-      "B": "суверенитет"
+      "A": "Sovereignty",
+      "B": "Суверенитет"
     },
     {
-      "A": "propagation",
-      "B": "распространение"
+      "A": "Propagation",
+      "B": "Распространение"
     },
     {
-      "A": "metamorphosis",
-      "B": "метаморфоза"
+      "A": "Metamorphosis",
+      "B": "Метаморфоза"
     },
     {
-      "A": "reminiscence",
-      "B": "воспоминание"
+      "A": "Reminiscence",
+      "B": "Воспоминание"
     },
     {
-      "A": "perseverance",
-      "B": "настойчивость"
+      "A": "Perseverance",
+      "B": "Настойчивость"
     },
     {
-      "A": "juxtaposition",
-      "B": "сопоставление"
+      "A": "Juxtaposition",
+      "B": "Сопоставление"
     },
     {
-      "A": "quintessence",
-      "B": "квинтэссенция"
+      "A": "Quintessence",
+      "B": "Квинтэссенция"
     },
     {
-      "A": "expedition",
-      "B": "экспедиция"
+      "A": "Expedition",
+      "B": "Экспедиция"
     },
     {
-      "A": "laboratory",
-      "B": "лаборатория"
+      "A": "Laboratory",
+      "B": "Лаборатория"
     },
     {
-      "A": "telescope",
-      "B": "телескоп"
+      "A": "Telescope",
+      "B": "Телескоп"
     },
     {
-      "A": "civilization",
-      "B": "цивилизация"
+      "A": "Civilization",
+      "B": "Цивилизация"
     }
   ]
 }

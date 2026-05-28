@@ -1,6 +1,7 @@
 package com.igormaznitsa.langtrainer;
 
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
+import com.igormaznitsa.langtrainer.modules.bars.BarsModule;
 import com.igormaznitsa.langtrainer.modules.bricks.BricksModule;
 import com.igormaznitsa.langtrainer.modules.crossword.CrosswordModule;
 import com.igormaznitsa.langtrainer.modules.dialog.DialogModule;
@@ -15,6 +16,7 @@ public enum Modules {
   FLY_GAME(FlyGameModule::new),
   CROSSWORD(CrosswordModule::new),
   BRICKS(BricksModule::new),
+  BARS(BarsModule::new),
   EDITOR(EditorModule::new);
 
   private final Supplier<AbstractLangTrainerModule> moduleFactory;

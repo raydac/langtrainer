@@ -31,5 +31,6 @@ Module Bricks
 13. Non placed bricks should have light blue background.
 14. Placed bricks must allow change order through mouse drag and drop.
 15. We don't need show all previous sentences, it is enough to show only these sentences which can be placed on module window part, like queue
-16. If the selected target language is listed in JSON "rtl", build and pool strips lay out bricks right-to-left while preserving the logical phrase order for correctness checks. The build strip keeps a symmetric drag margin: left for LTR, right for RTL.
-17. RTL history rows and the solved-row completion animation use the same visual order: fixed sentence suffixes are drawn at the visual leading edge and the flying ghost targets the right-aligned visible history slot.
+16. Brick text uses bold LangTrainerFonts.SYSTEM_MONOSPACED.
+17. If the selected target language is listed in JSON "rtl", build and pool strips lay out bricks right-to-left while preserving the logical phrase order for correctness checks. The build strip keeps a symmetric drag margin: left for LTR, right for RTL.
+18. RTL history rows and the solved-row completion animation use the same visual order: fixed sentence suffixes are drawn at the visual leading edge and the flying ghost targets the right-aligned visible history slot.

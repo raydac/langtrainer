@@ -2,7 +2,8 @@
   "path": "English-Russian",
   "modules": [
     "DIALOG",
-    "FLY_GAME"
+    "FLY_GAME",
+    "BARS"
   ],
   "menuName": "C1 Advanced Vocabulary",
   "description": "100 advanced English words (C1 level) with Russian translations",
@@ -10,364 +11,364 @@
   "langB": "Russian",
   "lines": [
     {
-      "A": "abide",
-      "B": "соблюдать, придерживаться"
+      "A": "Abide",
+      "B": "Соблюдать, придерживаться"
     },
     {
-      "A": "abolish",
-      "B": "отменять (закон)"
+      "A": "Abolish",
+      "B": "Отменять (закон)"
     },
     {
-      "A": "abrupt",
-      "B": "резкий, внезапный"
+      "A": "Abrupt",
+      "B": "Резкий, внезапный"
     },
     {
-      "A": "abstract",
-      "B": "абстрактный"
+      "A": "Abstract",
+      "B": "Абстрактный"
     },
     {
-      "A": "accentuate",
-      "B": "подчеркивать"
+      "A": "Accentuate",
+      "B": "Подчеркивать"
     },
     {
-      "A": "account for",
-      "B": "объяснять, составлять"
+      "A": "Account for",
+      "B": "Объяснять, составлять"
     },
     {
-      "A": "accumulate",
-      "B": "накапливать"
+      "A": "Accumulate",
+      "B": "Накапливать"
     },
     {
-      "A": "acknowledgment",
-      "B": "признание"
+      "A": "Acknowledgment",
+      "B": "Признание"
     },
     {
-      "A": "adaptation",
-      "B": "адаптация"
+      "A": "Adaptation",
+      "B": "Адаптация"
     },
     {
-      "A": "adhere to",
-      "B": "придерживаться"
+      "A": "Adhere to",
+      "B": "Придерживаться"
     },
     {
-      "A": "adjacent to",
-      "B": "прилегающий к"
+      "A": "Adjacent to",
+      "B": "Прилегающий к"
     },
     {
-      "A": "advancement",
-      "B": "прогресс"
+      "A": "Advancement",
+      "B": "Прогресс"
     },
     {
-      "A": "adversely",
-      "B": "негативно"
+      "A": "Adversely",
+      "B": "Негативно"
     },
     {
-      "A": "advocacy",
-      "B": "поддержка идеи"
+      "A": "Advocacy",
+      "B": "Поддержка идеи"
     },
     {
-      "A": "aggregate",
-      "B": "совокупный"
+      "A": "Aggregate",
+      "B": "Совокупный"
     },
     {
-      "A": "allocate",
-      "B": "распределять"
+      "A": "Allocate",
+      "B": "Распределять"
     },
     {
-      "A": "ambiguous",
-      "B": "двусмысленный"
+      "A": "Ambiguous",
+      "B": "Двусмысленный"
     },
     {
-      "A": "analytical",
-      "B": "аналитический"
+      "A": "Analytical",
+      "B": "Аналитический"
     },
     {
-      "A": "anecdotal",
-      "B": "основанный на личных историях"
+      "A": "Anecdotal",
+      "B": "Основанный на личных историях"
     },
     {
-      "A": "anticipation",
-      "B": "ожидание"
+      "A": "Anticipation",
+      "B": "Ожидание"
     },
     {
-      "A": "apparent",
-      "B": "очевидный"
+      "A": "Apparent",
+      "B": "Очевидный"
     },
     {
-      "A": "appreciate",
-      "B": "оценивать (понимать ценность)"
+      "A": "Appreciate",
+      "B": "Оценивать (понимать ценность)"
     },
     {
-      "A": "arbitrary",
-      "B": "произвольный"
+      "A": "Arbitrary",
+      "B": "Произвольный"
     },
     {
-      "A": "articulate",
-      "B": "четко выражать"
+      "A": "Articulate",
+      "B": "Четко выражать"
     },
     {
-      "A": "assert",
-      "B": "утверждать"
+      "A": "Assert",
+      "B": "Утверждать"
     },
     {
-      "A": "assess",
-      "B": "оценивать"
+      "A": "Assess",
+      "B": "Оценивать"
     },
     {
-      "A": "assumption",
-      "B": "предположение"
+      "A": "Assumption",
+      "B": "Предположение"
     },
     {
-      "A": "attain",
-      "B": "достигать"
+      "A": "Attain",
+      "B": "Достигать"
     },
     {
-      "A": "attribute",
-      "B": "приписывать"
+      "A": "Attribute",
+      "B": "Приписывать"
     },
     {
-      "A": "authentic",
-      "B": "подлинный"
+      "A": "Authentic",
+      "B": "Подлинный"
     },
     {
-      "A": "backlash",
-      "B": "резкая негативная реакция"
+      "A": "Backlash",
+      "B": "Резкая негативная реакция"
     },
     {
-      "A": "bias",
-      "B": "предвзятость"
+      "A": "Bias",
+      "B": "Предвзятость"
     },
     {
-      "A": "bolster",
-      "B": "поддерживать, усиливать"
+      "A": "Bolster",
+      "B": "Поддерживать, усиливать"
     },
     {
-      "A": "coherent",
-      "B": "логичный"
+      "A": "Coherent",
+      "B": "Логичный"
     },
     {
-      "A": "coincide",
-      "B": "совпадать"
+      "A": "Coincide",
+      "B": "Совпадать"
     },
     {
-      "A": "compelling",
-      "B": "убедительный"
+      "A": "Compelling",
+      "B": "Убедительный"
     },
     {
-      "A": "complement",
-      "B": "дополнять"
+      "A": "Complement",
+      "B": "Дополнять"
     },
     {
-      "A": "comprehensive",
-      "B": "всесторонний"
+      "A": "Comprehensive",
+      "B": "Всесторонний"
     },
     {
-      "A": "conceive",
-      "B": "представлять, задумать"
+      "A": "Conceive",
+      "B": "Представлять, задумать"
     },
     {
-      "A": "conclusive",
-      "B": "окончательный"
+      "A": "Conclusive",
+      "B": "Окончательный"
     },
     {
-      "A": "confer",
-      "B": "предоставлять"
+      "A": "Confer",
+      "B": "Предоставлять"
     },
     {
-      "A": "confine",
-      "B": "ограничивать"
+      "A": "Confine",
+      "B": "Ограничивать"
     },
     {
-      "A": "conform",
-      "B": "соответствовать"
+      "A": "Conform",
+      "B": "Соответствовать"
     },
     {
-      "A": "consensus",
-      "B": "согласие"
+      "A": "Consensus",
+      "B": "Согласие"
     },
     {
-      "A": "considerable",
-      "B": "значительный"
+      "A": "Considerable",
+      "B": "Значительный"
     },
     {
-      "A": "consistent",
-      "B": "последовательный"
+      "A": "Consistent",
+      "B": "Последовательный"
     },
     {
-      "A": "constitute",
-      "B": "составлять"
+      "A": "Constitute",
+      "B": "Составлять"
     },
     {
-      "A": "constrain",
-      "B": "ограничивать"
+      "A": "Constrain",
+      "B": "Ограничивать"
     },
     {
-      "A": "controversial",
-      "B": "спорный"
+      "A": "Controversial",
+      "B": "Спорный"
     },
     {
-      "A": "conventional",
-      "B": "традиционный"
+      "A": "Conventional",
+      "B": "Традиционный"
     },
     {
-      "A": "correlate",
-      "B": "соотноситься"
+      "A": "Correlate",
+      "B": "Соотноситься"
     },
     {
-      "A": "crucial",
-      "B": "ключевой"
+      "A": "Crucial",
+      "B": "Ключевой"
     },
     {
-      "A": "cumulative",
-      "B": "накопительный"
+      "A": "Cumulative",
+      "B": "Накопительный"
     },
     {
-      "A": "debate",
-      "B": "обсуждение"
+      "A": "Debate",
+      "B": "Обсуждение"
     },
     {
-      "A": "deduce",
-      "B": "делать вывод"
+      "A": "Deduce",
+      "B": "Делать вывод"
     },
     {
-      "A": "deficiency",
-      "B": "недостаток"
+      "A": "Deficiency",
+      "B": "Недостаток"
     },
     {
-      "A": "deliberate",
-      "B": "обдуманный"
+      "A": "Deliberate",
+      "B": "Обдуманный"
     },
     {
-      "A": "denote",
-      "B": "обозначать"
+      "A": "Denote",
+      "B": "Обозначать"
     },
     {
-      "A": "derive",
-      "B": "получать"
+      "A": "Derive",
+      "B": "Получать"
     },
     {
-      "A": "diminish",
-      "B": "уменьшать"
+      "A": "Diminish",
+      "B": "Уменьшать"
     },
     {
-      "A": "discourse",
-      "B": "речь, дискурс"
+      "A": "Discourse",
+      "B": "Речь, дискурс"
     },
     {
-      "A": "distinct",
-      "B": "отчетливый"
+      "A": "Distinct",
+      "B": "Отчетливый"
     },
     {
-      "A": "distort",
-      "B": "искажать"
+      "A": "Distort",
+      "B": "Искажать"
     },
     {
-      "A": "diverse",
-      "B": "разнообразный"
+      "A": "Diverse",
+      "B": "Разнообразный"
     },
     {
-      "A": "dominate",
-      "B": "доминировать"
+      "A": "Dominate",
+      "B": "Доминировать"
     },
     {
-      "A": "eliminate",
-      "B": "устранять"
+      "A": "Eliminate",
+      "B": "Устранять"
     },
     {
-      "A": "emerge",
-      "B": "появляться"
+      "A": "Emerge",
+      "B": "Появляться"
     },
     {
-      "A": "emphasis",
-      "B": "акцент"
+      "A": "Emphasis",
+      "B": "Акцент"
     },
     {
-      "A": "empirical",
-      "B": "эмпирический"
+      "A": "Empirical",
+      "B": "Эмпирический"
     },
     {
-      "A": "encompass",
-      "B": "охватывать"
+      "A": "Encompass",
+      "B": "Охватывать"
     },
     {
-      "A": "enhance",
-      "B": "усиливать"
+      "A": "Enhance",
+      "B": "Усиливать"
     },
     {
-      "A": "entail",
-      "B": "влечь за собой"
+      "A": "Entail",
+      "B": "Влечь за собой"
     },
     {
-      "A": "equivalent",
-      "B": "эквивалентный"
+      "A": "Equivalent",
+      "B": "Эквивалентный"
     },
     {
-      "A": "evaluate",
-      "B": "оценивать"
+      "A": "Evaluate",
+      "B": "Оценивать"
     },
     {
-      "A": "evident",
-      "B": "очевидный"
+      "A": "Evident",
+      "B": "Очевидный"
     },
     {
-      "A": "exceed",
-      "B": "превышать"
+      "A": "Exceed",
+      "B": "Превышать"
     },
     {
-      "A": "exclude",
-      "B": "исключать"
+      "A": "Exclude",
+      "B": "Исключать"
     },
     {
-      "A": "explicit",
-      "B": "явный"
+      "A": "Explicit",
+      "B": "Явный"
     },
     {
-      "A": "facilitate",
-      "B": "облегчать"
+      "A": "Facilitate",
+      "B": "Облегчать"
     },
     {
-      "A": "fluctuate",
-      "B": "колебаться"
+      "A": "Fluctuate",
+      "B": "Колебаться"
     },
     {
-      "A": "framework",
-      "B": "структура"
+      "A": "Framework",
+      "B": "Структура"
     },
     {
-      "A": "fundamental",
-      "B": "основной"
+      "A": "Fundamental",
+      "B": "Основной"
     },
     {
-      "A": "generate",
-      "B": "создавать"
+      "A": "Generate",
+      "B": "Создавать"
     },
     {
-      "A": "hypothesis",
-      "B": "гипотеза"
+      "A": "Hypothesis",
+      "B": "Гипотеза"
     },
     {
-      "A": "implement",
-      "B": "внедрять"
+      "A": "Implement",
+      "B": "Внедрять"
     },
     {
-      "A": "imply",
-      "B": "подразумевать"
+      "A": "Imply",
+      "B": "Подразумевать"
     },
     {
-      "A": "incentive",
-      "B": "стимул"
+      "A": "Incentive",
+      "B": "Стимул"
     },
     {
-      "A": "inevitable",
-      "B": "неизбежный"
+      "A": "Inevitable",
+      "B": "Неизбежный"
     },
     {
-      "A": "infer",
-      "B": "делать вывод"
+      "A": "Infer",
+      "B": "Делать вывод"
     },
     {
-      "A": "inhibit",
-      "B": "сдерживать"
+      "A": "Inhibit",
+      "B": "Сдерживать"
     }
   ]
 }

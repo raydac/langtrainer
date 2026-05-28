@@ -1,5 +1,6 @@
 package com.igormaznitsa.langtrainer.modules.bricks;
 
+import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -20,6 +21,10 @@ final class BrickImageRenderer {
   private static final Color BRICK_STROKE = new Color(70, 100, 130);
 
   private BrickImageRenderer() {
+  }
+
+  static Font brickTextFont(final float sizePt) {
+    return LangTrainerFonts.SYSTEM_MONOSPACED.atPoints(sizePt).deriveFont(Font.BOLD, sizePt);
   }
 
   static int measureBrickWidthPx(final String word, final Font font) {
