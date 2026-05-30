@@ -232,6 +232,50 @@
     {
       "A": "Kus on proovikabiin?",
       "B": "Где примерочная?"
+    },
+    {
+      "A": "Liha",
+      "B": "Мясо"
+    },
+    {
+      "A": "Veiseliha",
+      "B": "Говядина"
+    },
+    {
+      "A": "Sealiha",
+      "B": "Свинина"
+    },
+    {
+      "A": "Kanaliha",
+      "B": "Куриное мясо"
+    },
+    {
+      "A": "Kalkuniliha",
+      "B": "Мясо индейки"
+    },
+    {
+      "A": "Lambaliha",
+      "B": "Баранина"
+    },
+    {
+      "A": "Hakkliha",
+      "B": "Фарш"
+    },
+    {
+      "A": "Kanafilee",
+      "B": "Куриное филе"
+    },
+    {
+      "A": "Kas see on veiseliha või sealiha?",
+      "B": "Это говядина или свинина?"
+    },
+    {
+      "A": "Ma soovin pool kilo hakkliha.",
+      "B": "Я хочу полкило фарша."
+    },
+    {
+      "A": "Kas teil on värsket kanafileed?",
+      "B": "У вас есть свежее куриное филе?"
     }
   ]
 }
