@@ -9,7 +9,7 @@
 - Resource selectors: `Start` / `Open from file` / `Sync Lessons` layout, tooltips, uppercase folder labels, Start disabled until a row is selected.
 - Virtual keyboard stays mouse-only to preserve typing focus; header row uses fixed control height.
 - Bricks module has a `Show` help flash button beside the cue; brick text uses bold `LangTrainerFonts.SYSTEM_MONOSPACED`.
-- Crossword: rectangular board scaling; translation hint stays centered; dialog tip re-centers after text-direction updates.
+- Crossword: rectangular board scaling; Home/End jumps to first/last editable cell of the focused word using logical word order, so horizontal RTL words navigate right-anchor to left-end correctly; translation hint stays centered.
 - Gson replaced with Jackson; bundled classpath UI icons; optional JetBrains Mono with system monospace fallback.
 
 ## 2. Architecture & Technical Discoveries

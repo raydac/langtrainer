@@ -709,6 +709,10 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     if (this.generationInProgress || this.gameFinished || this.revealMode) {
       return;
     }
+    if (this.moveSelectionToWordEdge(event.getKeyCode())) {
+      event.consume();
+      return;
+    }
     if (event.getKeyCode() == KeyEvent.VK_BACK_SPACE || event.getKeyCode() == KeyEvent.VK_DELETE) {
       if (this.isEditableCell(this.selectedRow, this.selectedCol)) {
         this.userInput[this.selectedRow][this.selectedCol] = 0;
@@ -719,6 +723,23 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
       return;
     }
     this.moveSelection(event.getKeyCode());
+  }
+
+  private boolean moveSelectionToWordEdge(final int keyCode) {
+    if (keyCode != KeyEvent.VK_HOME && keyCode != KeyEvent.VK_END) {
+      return false;
+    }
+    final Optional<WordPlacement> word = this.resolveFocusedWord();
+    final Optional<Point> target = keyCode == KeyEvent.VK_HOME
+        ? word.flatMap(this::initialEditableCellInPlacement)
+        : word.flatMap(this::lastEditableCellInPlacement);
+    target.ifPresent(point -> {
+      this.selectedRow = point.x;
+      this.selectedCol = point.y;
+      this.lockedTypingWord = word.get();
+      this.repaintBoard();
+    });
+    return true;
   }
 
   private void moveSelection(final int keyCode) {
@@ -790,9 +811,7 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   }
 
   private void moveCursorToNextCellInWord() {
-    final Optional<WordPlacement> word = this.lockedTypingWord == null
-        ? this.resolveWordForCell(this.selectedRow, this.selectedCol)
-        : Optional.of(this.lockedTypingWord);
+    final Optional<WordPlacement> word = this.resolveFocusedWord();
     if (word.isEmpty()) {
       return;
     }
@@ -1556,9 +1575,18 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     return this.firstEditableCellInPlacement(placement, 0);
   }
 
+  private Optional<Point> lastEditableCellInPlacement(final WordPlacement placement) {
+    for (int i = placement.word().length() - 1; i >= 0; i--) {
+      final Point cell = this.cellAt(placement, i);
+      if (this.isEditableCell(cell.x, cell.y)) {
+        return Optional.of(cell);
+      }
+    }
+    return Optional.empty();
+  }
+
   private void refreshTranslationLabel() {
-    final Optional<WordPlacement> word =
-        this.resolveWordForCell(this.selectedRow, this.selectedCol);
+    final Optional<WordPlacement> word = this.resolveFocusedWord();
     if (word.isEmpty()) {
       this.translationLabel.setHorizontalAlignment(SwingConstants.CENTER);
       this.translationLabel.setText("No word selected");
@@ -1572,6 +1600,14 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
         "Translation: "
             + TextDirectionSupport.bidiEmbedding(
             word.get().translation().toUpperCase(Locale.ROOT), this.translationRightToLeft));
+  }
+
+  private Optional<WordPlacement> resolveFocusedWord() {
+    if (this.lockedTypingWord != null &&
+        this.cellBelongsToWord(this.selectedRow, this.selectedCol, this.lockedTypingWord)) {
+      return Optional.of(this.lockedTypingWord);
+    }
+    return this.resolveWordForCell(this.selectedRow, this.selectedCol);
   }
 
   private Optional<WordPlacement> resolveWordForCell(final int row, final int col) {

@@ -6,7 +6,7 @@
  - Added external JSON resources with local storage, `LANGTRAINER_EXTERNALS` override, GitHub sync, and opened files shared across compatible modules.
  - Added a Bricks help flash button and improved Unicode whitespace handling in phrase parsing.
  - Added a Bars matching module for dragging paired phrase bars into correct rows, with stage starts avoiding already matched rows.
- - Improved resource list icons and folder labels, crossword board scaling for wide puzzles, and centered module hints.
+ - Improved resource list icons and folder labels, crossword board scaling for wide puzzles, centered module hints, and crossword Home/End word navigation.
  - Replaced Gson with Jackson databind.
 
 1.0.0 (23-may-2026)

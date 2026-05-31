@@ -7,7 +7,7 @@ Module Crossword
 4. Module takes all valid single-word lines from selected target language in resource
 5. Crossword builder tries to place as many words as possible (not guaranteed 100% for every dataset)
 6. Board is rendered as one rectangular canvas; square cells are scaled to the bounding box of used cells to fill available space better
-7. Single interaction mode: arrows move selection, typing enters a letter into selected cell
+7. Single interaction mode: arrows move selection, Home/End jumps to the first/last cell of the focused word, typing enters a letter into selected cell
 7a. If the target input language is listed in JSON "rtl", horizontal words are generated and stored right-to-left on the grid (index 0 at the right anchor) and typing advances leftward across horizontal placements.
 8. Backspace/Delete clears currently selected working cell
 9. At intersections, current typing route is locked by direction and does not unexpectedly switch
