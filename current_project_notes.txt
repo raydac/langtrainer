@@ -11,6 +11,7 @@
 - Bricks module has a `Show` help flash button beside the cue; brick text uses bold `LangTrainerFonts.SYSTEM_MONOSPACED`.
 - Crossword: rectangular board scaling; Home/End jumps to first/last editable cell of the focused word using logical word order, so horizontal RTL words navigate right-anchor to left-end correctly; translation hint stays centered.
 - Gson replaced with Jackson; bundled classpath UI icons; optional JetBrains Mono with system monospace fallback.
+- JSON resource lines support optional Base64 `image` values (PNG/JPG/SVG, max 64 KB decoded); editor can load/remove images per line; documented in `langtrainer-app/docs/JSON_format.txt` and `Module_Editor.txt`.
 
 ## 2. Architecture & Technical Discoveries
 - `LangTrainerModuleId` drives Editor module checkboxes automatically; adding a module enum value exposes it in the resource editor.
@@ -23,6 +24,7 @@
 - External index merges `<externals>/common/jsons/index.json` and `<externals>/index.json`; entries may be absolute or relative to the index file.
 - `GitHubFolderSynchronizer` uses anonymous GitHub API, rejects unsafe sync targets and non-portable paths; sync failures still show local resources when load succeeds.
 - `InputEquivalenceSupport`: positional match when key/value sizes match, otherwise any-key; equal token sets act as equivalence classes.
+- Future image-based modules should return `requiresResourceImages()` and call `ResourceImageSupport.ensureRequiredImagesReady(...)` before starting, then use `ImageResourceLoader.loadLineImages(...)`.
 - Build with `mvn22`; assembly descriptors need `**/*` includes; JSON via Jackson databind 2.21.
 
 ## 3. Technical Debt & Refactoring

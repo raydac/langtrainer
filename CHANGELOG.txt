@@ -1,4 +1,5 @@
 1.1.0 (SNAPSHOT)
+ - Added optional embedded images for JSON resource lines, with editor support and a 64 KB image limit.
  - Made Fly game practice less repetitive by reducing required repeat passes per word.
  - Fixed Fly game backspace doing nothing after a multi-word phrase was fully typed when the expected answer had trailing punctuation.
  - Added optional RTL language support in JSON resources, Hebrew virtual keyboard layout, and a bundled English-Hebrew sample.

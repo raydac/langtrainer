@@ -1,4 +1,4 @@
-JSON file format describes language learning resources in the DialogDefinition shape (menuName, description, languages, lines, optional path, optional modules, optional inputEqu, optional shuffled).
+JSON file format describes language learning resources in the DialogDefinition shape (menuName, description, languages, lines, optional path, optional modules, optional inputEqu, optional shuffled, optional per-line images).
 
 Bundled files are normally registered in common/jsons/index.json (see index_json.txt in this folder). The virtual keyboard is configured separately (keyboard.txt).
 
@@ -13,7 +13,8 @@ Bundled files are normally registered in common/jsons/index.json (see index_json
         "lines" : [
             {
                 "A" : text line in language A,
-                "B" : text line in language B
+                "B" : text line in language B,
+                "image" : optional Base64-encoded image for this line
             }
             ...
             {
@@ -36,6 +37,17 @@ Bundled files are normally registered in common/jsons/index.json (see index_json
        "langA" : "English",
        "langB" : "Hebrew",
        "rtl" : [ "Hebrew" ]
+
+    Optional field "image" on a line object stores one embedded picture for that line as a Base64
+    text string (no data: prefix required; a data:image/...;base64,... prefix is also accepted).
+    Allowed formats after decoding: PNG, JPG/JPEG, SVG. Maximum decoded size: 64 KB. Omitted when the
+    line has no picture. Current training modules ignore line images unless they declare image
+    support; invalid or oversized images block activation only for those modules.
+
+    Example:
+       "lines" : [
+         { "A" : "apple", "B" : "яблоко", "image" : "<Base64 PNG bytes>" }
+       ]
 
     There can be special field "inputEqu" in the JSON file, it contains array of objects and its example below
 

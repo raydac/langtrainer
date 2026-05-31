@@ -42,6 +42,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import javax.swing.AbstractCellEditor;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultCellEditor;
 import javax.swing.Icon;
@@ -70,6 +71,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellEditor;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.text.JTextComponent;
 
 public final class EditorModule extends AbstractLangTrainerModule {
@@ -80,6 +82,10 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private static final float PRIMARY_BUTTON_EXTRA_PT = 2f;
   private static final int TABLE_ROW_PAD_PX = 8;
   private static final int TABLE_ROW_MIN_PX = 22;
+  private static final int LINE_IMAGE_ROW_MIN_PX = 44;
+  private static final int LINE_IMAGE_COLUMN = 3;
+  private static final int LINE_IMAGE_THUMBNAIL_MAX_PX = 36;
+  private static final int LINE_IMAGE_PREVIEW_MAX_PX = 400;
 
   private static volatile File workDirectory;
 
@@ -102,7 +108,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
   private final JCheckBox checkShuffled = new JCheckBox("Shuffled");
 
   private final DefaultTableModel linesModel =
-      new DefaultTableModel(new Object[] {"Id", "A", "B"}, 0) {
+      new DefaultTableModel(new Object[] {"Id", "A", "B", "Image"}, 0) {
         @Override
         public Class<?> getColumnClass(final int columnIndex) {
           return columnIndex == 0 ? Integer.class : String.class;
@@ -344,6 +350,11 @@ public final class EditorModule extends AbstractLangTrainerModule {
         throw new IllegalStateException(
             "Lines: row Id " + id + ": column B must not be empty or blank.");
       }
+      final String image =
+          EditorModule.cellString(this.linesModel.getValueAt(i, LINE_IMAGE_COLUMN));
+      if (!image.isEmpty()) {
+        ImageResourceLoader.decodeEmbeddedImage(image, "Lines: row Id " + id + " image");
+      }
     }
   }
 
@@ -446,6 +457,12 @@ public final class EditorModule extends AbstractLangTrainerModule {
     this.configureIdColumnWidth(this.linesTable, 36);
     this.linesTable.getColumnModel().getColumn(1).setPreferredWidth(280);
     this.linesTable.getColumnModel().getColumn(2).setPreferredWidth(280);
+    this.linesTable.getColumnModel().getColumn(LINE_IMAGE_COLUMN).setPreferredWidth(90);
+    this.linesTable.getColumnModel().getColumn(LINE_IMAGE_COLUMN).setMaxWidth(130);
+    this.linesTable.getColumnModel().getColumn(LINE_IMAGE_COLUMN)
+        .setCellRenderer(this.makeLineImageCellRenderer());
+    this.linesTable.getColumnModel().getColumn(LINE_IMAGE_COLUMN)
+        .setCellEditor(this.makeLineImageCellEditor());
   }
 
   private DefaultCellEditor makeLinesTableCellEditor() {
@@ -483,6 +500,131 @@ public final class EditorModule extends AbstractLangTrainerModule {
         return component;
       }
     };
+  }
+
+  private TableCellRenderer makeLineImageCellRenderer() {
+    return (table, value, selected, hasFocus, row, column) -> {
+      final JButton button = new JButton("...");
+      button.setHorizontalAlignment(SwingConstants.CENTER);
+      button.setFocusPainted(false);
+      button.setOpaque(true);
+      button.setBackground(selected ? table.getSelectionBackground() : table.getBackground());
+      button.setForeground(selected ? table.getSelectionForeground() : table.getForeground());
+      this.imageIconFromCell(value, LINE_IMAGE_THUMBNAIL_MAX_PX).ifPresent(button::setIcon);
+      return button;
+    };
+  }
+
+  private TableCellEditor makeLineImageCellEditor() {
+    final class LineImageCellEditor extends AbstractCellEditor implements TableCellEditor {
+      private final JButton button = new JButton("...");
+      private int editingRow = -1;
+
+      LineImageCellEditor() {
+        this.button.setHorizontalAlignment(SwingConstants.CENTER);
+        this.button.setFocusPainted(false);
+        this.button.addActionListener(event -> {
+          EditorModule.this.editLineImage(this.editingRow);
+          this.stopCellEditing();
+        });
+      }
+
+      @Override
+      public Object getCellEditorValue() {
+        return this.editingRow < 0 ? null : EditorModule.this.linesModel.getValueAt(
+            this.editingRow, LINE_IMAGE_COLUMN);
+      }
+
+      @Override
+      public Component getTableCellEditorComponent(
+          final JTable table,
+          final Object value,
+          final boolean selected,
+          final int row,
+          final int column) {
+        this.editingRow = row;
+        this.button.setIcon(null);
+        EditorModule.this.imageIconFromCell(value, LINE_IMAGE_THUMBNAIL_MAX_PX)
+            .ifPresent(this.button::setIcon);
+        return this.button;
+      }
+    }
+    return new LineImageCellEditor();
+  }
+
+  private Optional<Icon> imageIconFromCell(final Object value, final int maxSize) {
+    final String image = EditorModule.cellString(value);
+    if (image.isEmpty()) {
+      return empty();
+    }
+    try {
+      return of(ImageResourceLoader.embeddedImageIcon(image, maxSize, maxSize));
+    } catch (final Exception ex) {
+      return empty();
+    }
+  }
+
+  private void editLineImage(final int row) {
+    if (row < 0 || row >= this.linesModel.getRowCount()) {
+      return;
+    }
+    final String image =
+        EditorModule.cellString(this.linesModel.getValueAt(row, LINE_IMAGE_COLUMN));
+    final JLabel preview = new JLabel("No image", SwingConstants.CENTER);
+    preview.setPreferredSize(
+        new Dimension(LINE_IMAGE_PREVIEW_MAX_PX, LINE_IMAGE_PREVIEW_MAX_PX));
+    this.imageIconFromCell(image, LINE_IMAGE_PREVIEW_MAX_PX).ifPresent(icon -> {
+      preview.setText("");
+      preview.setIcon(icon);
+    });
+    final JPanel panel = new JPanel(new BorderLayout(0, 8));
+    panel.add(preview, BorderLayout.CENTER);
+
+    final Object[] options = {"Load", "Remove", "Cancel"};
+    final int choice = JOptionPane.showOptionDialog(
+        this.rootPanel,
+        panel,
+        "Line image",
+        JOptionPane.DEFAULT_OPTION,
+        JOptionPane.PLAIN_MESSAGE,
+        null,
+        options,
+        options[2]);
+    if (choice == 0) {
+      this.loadImageIntoLine(row);
+    } else if (choice == 1) {
+      this.linesModel.setValueAt(null, row, LINE_IMAGE_COLUMN);
+    }
+  }
+
+  private void loadImageIntoLine(final int row) {
+    final JFileChooser chooser = new JFileChooser();
+    chooser.setFileFilter(new FileNameExtensionFilter("Images (*.png, *.jpg, *.jpeg, *.svg)",
+        "png", "jpg", "jpeg", "svg"));
+    chooser.setAcceptAllFileFilterUsed(false);
+    if (EditorModule.workDirectory != null) {
+      chooser.setCurrentDirectory(EditorModule.workDirectory);
+    }
+    if (chooser.showOpenDialog(this.rootPanel) != JFileChooser.APPROVE_OPTION) {
+      return;
+    }
+    final File file = chooser.getSelectedFile();
+    if (file == null) {
+      return;
+    }
+    EditorModule.rememberWorkDir(file);
+    try {
+      this.linesModel.setValueAt(
+          ImageResourceLoader.encodeEmbeddedImageFile(file.toPath()),
+          row,
+          LINE_IMAGE_COLUMN);
+    } catch (final Exception ex) {
+      JOptionPane.showMessageDialog(
+          this.rootPanel,
+          ex.getMessage() == null ? String.valueOf(ex) : ex.getMessage(),
+          "Can't load image",
+          JOptionPane.ERROR_MESSAGE);
+    }
   }
 
   private void configureIdColumnWidth(final JTable table, final int width) {
@@ -697,7 +839,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     final JButton up = new JButton("Move up");
     final JButton down = new JButton("Move down");
     add.addActionListener(e -> {
-      this.linesModel.addRow(new Object[] {0, "", ""});
+      this.linesModel.addRow(new Object[] {0, "", "", null});
       this.refreshLineIds();
       final int last = this.linesModel.getRowCount() - 1;
       this.linesTable.setRowSelectionInterval(last, last);
@@ -807,6 +949,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
       this.stopLinesTableEditing();
       this.linesModel.setValueAt("", r, 1);
       this.linesModel.setValueAt("", r, 2);
+      this.linesModel.setValueAt(null, r, LINE_IMAGE_COLUMN);
       return;
     }
     this.stopLinesTableEditing();
@@ -821,7 +964,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     if (r < 0 || to < 0 || to >= n) {
       return;
     }
-    for (int c = 1; c <= 2; c++) {
+    for (int c = 1; c <= LINE_IMAGE_COLUMN; c++) {
       final Object a = this.linesModel.getValueAt(r, c);
       final Object b = this.linesModel.getValueAt(to, c);
       this.linesModel.setValueAt(b, r, c);
@@ -896,7 +1039,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     this.fieldRtl.setText("");
     this.checkShuffled.setSelected(false);
     this.linesModel.setRowCount(0);
-    this.linesModel.addRow(new Object[] {0, "", ""});
+    this.linesModel.addRow(new Object[] {0, "", "", null});
     this.refreshLineIds();
     this.clearEquivRules();
     this.linesTable.setRowSelectionInterval(0, 0);
@@ -919,7 +1062,7 @@ public final class EditorModule extends AbstractLangTrainerModule {
     this.checkShuffled.setSelected(def.shuffled());
     this.linesModel.setRowCount(0);
     for (final DialogLine line : def.lines()) {
-      this.linesModel.addRow(new Object[] {0, line.a(), line.b()});
+      this.linesModel.addRow(new Object[] {0, line.a(), line.b(), line.image()});
     }
     this.refreshLineIds();
     this.stopEquivTableEditing();
@@ -945,7 +1088,9 @@ public final class EditorModule extends AbstractLangTrainerModule {
       final String b = String.valueOf(this.linesModel.getValueAt(i, 2) == null
           ? ""
           : this.linesModel.getValueAt(i, 2));
-      lines.add(new DialogLine(a, b));
+      final String image =
+          EditorModule.cellString(this.linesModel.getValueAt(i, LINE_IMAGE_COLUMN));
+      lines.add(new DialogLine(a, b, image.isEmpty() ? null : image));
     }
     final String pathRaw = this.fieldPath.getText().strip();
     return new DialogDefinition(
@@ -1126,8 +1271,10 @@ public final class EditorModule extends AbstractLangTrainerModule {
       return;
     }
     final FontMetrics fm = table.getFontMetrics(font);
-    table.setRowHeight(
-        Math.max(EditorModule.TABLE_ROW_MIN_PX, fm.getHeight() + EditorModule.TABLE_ROW_PAD_PX));
+    final int minimumHeight = table == this.linesTable
+        ? LINE_IMAGE_ROW_MIN_PX
+        : TABLE_ROW_MIN_PX;
+    table.setRowHeight(Math.max(minimumHeight, fm.getHeight() + EditorModule.TABLE_ROW_PAD_PX));
     final JTableHeader header = table.getTableHeader();
     if (header != null) {
       final Font headerFont = header.getFont();

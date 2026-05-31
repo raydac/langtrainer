@@ -57,6 +57,9 @@ public final class LangResourceJson {
       final ObjectNode row = MAPPER.createObjectNode();
       row.put("A", line.a());
       row.put("B", line.b());
+      if (line.hasImage()) {
+        row.put("image", line.image());
+      }
       lines.add(row);
     }
     if (!definition.inputEqu().isEmpty()) {
@@ -91,9 +94,7 @@ public final class LangResourceJson {
   }
 
   private static DialogDefinition normalizeAfterLoad(final DialogDefinition def) {
-    final List<DialogLine> lines = isEmpty(def.lines())
-        ? List.of(new DialogLine("", ""))
-        : def.lines();
+    final List<DialogLine> lines = normalizeLines(def.lines());
     return new DialogDefinition(
         requireNonNullElse(def.menuName(), ""),
         requireNonNullElse(def.description(), ""),
@@ -105,6 +106,18 @@ public final class LangResourceJson {
         def.shuffled(),
         stripToNull(def.path()),
         normalizeModules(def.modules()));
+  }
+
+  private static List<DialogLine> normalizeLines(final List<DialogLine> raw) {
+    if (isEmpty(raw)) {
+      return List.of(new DialogLine("", ""));
+    }
+    return raw.stream()
+        .map(line -> new DialogLine(
+            requireNonNullElse(line.a(), ""),
+            requireNonNullElse(line.b(), ""),
+            stripToNull(line.image())))
+        .toList();
   }
 
   private static List<String> normalizeStringList(final List<String> raw) {
