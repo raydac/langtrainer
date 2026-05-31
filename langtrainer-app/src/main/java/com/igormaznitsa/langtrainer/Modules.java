@@ -7,6 +7,7 @@ import com.igormaznitsa.langtrainer.modules.crossword.CrosswordModule;
 import com.igormaznitsa.langtrainer.modules.dialog.DialogModule;
 import com.igormaznitsa.langtrainer.modules.editor.EditorModule;
 import com.igormaznitsa.langtrainer.modules.flygame.FlyGameModule;
+import com.igormaznitsa.langtrainer.modules.images.ImagesModule;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Supplier;
@@ -17,6 +18,7 @@ public enum Modules {
   CROSSWORD(CrosswordModule::new),
   BRICKS(BricksModule::new),
   BARS(BarsModule::new),
+  IMAGES(ImagesModule::new),
   EDITOR(EditorModule::new);
 
   private final Supplier<AbstractLangTrainerModule> moduleFactory;

@@ -35,6 +35,7 @@ public final class ImageResourceLoader {
   private static final ConcurrentHashMap<String, Icon> ICON_CACHE = new ConcurrentHashMap<>();
   private static final int EMBEDDED_ICON_SIZE = 36;
   private static final int EMBEDDED_IMAGE_MAX_BYTES = 64 * 1024;
+  private static final int EMBEDDED_SVG_RASTER_WIDTH = 1024;
   private static final int BYTES_PER_KIB = 1024;
 
   private static final RenderingHints HIGH_QUALITY_DRAWING_HINTS;
@@ -178,6 +179,7 @@ public final class ImageResourceLoader {
   private static BufferedImage decodeSvgImage(final byte[] bytes, final String context) {
     try {
       final PNGTranscoder transcoder = highQualityPngTranscoder();
+      transcoder.addTranscodingHint(PNGTranscoder.KEY_WIDTH, (float) EMBEDDED_SVG_RASTER_WIDTH);
       final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
       transcoder.transcode(
           new TranscoderInput(new ByteArrayInputStream(bytes)),

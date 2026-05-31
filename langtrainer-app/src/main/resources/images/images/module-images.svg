@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+    <rect x="8" y="8" width="112" height="112" rx="18" fill="#263238"/>
+    <rect x="18" y="20" width="92" height="18" rx="7" fill="#e3f2fd" stroke="#ffffff" stroke-width="3"/>
+    <rect x="18" y="48" width="28" height="26" rx="5" fill="#90caf9" stroke="#ffffff" stroke-width="3"/>
+    <rect x="50" y="48" width="28" height="26" rx="5" fill="#a5d6a7" stroke="#ffffff" stroke-width="3"/>
+    <rect x="82" y="48" width="28" height="26" rx="5" fill="#ffcc80" stroke="#ffffff" stroke-width="3"/>
+    <rect x="18" y="82" width="28" height="26" rx="5" fill="#ce93d8" stroke="#ffffff" stroke-width="3"/>
+    <rect x="50" y="82" width="28" height="26" rx="5" fill="#ef9a9a" stroke="#ffffff" stroke-width="3"/>
+    <rect x="82" y="82" width="28" height="26" rx="5" fill="#80deea" stroke="#ffffff" stroke-width="3"/>
+    <path d="M24 69l7-8 5 5 4-4 2 7zM56 69l7-8 5 5 4-4 2 7zM88 69l7-8 5 5 4-4 2 7z" fill="#1b5e20" opacity="0.75"/>
+    <path d="M24 103l7-8 5 5 4-4 2 7zM56 103l7-8 5 5 4-4 2 7zM88 103l7-8 5 5 4-4 2 7z" fill="#1b5e20" opacity="0.75"/>
+</svg>

@@ -25,8 +25,8 @@ Bundled files are normally registered in common/jsons/index.json (see index_json
     }
 
     Optional field "modules" is an array of module id strings (LangTrainerModuleId names: DIALOG,
-    FLY_GAME, CROSSWORD, BRICKS). If omitted or empty, every module may use the resource. If present,
-    only listed modules show the resource in their bundled pickers.
+    FLY_GAME, CROSSWORD, BRICKS, BARS, IMAGES). If omitted or empty, every module may use the
+    resource. If present, only listed modules show the resource in their bundled pickers.
 
     Optional field "rtl" is an array of human-readable language names that should be treated as
     right-to-left. Values are compared case-insensitively with "langA" and "langB". If the field is
@@ -42,7 +42,8 @@ Bundled files are normally registered in common/jsons/index.json (see index_json
     text string (no data: prefix required; a data:image/...;base64,... prefix is also accepted).
     Allowed formats after decoding: PNG, JPG/JPEG, SVG. Maximum decoded size: 64 KB. Omitted when the
     line has no picture. Current training modules ignore line images unless they declare image
-    support; invalid or oversized images block activation only for those modules.
+    support; invalid or oversized images block activation only for those modules. The Images module
+    uses only lines that have both embedded images and non-empty text.
 
     Example:
        "lines" : [

@@ -14,6 +14,7 @@ import com.igormaznitsa.langtrainer.engine.ExternalResourceSupport;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
 import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
+import com.igormaznitsa.langtrainer.engine.ResourceListModelMaterializer;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
 import com.igormaznitsa.langtrainer.engine.TextDirectionSupport;
 import com.igormaznitsa.langtrainer.text.PhraseWordSupport;
@@ -160,11 +161,11 @@ public final class DialogModule extends AbstractLangTrainerModule {
   }
 
   private void rebuildDialogResourceListModel() {
-    this.dialogListModel.clear();
-    this.classpathResourceTree.materializeInto(
-        this.dialogListModel, this.expandedClasspathFolders);
-    ExternalResourceSupport.materializeLocalTree(
-        this.externalResourceTree, this.dialogListModel, this.expandedClasspathFolders);
+    ResourceListModelMaterializer.materializeMergedTrees(
+        this.dialogListModel,
+        this.expandedClasspathFolders,
+        this.classpathResourceTree,
+        this.externalResourceTree);
     ExternalResourceSupport.materializeOpenedFileRows(this, this.dialogListModel);
   }
 

@@ -1,4 +1,6 @@
 ## 1. Implementation Progress
+- Images module added: shared resource selector, target-language choice, `IMAGES` module filtering, background embedded-image preparation with busy overlay, cyan draggable text bars with stable heap sizing, six-card image stages, answer flash toolbar button, and completion/next stage flow.
+- Added bundled Estonian-Russian Images-only fruit/produce test resource using embedded SVG icons from `~/Misc/Icons/SVG`.
 - Bars module added: shared resource selector, draggable paired A/B bars with centered bold system-monospace LTR/RTL text and swap-on-drag ordering, 7-item stages with overlap, deranged start rows, centered `NEXT` stage advance, completion banner, editor/resource module filtering via `BARS`.
 - Fly game repeat pressure reduced by lowering bucket graduation to three successful flights per word; missed timeout words still repeat immediately because they are unfinished.
 - Common bundled lesson text normalized so `A`/`B` entries start with a capitalized cased character.
@@ -7,6 +9,7 @@
 - RTL support: JSON `rtl` list, Hebrew keyboard layout, module/editor/Bricks/Crossword behavior, expanded `en-he-small` sample.
 - External lessons: OS default folder, `LANGTRAINER_EXTERNALS`, GitHub sync, hardened sync paths, dual `index.json` merge, source icons, opened files shared across compatible modules.
 - Resource selectors: `Start` / `Open from file` / `Sync Lessons` layout, tooltips, uppercase folder labels, Start disabled until a row is selected.
+- Resource selectors merge bundled and external trees by canonical path, so same-named folders appear once while resource rows retain source icons; duplicate resource titles in the same folder get display suffixes `(1)`, `(2)`, etc.
 - Virtual keyboard stays mouse-only to preserve typing focus; header row uses fixed control height.
 - Bricks module has a `Show` help flash button beside the cue; brick text uses bold `LangTrainerFonts.SYSTEM_MONOSPACED`.
 - Crossword: rectangular board scaling; Home/End jumps to first/last editable cell of the focused word using logical word order, so horizontal RTL words navigate right-anchor to left-end correctly; translation hint stays centered.
@@ -24,7 +27,7 @@
 - External index merges `<externals>/common/jsons/index.json` and `<externals>/index.json`; entries may be absolute or relative to the index file.
 - `GitHubFolderSynchronizer` uses anonymous GitHub API, rejects unsafe sync targets and non-portable paths; sync failures still show local resources when load succeeds.
 - `InputEquivalenceSupport`: positional match when key/value sizes match, otherwise any-key; equal token sets act as equivalence classes.
-- Future image-based modules should return `requiresResourceImages()` and call `ResourceImageSupport.ensureRequiredImagesReady(...)` before starting, then use `ImageResourceLoader.loadLineImages(...)`.
+- Image-based modules return `requiresResourceImages()` and call `ResourceImageSupport.ensureRequiredImagesReady(...)` before starting, then use `ImageResourceLoader.loadLineImages(...)`; embedded SVGs rasterize at larger working width to avoid blurry card scaling.
 - Build with `mvn22`; assembly descriptors need `**/*` includes; JSON via Jackson databind 2.21.
 
 ## 3. Technical Debt & Refactoring

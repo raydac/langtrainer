@@ -11,19 +11,35 @@ public sealed interface DialogListEntry
     permits DialogListEntry.DialogResourceRow, DialogListEntry.DialogFolderRow {
 
   static DialogResourceRow fileResourceRow(final DialogDefinition definition) {
-    return new DialogResourceRow(definition, ResourceSource.FILE, 0);
+    return new DialogResourceRow(definition, ResourceSource.FILE, 0, definition.menuName());
   }
 
   static DialogListEntry resource(
       final DialogDefinition definition, final boolean fromExternalFile) {
-    return new DialogResourceRow(definition, sourceOf(fromExternalFile), 0);
+    return new DialogResourceRow(definition, sourceOf(fromExternalFile), 0, definition.menuName());
   }
 
   static DialogListEntry resource(
       final DialogDefinition definition,
       final boolean fromExternalFile,
       final int indentLevel) {
-    return new DialogResourceRow(definition, sourceOf(fromExternalFile), indentLevel);
+    return new DialogResourceRow(
+        definition, sourceOf(fromExternalFile), indentLevel, definition.menuName());
+  }
+
+  static DialogListEntry resource(
+      final DialogDefinition definition,
+      final ResourceSource source,
+      final int indentLevel) {
+    return new DialogResourceRow(definition, source, indentLevel, definition.menuName());
+  }
+
+  static DialogListEntry resource(
+      final DialogDefinition definition,
+      final ResourceSource source,
+      final int indentLevel,
+      final String displayTitle) {
+    return new DialogResourceRow(definition, source, indentLevel, displayTitle);
   }
 
   static DialogListEntry folder(
@@ -113,12 +129,13 @@ public sealed interface DialogListEntry
   }
 
   record DialogResourceRow(
-      DialogDefinition definition, ResourceSource source, int indentLevel)
+      DialogDefinition definition, ResourceSource source, int indentLevel, String displayTitle)
       implements DialogListEntry {
 
     public DialogResourceRow {
       requireNonNull(definition, "definition must not be null");
       requireNonNull(source, "source must not be null");
+      displayTitle = displayTitle == null ? definition.menuName() : displayTitle;
     }
   }
 }

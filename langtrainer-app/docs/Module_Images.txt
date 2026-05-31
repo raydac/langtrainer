@@ -1,0 +1,43 @@
+Module Images
+-------------
+
+1. It is a child of AbstractLangTrainerModule.
+2. The main idea: allow user to associate text with shown images
+3. User selects resource from list like other modules.
+4. For processing we take only lines where presented "image", if no any such line then we show notification and not activate module
+5. Make shuffling of taken lines with images.
+6. Split images as buckets per 6 images in a bucket. 1 or 2 image can be repeated in buckets to train memory of user for them better
+6a. Image preparation runs in background and shows the common busy overlay because embedded SVG decoding can be slow.
+7. Look of the module
+
++--------------------------------------------------------------------+
+|                                                                  X |
+|+------------------------------------------------------------------+|
+|| +----------+  +-----------+ +------------+ +-------+ +-------+   ||
+|| +----------+  +-----------+ +------------+ +-------+ +-------+   ||
+|+------------------------------------------------------------------+|
+|| +-----------------------++--------------------++----------------+||
+|| |                       ||                    ||                |||
+|| |      Image 1          ||  Image 2           ||  Image 3       |||
+|| |                       ||                    ||                |||
+|| +-----------------------++--------------------++----------------+||
+|| +-----------------------++--------------------++----------------+||
+|| |                       ||                    ||                |||
+|| |      Image 4          ||  Image 5           ||  Image 6       |||
+|| |                       ||                    ||                |||
+|| +-----------------------++--------------------++----------------+||
+||                                                                  ||
+||                                                                  ||
+|+------------------------------------------------------------------+|
++--------------------------------------------------------------------+
+
+8. The module not needed virtual keyboard. So we can show only buttons "?" to show correct variants and "X" to close module.
+9. User selects the target language before practice. In top part of module field we have some panel where we have bars with texts like in Bricks module but each bar has only the full target-language line text, lets call it the bar heap panel.
+10. Bottom big field contains maximum 6 image cards where on start only images. All cards of same size so that images should be scaled to be shown with save of their ratio.
+11. User takes some bar and can drag and drop it on an image card. If the image card has some dropped bar already then the existing bar returned into the bar heap panel.
+12. As only user drop dragged bar on image we show the bar text on top of the card as a bar scaled to be shown in card size. But user can rethink and also drag the placed bar to another image or back into bar heap panel.
+13. If all bars correctly dropped to their images we fill back of game field as green and show button NEXT like in Bars module for start next stage.
+14. Game stage is continuing till user place all text bars correctly to their images.
+15. The module id for resource filtering is IMAGES.
+16. Bars have cyan background and black text.
+17. Bars in the heap keep the same size during a stage even after some bars are moved to cards.

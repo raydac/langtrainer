@@ -8,5 +8,6 @@ public enum LangTrainerModuleId {
   FLY_GAME,
   CROSSWORD,
   BRICKS,
-  BARS
+  BARS,
+  IMAGES
 }

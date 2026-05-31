@@ -414,7 +414,7 @@ public final class ResourceListSelectPanel {
       if (value instanceof final DialogListEntry.DialogResourceRow row) {
         final int left = 18 + row.indentLevel() * INDENT_PER_LEVEL;
         label.setIcon(resourceRowIcon(row));
-        label.setText(row.definition().menuName());
+        label.setText(row.displayTitle());
         label.setCursor(Cursor.getDefaultCursor());
         label.setToolTipText(
             "<html><body style='width:280px;'>%s</body></html>".formatted(
@@ -466,7 +466,7 @@ public final class ResourceListSelectPanel {
           if (value instanceof final DialogListEntry.DialogResourceRow row) {
             final int left = 14 + row.indentLevel() * INDENT_PER_LEVEL;
             cell.setIcon(resourceRowIcon(row));
-            cell.setText(row.definition().menuName());
+            cell.setText(row.displayTitle());
             cell.setCursor(Cursor.getDefaultCursor());
             cell.setToolTipText(row.definition().description());
             cell.setBorder(BorderFactory.createEmptyBorder(10, left, 10, 14));

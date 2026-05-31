@@ -8,6 +8,9 @@
     },
     {
       "resource": "./est-rus/est-rus-shopping.json"
+    },
+    {
+      "resource": "./est-rus/est-rus-fruits-images.json"
     }
   ]
 }

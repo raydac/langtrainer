@@ -12,6 +12,7 @@ import com.igormaznitsa.langtrainer.engine.DialogListEntry;
 import com.igormaznitsa.langtrainer.engine.ExternalResourceSupport;
 import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
+import com.igormaznitsa.langtrainer.engine.ResourceListModelMaterializer;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
 import com.igormaznitsa.langtrainer.engine.TextDirectionSupport;
 import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
@@ -129,10 +130,11 @@ public final class BarsModule extends AbstractLangTrainerModule {
   }
 
   private void rebuildResourceListModel() {
-    this.listModel.clear();
-    this.classpathResourceTree.materializeInto(this.listModel, this.expandedClasspathFolders);
-    ExternalResourceSupport.materializeLocalTree(
-        this.externalResourceTree, this.listModel, this.expandedClasspathFolders);
+    ResourceListModelMaterializer.materializeMergedTrees(
+        this.listModel,
+        this.expandedClasspathFolders,
+        this.classpathResourceTree,
+        this.externalResourceTree);
     ExternalResourceSupport.materializeOpenedFileRows(this, this.listModel);
   }
 
@@ -575,15 +577,27 @@ public final class BarsModule extends AbstractLangTrainerModule {
     }
 
     private void paintCompletedBanner(final Graphics2D g2) {
-      final int w = this.getWidth();
-      final int h = this.getHeight();
-      g2.setColor(COMPLETED_OVERLAY_BG);
-      g2.fillRoundRect(w / 8, h / 2 - 58, w * 3 / 4, 116, 28, 28);
-      g2.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(Math.max(36f, w / 15f)));
-      final FontMetrics fm = g2.getFontMetrics();
+      final int width = this.getWidth();
+      final int height = this.getHeight();
       final String text = "COMPLETED";
+      g2.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(Math.max(36f, width / 15f)));
+      final FontMetrics fm = g2.getFontMetrics();
+      final int bannerWidth = Math.min(width - OUTER_GAP * 2, Math.max(width * 3 / 4,
+          fm.stringWidth(text) + 80));
+      final int bannerHeight = fm.getHeight() + 32;
+      final Rectangle banner = new Rectangle(
+          (width - bannerWidth) / 2,
+          (height - bannerHeight) / 2,
+          bannerWidth,
+          bannerHeight);
+
+      g2.setColor(COMPLETED_OVERLAY_BG);
+      g2.fillRoundRect(banner.x, banner.y, banner.width, banner.height, 28, 28);
       g2.setColor(COMPLETED_OVERLAY_FG);
-      g2.drawString(text, (w - fm.stringWidth(text)) / 2, h / 2 + fm.getAscent() / 2);
+      g2.drawString(
+          text,
+          banner.x + (banner.width - fm.stringWidth(text)) / 2,
+          banner.y + (banner.height - fm.getHeight()) / 2 + fm.getAscent());
     }
 
     private void onMousePressed(final Point point) {

@@ -13,6 +13,7 @@ import com.igormaznitsa.langtrainer.engine.ImageResourceLoader;
 import com.igormaznitsa.langtrainer.engine.InputEquivalenceRow;
 import com.igormaznitsa.langtrainer.engine.LangTrainerApplication;
 import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
+import com.igormaznitsa.langtrainer.engine.ResourceListModelMaterializer;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
 import com.igormaznitsa.langtrainer.engine.TextDirectionSupport;
 import com.igormaznitsa.langtrainer.modules.dialog.InputEquivalenceSupport;
@@ -108,10 +109,11 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   }
 
   private void rebuildFlyResourceListModel() {
-    this.listModel.clear();
-    this.classpathResourceTree.materializeInto(this.listModel, this.expandedClasspathFolders);
-    ExternalResourceSupport.materializeLocalTree(
-        this.externalResourceTree, this.listModel, this.expandedClasspathFolders);
+    ResourceListModelMaterializer.materializeMergedTrees(
+        this.listModel,
+        this.expandedClasspathFolders,
+        this.classpathResourceTree,
+        this.externalResourceTree);
     ExternalResourceSupport.materializeOpenedFileRows(this, this.listModel);
   }
 
