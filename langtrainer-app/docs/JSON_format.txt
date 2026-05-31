@@ -40,7 +40,8 @@ Bundled files are normally registered in common/jsons/index.json (see index_json
 
     Optional field "image" on a line object stores one embedded picture for that line as a Base64
     text string (no data: prefix required; a data:image/...;base64,... prefix is also accepted).
-    Allowed formats after decoding: PNG, JPG/JPEG, SVG. Maximum decoded size: 64 KB. Omitted when the
+    Allowed formats after decoding: PNG, JPG/JPEG, SVG. Maximum decoded size: 64 KB. SVG must not
+    contain scripts, DTDs, or external entities; rasterization is capped at 1024 px per side. Omitted when the
     line has no picture. Current training modules ignore line images unless they declare image
     support; invalid or oversized images block activation only for those modules. The Images module
     uses only lines that have both embedded images and non-empty text.

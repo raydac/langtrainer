@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,6 +27,7 @@ import javax.imageio.ImageIO;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import org.apache.batik.gvt.renderer.ImageRenderer;
+import org.apache.batik.transcoder.SVGAbstractTranscoder;
 import org.apache.batik.transcoder.TranscoderInput;
 import org.apache.batik.transcoder.TranscoderOutput;
 import org.apache.batik.transcoder.image.PNGTranscoder;
@@ -36,7 +38,13 @@ public final class ImageResourceLoader {
   private static final int EMBEDDED_ICON_SIZE = 36;
   private static final int EMBEDDED_IMAGE_MAX_BYTES = 64 * 1024;
   private static final int EMBEDDED_SVG_RASTER_WIDTH = 1024;
+  private static final int EMBEDDED_SVG_RASTER_MAX_HEIGHT = 1024;
+  private static final int SVG_MARKUP_SCAN_BYTES = 4096;
   private static final int BYTES_PER_KIB = 1024;
+  /**
+   * Blocks script execution during rasterization; Batik default, set explicitly for untrusted SVG.
+   */
+  private static final String DISALLOWED_SVG_SCRIPT_TYPES = "";
 
   private static final RenderingHints HIGH_QUALITY_DRAWING_HINTS;
 
@@ -177,9 +185,9 @@ public final class ImageResourceLoader {
   }
 
   private static BufferedImage decodeSvgImage(final byte[] bytes, final String context) {
+    rejectUnsafeSvgMarkup(bytes, context);
     try {
-      final PNGTranscoder transcoder = highQualityPngTranscoder();
-      transcoder.addTranscodingHint(PNGTranscoder.KEY_WIDTH, (float) EMBEDDED_SVG_RASTER_WIDTH);
+      final PNGTranscoder transcoder = secureEmbeddedSvgTranscoder();
       final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
       transcoder.transcode(
           new TranscoderInput(new ByteArrayInputStream(bytes)),
@@ -216,9 +224,22 @@ public final class ImageResourceLoader {
   }
 
   private static boolean isSvg(final byte[] bytes) {
-    final String head = new String(bytes, 0, Math.min(bytes.length, 256), StandardCharsets.UTF_8)
-        .stripLeading();
+    final String head =
+        new String(bytes, 0, Math.min(bytes.length, 256), StandardCharsets.UTF_8).stripLeading();
     return CI.startsWith(head, "<svg") || CI.startsWith(head, "<?xml");
+  }
+
+  private static void rejectUnsafeSvgMarkup(final byte[] bytes, final String context) {
+    final String head =
+        new String(bytes, 0, Math.min(bytes.length, SVG_MARKUP_SCAN_BYTES), StandardCharsets.UTF_8)
+            .toLowerCase(Locale.ROOT);
+    if (head.contains("<!doctype") || head.contains("<!entity")) {
+      throw new IllegalStateException(
+          "SVG in " + context + " must not declare a DTD or external entities");
+    }
+    if (head.contains("<script")) {
+      throw new IllegalStateException("SVG in " + context + " must not contain scripts");
+    }
   }
 
   public static BufferedImage loadImage(final String resourcePath) {
@@ -341,18 +362,47 @@ public final class ImageResourceLoader {
       throw new IllegalArgumentException("Resource is not found: " + resourcePath);
     }
     try {
-      final PNGTranscoder transcoder = highQualityPngTranscoder();
-      transcoder.addTranscodingHint(PNGTranscoder.KEY_WIDTH, (float) width);
-      transcoder.addTranscodingHint(PNGTranscoder.KEY_HEIGHT, (float) height);
-      final TranscoderInput input = new TranscoderInput(resource.toExternalForm());
+      final PNGTranscoder transcoder = secureSvgTranscoder(width, height);
       final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
       final TranscoderOutput output = new TranscoderOutput(outputStream);
-      transcoder.transcode(input, output);
+      try (final InputStream stream = resource.openStream()) {
+        transcoder.transcode(new TranscoderInput(stream), output);
+      }
       outputStream.flush();
       return ImageIO.read(new ByteArrayInputStream(outputStream.toByteArray()));
     } catch (Exception ex) {
       throw new IllegalStateException("Can't load SVG image: " + resourcePath, ex);
     }
+  }
+
+  private static PNGTranscoder secureEmbeddedSvgTranscoder() {
+    final PNGTranscoder transcoder = highQualityPngTranscoder();
+    configureSecureSvgTranscoderHints(transcoder);
+    transcoder.addTranscodingHint(PNGTranscoder.KEY_WIDTH, (float) EMBEDDED_SVG_RASTER_WIDTH);
+    transcoder.addTranscodingHint(
+        SVGAbstractTranscoder.KEY_MAX_WIDTH, (float) EMBEDDED_SVG_RASTER_WIDTH);
+    transcoder.addTranscodingHint(
+        SVGAbstractTranscoder.KEY_MAX_HEIGHT, (float) EMBEDDED_SVG_RASTER_MAX_HEIGHT);
+    return transcoder;
+  }
+
+  private static PNGTranscoder secureSvgTranscoder(final int width, final int height) {
+    final PNGTranscoder transcoder = highQualityPngTranscoder();
+    configureSecureSvgTranscoderHints(transcoder);
+    transcoder.addTranscodingHint(PNGTranscoder.KEY_WIDTH, (float) width);
+    transcoder.addTranscodingHint(PNGTranscoder.KEY_HEIGHT, (float) height);
+    transcoder.addTranscodingHint(SVGAbstractTranscoder.KEY_MAX_WIDTH, (float) width);
+    transcoder.addTranscodingHint(SVGAbstractTranscoder.KEY_MAX_HEIGHT, (float) height);
+    return transcoder;
+  }
+
+  private static void configureSecureSvgTranscoderHints(final PNGTranscoder transcoder) {
+    transcoder.addTranscodingHint(SVGAbstractTranscoder.KEY_ALLOW_EXTERNAL_RESOURCES,
+        Boolean.FALSE);
+    transcoder.addTranscodingHint(SVGAbstractTranscoder.KEY_EXECUTE_ONLOAD, Boolean.FALSE);
+    transcoder.addTranscodingHint(
+        SVGAbstractTranscoder.KEY_ALLOWED_SCRIPT_TYPES, DISALLOWED_SVG_SCRIPT_TYPES);
+    transcoder.addTranscodingHint(SVGAbstractTranscoder.KEY_CONSTRAIN_SCRIPT_ORIGIN, Boolean.TRUE);
   }
 
   private static PNGTranscoder highQualityPngTranscoder() {

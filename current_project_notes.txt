@@ -27,7 +27,7 @@
 - External index merges `<externals>/common/jsons/index.json` and `<externals>/index.json`; entries may be absolute or relative to the index file.
 - `GitHubFolderSynchronizer` uses anonymous GitHub API, rejects unsafe sync targets and non-portable paths; sync failures still show local resources when load succeeds.
 - `InputEquivalenceSupport`: positional match when key/value sizes match, otherwise any-key; equal token sets act as equivalence classes.
-- Image-based modules return `requiresResourceImages()` and call `ResourceImageSupport.ensureRequiredImagesReady(...)` before starting, then use `ImageResourceLoader.loadLineImages(...)`; embedded SVGs rasterize at larger working width to avoid blurry card scaling, and Images game cards cache fitted rasters per resolved image area.
+- Image-based modules return `requiresResourceImages()` and call `ResourceImageSupport.ensureRequiredImagesReady(...)` before starting, then use `ImageResourceLoader.loadLineImages(...)`; embedded SVGs rasterize at larger working width to avoid blurry card scaling, and Images game cards cache fitted rasters per resolved image area. `ImageResourceLoader` hardens Batik 1.19 transcoding: no external resources/scripts/onload, stream input for classpath SVG, 1024 px raster cap, rejects DTD/entity/script markup in user SVG.
 - Build with `mvn22`; assembly descriptors need `**/*` includes; JSON via Jackson databind 2.21.
 
 ## 3. Technical Debt & Refactoring
