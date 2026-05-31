@@ -1,7 +1,7 @@
 {
   "path": "Estonian-Russian",
-  "menuName": "Estonian-Russian Public Transport / Общественный транспорт по-эстонски",
-  "description": "Estonian public transport words and everyday travel phrases with Russian translations",
+  "menuName": "Public Transport / Общественный транспорт по-эстонски",
+  "description": "Public transport words and everyday travel phrases with Russian translations",
   "langA": "Eesti",
   "langB": "Русский",
   "inputEqu": [

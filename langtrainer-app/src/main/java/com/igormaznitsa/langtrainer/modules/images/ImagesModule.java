@@ -112,7 +112,7 @@ public final class ImagesModule extends AbstractLangTrainerModule {
 
   @Override
   public Icon getImage() {
-    return ImageResourceLoader.loadIcon("/images/images/module-images.svg", 128, 128);
+    return ImageResourceLoader.loadIcon("/module_images/module-images.svg", 128, 128);
   }
 
   @Override

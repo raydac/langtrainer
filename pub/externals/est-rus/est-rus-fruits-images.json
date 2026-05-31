@@ -4,8 +4,8 @@
     "IMAGES"
   ],
   "menuName": "Fruits and Produce Images / Puuviljad ja aedviljad piltidega",
-  "description": "Estonian-Russian image matching test resource for fruits and garden produce",
-  "langA": "Estonian",
+  "description": "Image matching test resource for fruits and garden produce",
+  "langA": "Eesti",
   "langB": "Russian",
   "lines": [
     {
