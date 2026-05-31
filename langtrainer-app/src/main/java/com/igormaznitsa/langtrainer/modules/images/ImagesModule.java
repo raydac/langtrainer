@@ -458,6 +458,7 @@ public final class ImagesModule extends AbstractLangTrainerModule {
     private final List<ImageEntry> stageEntries = new ArrayList<>();
     private final List<Integer> heapOrder = new ArrayList<>();
     private final Map<Integer, Integer> cardBars = new HashMap<>();
+    private final Map<Integer, PrerenderedCardImage> cardImageCache = new HashMap<>();
     private int heapSlotCount;
     private boolean rightToLeft;
     private boolean stageSolved;
@@ -507,6 +508,7 @@ public final class ImagesModule extends AbstractLangTrainerModule {
       this.stageEntries.clear();
       this.heapOrder.clear();
       this.cardBars.clear();
+      this.cardImageCache.clear();
       this.heapSlotCount = 0;
       this.stageSolved = false;
       this.completed = false;
@@ -675,12 +677,13 @@ public final class ImagesModule extends AbstractLangTrainerModule {
       g2.setColor(CARD_BORDER);
       g2.setStroke(new BasicStroke(2f));
       g2.drawRoundRect(card.x, card.y, card.width, card.height, 16, 16);
-      this.paintCardImage(g2, this.stageEntries.get(cardIndex).image(), this.imageRect(card));
+      final ImageEntry entry = this.stageEntries.get(cardIndex);
+      this.paintCardImage(g2, entry, this.imageRect(card));
       Optional.ofNullable(this.cardBars.get(cardIndex))
           .filter(id -> !this.isDraggingFromCard(cardIndex, id))
           .ifPresent(id -> this.paintBar(g2, this.cardBarRect(card), id, false));
       if (this.answersVisible) {
-        this.paintAnswer(g2, card, this.stageEntries.get(cardIndex).id());
+        this.paintAnswer(g2, card, entry.id());
       }
     }
 
@@ -697,19 +700,45 @@ public final class ImagesModule extends AbstractLangTrainerModule {
     }
 
     private void paintCardImage(
-        final Graphics2D g2, final BufferedImage image, final Rectangle bounds) {
-      final double scale = Math.min(
-          (double) bounds.width / Math.max(1, image.getWidth()),
-          (double) bounds.height / Math.max(1, image.getHeight()));
-      final int width = Math.max(1, (int) Math.round(image.getWidth() * scale));
-      final int height = Math.max(1, (int) Math.round(image.getHeight() * scale));
+        final Graphics2D g2, final ImageEntry entry, final Rectangle bounds) {
+      final PrerenderedCardImage image = this.prerenderedCardImage(entry, bounds);
+      final BufferedImage raster = image.image();
       g2.drawImage(
-          image,
-          bounds.x + (bounds.width - width) / 2,
-          bounds.y + (bounds.height - height) / 2,
-          width,
-          height,
+          raster,
+          bounds.x + (bounds.width - raster.getWidth()) / 2,
+          bounds.y + (bounds.height - raster.getHeight()) / 2,
           null);
+    }
+
+    private PrerenderedCardImage prerenderedCardImage(
+        final ImageEntry entry, final Rectangle bounds) {
+      return Optional.ofNullable(this.cardImageCache.get(entry.id()))
+          .filter(image -> image.fits(bounds))
+          .orElseGet(() -> this.rerenderCardImage(entry, bounds));
+    }
+
+    private PrerenderedCardImage rerenderCardImage(final ImageEntry entry, final Rectangle bounds) {
+      final PrerenderedCardImage image = this.renderCardImage(entry.image(), bounds);
+      this.cardImageCache.put(entry.id(), image);
+      return image;
+    }
+
+    private PrerenderedCardImage renderCardImage(
+        final BufferedImage source, final Rectangle bounds) {
+      final double scale = Math.min(
+          (double) bounds.width / Math.max(1, source.getWidth()),
+          (double) bounds.height / Math.max(1, source.getHeight()));
+      final int width = Math.max(1, (int) Math.round(source.getWidth() * scale));
+      final int height = Math.max(1, (int) Math.round(source.getHeight() * scale));
+      final BufferedImage target = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+      final Graphics2D g2 = target.createGraphics();
+      try {
+        ImageResourceLoader.applyHighQualityDrawingHints(g2);
+        g2.drawImage(source, 0, 0, width, height, null);
+      } finally {
+        g2.dispose();
+      }
+      return new PrerenderedCardImage(bounds.width, bounds.height, target);
     }
 
     private void paintAnswer(final Graphics2D g2, final Rectangle card, final int id) {
@@ -956,5 +985,11 @@ public final class ImagesModule extends AbstractLangTrainerModule {
   }
 
   private record BarPlacement(int id, Rectangle rect) {
+  }
+
+  private record PrerenderedCardImage(int boundsWidth, int boundsHeight, BufferedImage image) {
+    private boolean fits(final Rectangle bounds) {
+      return this.boundsWidth() == bounds.width && this.boundsHeight() == bounds.height;
+    }
   }
 }
