@@ -7,6 +7,9 @@
       "resource": "./est-rus/est-rus-pronouns.json"
     },
     {
+      "resource": "./est-rus/est-rus-numerals.json"
+    },
+    {
       "resource": "./est-rus/est-rus-shopping.json"
     },
     {

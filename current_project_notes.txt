@@ -4,7 +4,7 @@
 - Bars module added: shared resource selector, draggable paired A/B bars with centered bold system-monospace LTR/RTL text and swap-on-drag ordering, 7-item stages with overlap, deranged start rows, centered `NEXT` stage advance, completion banner, editor/resource module filtering via `BARS`.
 - Fly game repeat pressure reduced by lowering bucket graduation to three successful flights per word; missed timeout words still repeat immediately because they are unfinished.
 - Common bundled lesson text normalized so `A`/`B` entries start with a capitalized cased character.
-- Added Estonian-Russian external shopping lesson with 66 words, store phrases, meat-kind vocabulary, and dairy/egg terms; added public transport lesson with 55 transit, airport, and travel-process words/phrases.
+- Added Estonian-Russian external shopping lesson with 66 words, store phrases, meat-kind vocabulary, and dairy/egg terms; added public transport lesson with 55 transit, airport, and travel-process words/phrases; added numerals lesson with unambiguous contextual number phrases and declined forms.
 - Null handling cleanup: resource module lists now normalize to empty lists; several internal "not found" helpers use `Optional` instead of returning `null`.
 - RTL support: JSON `rtl` list, Hebrew keyboard layout, module/editor/Bricks/Crossword behavior, expanded `en-he-small` sample.
 - External lessons: OS default folder, `LANGTRAINER_EXTERNALS`, GitHub sync, hardened sync paths, dual `index.json` merge, source icons, opened files shared across compatible modules.
