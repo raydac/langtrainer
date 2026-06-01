@@ -344,7 +344,8 @@ public final class BarsModule extends AbstractLangTrainerModule {
 
     private static final Color LEFT_LANE_BG = new Color(128, 232, 238);
     private static final Color RIGHT_LANE_BG = new Color(255, 183, 77);
-    private static final Color BAR_BG = new Color(255, 255, 255, 235);
+    private static final Color LEFT_BAR_BG = new Color(225, 245, 254);
+    private static final Color RIGHT_BAR_BG = new Color(255, 249, 196);
     private static final Color BAR_BORDER = new Color(55, 71, 79);
     private static final Color DRAG_BORDER = new Color(21, 101, 192);
     private static final Color COMPLETED_OVERLAY_BG = new Color(0, 75, 38, 210);
@@ -539,12 +540,19 @@ public final class BarsModule extends AbstractLangTrainerModule {
         final int id,
         final int column,
         final boolean dragging) {
-      g2.setColor(this.stageSolved ? BarsWorkPanel.COMPLETE_BG : BAR_BG);
+      g2.setColor(this.barBackground(column));
       g2.fillRoundRect(rect.x, rect.y, rect.width, rect.height, 12, 12);
       g2.setColor(dragging ? DRAG_BORDER : BAR_BORDER);
       g2.setStroke(new BasicStroke(dragging ? 3f : 2f));
       g2.drawRoundRect(rect.x, rect.y, rect.width, rect.height, 12, 12);
       this.paintBarText(g2, rect, this.textFor(id, column), column == 0);
+    }
+
+    private Color barBackground(final int column) {
+      if (this.stageSolved) {
+        return BarsWorkPanel.COMPLETE_BG;
+      }
+      return column == 0 ? LEFT_BAR_BG : RIGHT_BAR_BG;
     }
 
     private void paintBarText(

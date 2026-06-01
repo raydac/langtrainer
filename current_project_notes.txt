@@ -1,7 +1,7 @@
 ## 1. Implementation Progress
 - Images module added: shared resource selector, target-language choice, `IMAGES` module filtering, background embedded-image preparation with busy overlay, cyan draggable text bars with stable heap sizing, six-card image stages, prerendered card image cache, answer flash toolbar button, and completion/next stage flow.
 - Added bundled Estonian-Russian Images-only fruit/produce test resource using embedded SVG icons from `~/Misc/Icons/SVG`.
-- Bars module added: shared resource selector, draggable paired A/B bars with centered bold system-monospace LTR/RTL text and swap-on-drag ordering, 7-item stages with overlap, deranged start rows, centered `NEXT` stage advance, completion banner, editor/resource module filtering via `BARS`.
+- Bars module added: shared resource selector, draggable paired A/B bars with centered bold system-monospace LTR/RTL text, side-specific light blue/yellow bar backgrounds, swap-on-drag ordering, 7-item stages with overlap, deranged start rows, centered `NEXT` stage advance, completion banner, editor/resource module filtering via `BARS`.
 - Fly game repeat pressure reduced by lowering bucket graduation to three successful flights per word; missed timeout words still repeat immediately because they are unfinished.
 - Common bundled lesson text normalized so `A`/`B` entries start with a capitalized cased character.
 - Added Estonian-Russian external shopping lesson with 66 words, store phrases, meat-kind vocabulary, and dairy/egg terms; added public transport lesson with 55 transit, airport, and travel-process words/phrases; added numerals lesson with unambiguous contextual number phrases and declined forms.
@@ -55,6 +55,7 @@
 - Keep changelog entries compact and short; include only important user-facing information and avoid overloading the changelog with implementation details.
 - Regularly review `current_project_notes.txt`, record note-review/cleanup actions, and compact or remove records that are outdated, repetitive, or no longer useful.
 - Prefer avoiding direct `null` where practical; use empty collections for collection results and `Optional` for absent values when it improves functional, fluent handling.
+- Use English for all answers and project-development communication. If the user writes in Russian, translate the request internally and continue processing and responding in English.
 
 ## 9. Notes Maintenance Log
 - 2026-05-26: Reviewed and compacted notes (~78 to ~40 lines); merged RTL/external-resource bullets; removed changelog/README/meta duplicates and resolved one-off bugfix history.
