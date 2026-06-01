@@ -7,6 +7,7 @@
   "description": "Image matching test resource for fruits and garden produce",
   "langA": "Eesti",
   "langB": "Russian",
+  "shuffled": true,
   "lines": [
     {
       "A": "Mango",

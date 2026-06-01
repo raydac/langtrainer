@@ -4,6 +4,7 @@
   "description": "Public transport words and everyday travel phrases with Russian translations",
   "langA": "Eesti",
   "langB": "Русский",
+  "shuffled": true,
   "inputEqu": [
     {
       "key": [

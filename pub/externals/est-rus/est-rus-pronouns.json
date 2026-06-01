@@ -4,6 +4,7 @@
   "description": "Estonian personal, possessive, demonstrative, interrogative, and indefinite pronouns with Russian translations and short practice phrases",
   "langA": "Eesti",
   "langB": "Русский",
+  "shuffled": true,
   "inputEqu": [
     {
       "key": [

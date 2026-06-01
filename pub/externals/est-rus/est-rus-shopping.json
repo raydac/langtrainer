@@ -4,6 +4,7 @@
   "description": "Shopping words and everyday store phrases with Russian translations",
   "langA": "Eesti",
   "langB": "Русский",
+  "shuffled": true,
   "inputEqu": [
     {
       "key": [
