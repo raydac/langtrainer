@@ -1,6 +1,9 @@
 {
   "resources": [
     {
+      "resource": "./est-rus/est-rus-colors.json"
+    },
+    {
       "resource": "./est-rus/est-rus-public-transport.json"
     },
     {
