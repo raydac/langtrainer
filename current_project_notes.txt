@@ -12,7 +12,7 @@
 - Null handling cleanup: resource module lists now normalize to empty lists; several internal "not found" helpers use `Optional` instead of returning `null`.
 - RTL support: JSON `rtl` list, Hebrew keyboard layout, module/editor/Bricks/Crossword behavior, expanded `en-he-small` sample.
 - External lessons: OS default folder, `LANGTRAINER_EXTERNALS`, optional `LANGTRAINER_GITHUB_TOKEN`/`GITHUB_TOKEN`, bounded GitHub sync with progress/slow-network messages, hardened sync paths, dual `index.json` merge, source icons, opened files shared across compatible modules.
-- Resource selectors: `Start` / `Open from file` / `Sync Lessons` layout, tooltips, uppercase folder labels, Start disabled until a row is selected.
+- Resource selectors: `Start` / `Open from file` / `Sync Lessons` layout, tooltips, uppercase folder labels, folder-first alphabetical tree rows, Start disabled until a row is selected.
 - Resource selectors merge bundled and external trees by canonical path, so same-named folders appear once while resource rows retain source icons; duplicate resource titles in the same folder get display suffixes `(1)`, `(2)`, etc.
 - Virtual keyboard stays mouse-only to preserve typing focus; header row uses fixed control height.
 - Bricks module has a `Show` help flash button beside the cue; brick text uses bold `LangTrainerFonts.SYSTEM_MONOSPACED`.
@@ -31,7 +31,7 @@
 - Bricks RTL: mirrored build-strip margins; completion fly uses visible history width, not spacer width.
 - Fly game uses a small bucketed Leitner scheduler (`FlyLeitnerSession`); failed cards stay in practice and missed timeout words retry immediately.
 - External index merges `<externals>/common/jsons/index.json` and `<externals>/index.json`; entries may be absolute or relative to the index file.
-- `GitHubFolderSynchronizer` uses OkHttp with 10s connect/write, 20s read, and 30s per-call timeouts; it authenticates with `LANGTRAINER_GITHUB_TOKEN` or `GITHUB_TOKEN` when configured, otherwise anonymous; external sync has a 60s whole-operation timeout, logs phase/source/summary details for terminal diagnostics, and failures still show local resources when load succeeds.
+- `GitHubFolderSynchronizer` uses OkHttp with 10s connect/write, 20s read, and 30s per-call timeouts; it authenticates with `LANGTRAINER_GITHUB_TOKEN` or `GITHUB_TOKEN` when configured, otherwise anonymous; external sync has a 60s whole-operation timeout, reports checked files separately from changed files, logs phase/source/summary details for terminal diagnostics, and failures still show local resources when load succeeds.
 - `InputEquivalenceSupport`: positional match when key/value sizes match, otherwise any-key; equal token sets act as equivalence classes.
 - Image-based modules return `requiresResourceImages()` and call `ResourceImageSupport.ensureRequiredImagesReady(...)` before starting, then use `ImageResourceLoader.loadLineImages(...)`; embedded SVGs rasterize at larger working width to avoid blurry card scaling, and Images game cards cache fitted rasters per resolved image area. `ImageResourceLoader` hardens Batik 1.19 transcoding: no external resources/scripts/onload, stream input for classpath SVG, 1024 px raster cap, rejects DTD/entity/script markup in user SVG.
 - Build with `mvn22`; assembly descriptors need `**/*` includes; JSON via Jackson databind 2.21.

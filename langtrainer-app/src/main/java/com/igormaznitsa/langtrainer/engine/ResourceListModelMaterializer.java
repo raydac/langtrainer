@@ -2,9 +2,12 @@ package com.igormaznitsa.langtrainer.engine;
 
 import com.igormaznitsa.langtrainer.engine.ClasspathResourceIndexTree.IndexedClasspathNode;
 import com.igormaznitsa.langtrainer.engine.DialogListEntry.ResourceSource;
+import java.text.Collator;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import javax.swing.DefaultListModel;
@@ -37,6 +40,8 @@ public final class ResourceListModelMaterializer {
 
   private static final class FolderBuilder {
 
+    private static final Locale SORT_LOCALE = Locale.ROOT;
+
     private final String title;
     private final String pathKey;
     private final List<Slot> slots = new ArrayList<>();
@@ -49,6 +54,12 @@ public final class ResourceListModelMaterializer {
 
     private static String resourceTitle(final DialogDefinition definition) {
       return definition.menuName() == null ? "" : definition.menuName();
+    }
+
+    private static Collator titleCollator() {
+      final Collator collator = Collator.getInstance(SORT_LOCALE);
+      collator.setStrength(Collator.PRIMARY);
+      return collator;
     }
 
     private void addTree(final ClasspathResourceIndexTree tree, final ResourceSource source) {
@@ -88,10 +99,38 @@ public final class ResourceListModelMaterializer {
         final int depth) {
       final Map<String, Integer> duplicateCounts = this.countDirectResourceTitles();
       final Map<String, Integer> duplicateOrdinals = new LinkedHashMap<>();
-      for (final Slot slot : this.slots) {
+      for (final Slot slot : this.sortedSlots()) {
         this.materializeSlot(slot, model, expandedFolderPathKeys, depth, duplicateCounts,
             duplicateOrdinals);
       }
+    }
+
+    private List<Slot> sortedSlots() {
+      return this.slots.stream()
+          .sorted(this.slotComparator())
+          .toList();
+    }
+
+    private Comparator<Slot> slotComparator() {
+      final Collator collator = titleCollator();
+      return Comparator
+          .comparingInt(this::slotGroup)
+          .thenComparing(
+              (left, right) -> collator.compare(this.slotTitle(left), this.slotTitle(right)));
+    }
+
+    private int slotGroup(final Slot slot) {
+      return slot instanceof FolderSlot ? 0 : 1;
+    }
+
+    private String slotTitle(final Slot slot) {
+      if (slot instanceof final FolderSlot folderSlot) {
+        return folderSlot.folder().title;
+      }
+      if (slot instanceof final LeafSlot leafSlot) {
+        return resourceTitle(leafSlot.definition());
+      }
+      throw new IllegalStateException("Unsupported resource list slot: " + slot);
     }
 
     private Map<String, Integer> countDirectResourceTitles() {

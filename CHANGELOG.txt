@@ -6,11 +6,12 @@
  - Added optional RTL language support in JSON resources, Hebrew virtual keyboard layout, and a bundled English-Hebrew sample.
  - Kept the virtual keyboard mouse-only so module typing focus is preserved while using it.
  - Added external JSON resources with local storage, `LANGTRAINER_EXTERNALS` override, optional token-authenticated bounded GitHub sync with user-visible progress/failure messages, and opened files shared across compatible modules.
+ - Clarified GitHub sync results by reporting checked files separately from new, changed, and removed files.
  - Added `!MODULE` JSON resource markers so lessons can be hidden from specific module resource lists.
  - Added a Bricks help flash button and improved Unicode whitespace handling in phrase parsing.
  - Added a Bars matching module for dragging paired phrase bars into correct rows, with stage starts avoiding already matched rows.
  - Improved Bars readability by tinting left and right bars with distinct light backgrounds.
- - Improved resource list icons and folder labels, crossword board scaling for wide puzzles, centered module hints, and crossword Home/End word navigation.
+ - Improved resource list icons, folder labels, folder-first alphabetical resource ordering, crossword board scaling for wide puzzles, centered module hints, and crossword Home/End word navigation.
  - Replaced Gson with Jackson databind.
 
 1.0.0 (23-may-2026)

@@ -15,6 +15,8 @@ import com.igormaznitsa.langtrainer.engine.GitHubFolderSynchronizer.SyncSummary;
 import java.awt.Component;
 import java.io.File;
 import java.nio.file.Path;
+import java.text.Collator;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -73,7 +75,39 @@ public final class ExternalResourceSupport {
       final DefaultListModel<DialogListEntry> model) {
     OPENED_FILE_RESOURCE_ROWS.stream()
         .filter(row -> module.isResourceAllowed(row.definition()))
-        .forEach(model::addElement);
+        .sorted(openedFileRowComparator())
+        .forEach(row -> insertOpenedFileRow(model, row));
+  }
+
+  private static Comparator<DialogListEntry.DialogResourceRow> openedFileRowComparator() {
+    final Collator collator = Collator.getInstance(Locale.ROOT);
+    collator.setStrength(Collator.PRIMARY);
+    return (left, right) -> collator.compare(left.displayTitle(), right.displayTitle());
+  }
+
+  private static void insertOpenedFileRow(
+      final DefaultListModel<DialogListEntry> model,
+      final DialogListEntry.DialogResourceRow row) {
+    final Comparator<DialogListEntry.DialogResourceRow> comparator = openedFileRowComparator();
+    for (int i = firstRootResourceIndex(model); i < model.getSize(); i++) {
+      if (model.getElementAt(i) instanceof final DialogListEntry.DialogResourceRow existing
+          && existing.indentLevel() == 0
+          && comparator.compare(row, existing) < 0) {
+        model.insertElementAt(row, i);
+        return;
+      }
+    }
+    model.addElement(row);
+  }
+
+  private static int firstRootResourceIndex(final DefaultListModel<DialogListEntry> model) {
+    for (int i = 0; i < model.getSize(); i++) {
+      if (model.getElementAt(i) instanceof final DialogListEntry.DialogResourceRow row
+          && row.indentLevel() == 0) {
+        return i;
+      }
+    }
+    return model.getSize();
   }
 
   public static Optional<OpenedResource> openResourceFromFile(
@@ -234,15 +268,17 @@ public final class ExternalResourceSupport {
         Source: %s
         Target: %s
         
-        Files loaded: %d
-        Files removed: %d
-        Files updated: %d
+        Files checked: %d
+        New files loaded: %d
+        Changed files updated: %d
+        Stale files removed: %d
         """.formatted(
         EXTERNAL_FOLDER_URL,
         EXTERNAL_FOLDER.toAbsolutePath().normalize(),
+        summary.checkedFiles(),
         summary.loadedFiles(),
-        summary.removedFiles(),
-        summary.updatedFiles());
+        summary.updatedFiles(),
+        summary.removedFiles());
   }
 
   private static void showExternalSyncFailure(

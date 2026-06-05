@@ -261,8 +261,10 @@ public final class GitHubFolderSynchronizer {
   }
 
   private SyncSummary logSyncCompleted(final SyncSummary summary, final long startedAtNs) {
-    LOG.info(() -> "Completed GitHub lesson sync: loaded=%d updated=%d removed=%d elapsedMs=%d"
+    LOG.info(
+        () -> "Completed GitHub lesson sync: checked=%d loaded=%d updated=%d removed=%d elapsedMs=%d"
         .formatted(
+            summary.checkedFiles(),
             summary.loadedFiles(),
             summary.updatedFiles(),
             summary.removedFiles(),
@@ -411,6 +413,7 @@ public final class GitHubFolderSynchronizer {
   private void downloadRemoteFiles(final RemoteFolder remote, final SyncSummaryBuilder summary)
       throws IOException {
     for (final RemoteFile file : remote.files()) {
+      summary.fileChecked();
       this.downloadRemoteFile(file, summary);
     }
   }
@@ -518,13 +521,18 @@ public final class GitHubFolderSynchronizer {
     return removedFiles;
   }
 
-  public record SyncSummary(int loadedFiles, int removedFiles, int updatedFiles) {
+  public record SyncSummary(int checkedFiles, int loadedFiles, int updatedFiles, int removedFiles) {
   }
 
   private static final class SyncSummaryBuilder {
+    private int checkedFiles;
     private int loadedFiles;
-    private int removedFiles;
     private int updatedFiles;
+    private int removedFiles;
+
+    private void fileChecked() {
+      this.checkedFiles++;
+    }
 
     private void fileLoaded() {
       this.loadedFiles++;
@@ -543,7 +551,8 @@ public final class GitHubFolderSynchronizer {
     }
 
     private SyncSummary build() {
-      return new SyncSummary(this.loadedFiles, this.removedFiles, this.updatedFiles);
+      return new SyncSummary(
+          this.checkedFiles, this.loadedFiles, this.updatedFiles, this.removedFiles);
     }
   }
 
