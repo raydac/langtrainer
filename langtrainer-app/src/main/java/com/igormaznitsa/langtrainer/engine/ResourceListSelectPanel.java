@@ -11,6 +11,7 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -587,6 +588,10 @@ public final class ResourceListSelectPanel {
       this.busyOverlay.setBusy(busy);
     }
 
+    public void setBusyMessage(final String message) {
+      this.busyOverlay.setMessage(message);
+    }
+
     private void setList(final JList<DialogListEntry> list) {
       this.list = list;
       this.addBusyControlled(list);
@@ -696,6 +701,7 @@ public final class ResourceListSelectPanel {
     private static final long SPIN_PERIOD_NS = 1_200_000_000L;
     private static final int ANIMATION_PERIOD_MS = 16;
     private final Timer animationTimer = new Timer(ANIMATION_PERIOD_MS, event -> this.repaint());
+    private String message = "";
     private long startedAtNs;
 
     private BusyOverlayPanel() {
@@ -711,6 +717,11 @@ public final class ResourceListSelectPanel {
       } else {
         this.animationTimer.stop();
       }
+      this.repaint();
+    }
+
+    private void setMessage(final String message) {
+      this.message = message == null ? "" : message.strip();
       this.repaint();
     }
 
@@ -752,6 +763,21 @@ public final class ResourceListSelectPanel {
       g2.drawOval(-diameter / 2, -diameter / 2, diameter, diameter);
       g2.setColor(new Color(25, 118, 210));
       g2.drawArc(-diameter / 2, -diameter / 2, diameter, diameter, 90, 270);
+      g2.rotate(-angleRad);
+      this.paintMessage(g2, diameter, w);
+    }
+
+    private void paintMessage(final Graphics2D g2, final int diameter, final int overlayWidth) {
+      if (this.message.isEmpty()) {
+        return;
+      }
+      g2.setFont(g2.getFont().deriveFont(Font.BOLD, 16f));
+      final FontMetrics metrics = g2.getFontMetrics();
+      final int messageWidth = metrics.stringWidth(this.message);
+      final int x = -Math.min(messageWidth, overlayWidth - 24) / 2;
+      final int y = diameter / 2 + metrics.getHeight() + 12;
+      g2.setColor(new Color(25, 45, 85));
+      g2.drawString(this.message, x, y);
     }
   }
 }

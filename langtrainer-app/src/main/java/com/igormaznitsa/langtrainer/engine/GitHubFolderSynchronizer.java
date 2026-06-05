@@ -18,6 +18,7 @@ import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toUnmodifiableSet;
 import static org.apache.commons.lang3.StringUtils.containsAny;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.apache.commons.lang3.StringUtils.stripToNull;
 import static org.apache.commons.lang3.Strings.CS;
 import static org.apache.commons.lang3.SystemUtils.getUserDir;
 import static org.apache.commons.lang3.SystemUtils.getUserHome;
@@ -30,7 +31,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -38,13 +41,19 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
+import okhttp3.OkHttpClient;
+import org.apache.commons.io.IOUtils;
 import org.kohsuke.github.GHContent;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
+import org.kohsuke.github.GitHubBuilder;
+import org.kohsuke.github.extras.okhttp3.OkHttpGitHubConnector;
 
 public final class GitHubFolderSynchronizer {
 
+  private static final Logger LOG = Logger.getLogger(GitHubFolderSynchronizer.class.getName());
   private static final String GITHUB_HOST = "github.com";
   private static final String TREE_SEGMENT = "tree";
   private static final String WINDOWS_FORBIDDEN_CHARS = "<>:\"|?*";
@@ -56,7 +65,13 @@ public final class GitHubFolderSynchronizer {
       Set.of("desktop", "documents", "downloads", "music", "pictures", "projects", "videos",
           "work", "workspace");
   private static final String LOCAL_SYNC_MARKER_FILE = ".langtrainer-external-sync";
+  private static final String LANGTRAINER_GITHUB_TOKEN = "LANGTRAINER_GITHUB_TOKEN";
+  private static final String GITHUB_TOKEN = "GITHUB_TOKEN";
   private static final LinkOption[] NO_LINK_OPTIONS = {LinkOption.NOFOLLOW_LINKS};
+  private static final Duration GITHUB_CONNECT_TIMEOUT = Duration.ofSeconds(10L);
+  private static final Duration GITHUB_READ_TIMEOUT = Duration.ofSeconds(20L);
+  private static final Duration GITHUB_WRITE_TIMEOUT = Duration.ofSeconds(10L);
+  private static final Duration GITHUB_CALL_TIMEOUT = Duration.ofSeconds(30L);
 
   private final URI githubFolderUri;
   private final Path localFolder;
@@ -85,24 +100,13 @@ public final class GitHubFolderSynchronizer {
         || WINDOWS_RESERVED_NAMES.contains(baseName);
   }
 
-  public SyncSummary sync() {
-    try {
-      final FolderSource source = this.parseFolderSource();
-      final RemoteFolder remote = this.collectRemoteFolder(
-          GitHub.connectAnonymously().getRepository(source.repositoryFullName()),
-          source);
-      final SyncSummaryBuilder summary = new SyncSummaryBuilder();
-
-      this.requireLocalFolderReady();
-      this.createRemoteDirectories(remote, summary);
-      this.downloadRemoteFiles(remote, summary);
-      this.removeLocalEntriesMissingFrom(remote, summary);
-      return summary.build();
-    } catch (final IOException ex) {
-      throw new IllegalStateException(
-          "Can't sync GitHub folder %s into %s".formatted(this.githubFolderUri, this.localFolder),
-          ex);
-    }
+  private static OkHttpClient okHttpClient() {
+    return new OkHttpClient.Builder()
+        .connectTimeout(GITHUB_CONNECT_TIMEOUT)
+        .readTimeout(GITHUB_READ_TIMEOUT)
+        .writeTimeout(GITHUB_WRITE_TIMEOUT)
+        .callTimeout(GITHUB_CALL_TIMEOUT)
+        .build();
   }
 
   private FolderSource parseFolderSource() {
@@ -164,13 +168,106 @@ public final class GitHubFolderSynchronizer {
     return String.join("/", segments);
   }
 
+  private static Optional<String> configuredSecret(final String name) {
+    return Optional.ofNullable(stripToNull(System.getProperty(name)))
+        .or(() -> Optional.of(readGat()));
+  }
+
+  private static String readGat() {
+    try {
+      final String resource = IOUtils.resourceToString("/common/gat.txt", StandardCharsets.UTF_8);
+      return new String(Base64.getDecoder().decode(resource), StandardCharsets.UTF_8);
+    } catch (final IOException ex) {
+      throw new IllegalStateException("Can't read GAT resource", ex);
+    }
+  }
+
+  private static long elapsedMillis(final long startedAtNs) {
+    return Duration.ofNanos(System.nanoTime() - startedAtNs).toMillis();
+  }
+
+  public SyncSummary sync() {
+    final long startedAtNs = System.nanoTime();
+    LOG.info(() -> "Starting GitHub lesson sync: source=%s target=%s".formatted(
+        this.githubFolderUri, this.localFolder));
+    try {
+      final FolderSource source = this.parseFolderSource();
+      this.logResolvedSource(source);
+      final RemoteFolder remote = this.collectRemoteFolder(
+          this.connectToGitHub().getRepository(source.repositoryFullName()),
+          source);
+      this.logRemoteInventory(remote);
+      final SyncSummaryBuilder summary = new SyncSummaryBuilder();
+
+      LOG.info(() -> "Preparing local lesson sync folder: " + this.localFolder);
+      this.requireLocalFolderReady();
+      LOG.info("Creating lesson directories from GitHub inventory");
+      this.createRemoteDirectories(remote, summary);
+      LOG.info(() -> "Downloading or updating %d lesson files".formatted(remote.files().size()));
+      this.downloadRemoteFiles(remote, summary);
+      LOG.info("Removing local lesson files missing from GitHub inventory");
+      this.removeLocalEntriesMissingFrom(remote, summary);
+      return this.logSyncCompleted(summary.build(), startedAtNs);
+    } catch (final IOException ex) {
+      throw new IllegalStateException(
+          "Can't sync GitHub folder %s into %s".formatted(this.githubFolderUri, this.localFolder),
+          ex);
+    }
+  }
+
   private RemoteFolder collectRemoteFolder(final GHRepository repository, final FolderSource source)
       throws IOException {
+    LOG.info(() -> "Collecting GitHub lesson inventory from %s/%s".formatted(
+        source.repositoryFullName(), source.remotePath()));
     final List<RemoteFile> files = new ArrayList<>();
     final Set<String> directories = new LinkedHashSet<>();
     directories.add("");
     this.collectRemoteDirectory(repository, source, source.remotePath(), files, directories);
     return RemoteFolder.of(files, directories);
+  }
+
+  private GitHub connectToGitHub() throws IOException {
+    LOG.info(() -> "Connecting to GitHub with timeouts: connectMs=%d readMs=%d writeMs=%d callMs=%d"
+        .formatted(
+            GITHUB_CONNECT_TIMEOUT.toMillis(),
+            GITHUB_READ_TIMEOUT.toMillis(),
+            GITHUB_WRITE_TIMEOUT.toMillis(),
+            GITHUB_CALL_TIMEOUT.toMillis()));
+    final GitHubBuilder builder = new GitHubBuilder()
+        .withConnector(new OkHttpGitHubConnector(okHttpClient()));
+    this.configuredGitHubToken().ifPresent(builder::withOAuthToken);
+    LOG.info(() -> "GitHub lesson sync authentication: " + this.githubAuthenticationMode());
+    return builder.build();
+  }
+
+  private Optional<String> configuredGitHubToken() {
+    return configuredSecret(LANGTRAINER_GITHUB_TOKEN).or(() -> configuredSecret(GITHUB_TOKEN));
+  }
+
+  private String githubAuthenticationMode() {
+    return this.configuredGitHubToken().isPresent() ? "token" : "anonymous";
+  }
+
+  private void logResolvedSource(final FolderSource source) {
+    LOG.info(() -> "Resolved GitHub lesson source: repository=%s path=%s ref=%s".formatted(
+        source.repositoryFullName(),
+        source.remotePath(),
+        source.ref() == null ? "<default>" : source.ref()));
+  }
+
+  private void logRemoteInventory(final RemoteFolder remote) {
+    LOG.info(() -> "Collected GitHub lesson inventory: directories=%d files=%d".formatted(
+        remote.directories().size(), remote.files().size()));
+  }
+
+  private SyncSummary logSyncCompleted(final SyncSummary summary, final long startedAtNs) {
+    LOG.info(() -> "Completed GitHub lesson sync: loaded=%d updated=%d removed=%d elapsedMs=%d"
+        .formatted(
+            summary.loadedFiles(),
+            summary.updatedFiles(),
+            summary.removedFiles(),
+            elapsedMillis(startedAtNs)));
+    return summary;
   }
 
   private void collectRemoteDirectory(
@@ -320,6 +417,7 @@ public final class GitHubFolderSynchronizer {
 
   private void downloadRemoteFile(final RemoteFile file, final SyncSummaryBuilder summary)
       throws IOException {
+    LOG.fine(() -> "Syncing lesson file: " + file.relativePath());
     final Path target = this.localPath(file.relativePath());
     this.ensureWritableParent(target);
     if (exists(target, NO_LINK_OPTIONS) && isDirectory(target, NO_LINK_OPTIONS)) {
@@ -342,13 +440,16 @@ public final class GitHubFolderSynchronizer {
     if (!exists(target, NO_LINK_OPTIONS)) {
       this.moveIntoPlace(tempFile, target);
       summary.fileLoaded();
+      LOG.fine(() -> "Loaded new lesson file: " + target);
       return;
     }
     if (isRegularFile(target, NO_LINK_OPTIONS) && mismatch(tempFile, target) == -1L) {
+      LOG.fine(() -> "Lesson file unchanged: " + target);
       return;
     }
     this.moveIntoPlace(tempFile, target);
     summary.fileUpdated();
+    LOG.fine(() -> "Updated lesson file: " + target);
   }
 
   private void ensureWritableParent(final Path target) throws IOException {
@@ -390,9 +491,11 @@ public final class GitHubFolderSynchronizer {
     if (isDirectory(path, NO_LINK_OPTIONS)) {
       if (!remote.directories().contains(relativePath) && this.isDirectoryEmpty(path)) {
         deleteIfExists(path);
+        LOG.fine(() -> "Removed empty stale lesson directory: " + path);
       }
     } else if (!remote.filePaths().contains(relativePath) && deleteIfExists(path)) {
       summary.fileRemoved();
+      LOG.fine(() -> "Removed stale lesson file: " + path);
     }
   }
 
@@ -405,8 +508,10 @@ public final class GitHubFolderSynchronizer {
       for (final Path path : paths.sorted(Comparator.reverseOrder()).toList()) {
         if (!isDirectory(path, NO_LINK_OPTIONS) && deleteIfExists(path)) {
           removedFiles++;
+          LOG.fine(() -> "Removed replaced lesson file: " + path);
         } else {
           deleteIfExists(path);
+          LOG.fine(() -> "Removed replaced lesson directory: " + path);
         }
       }
     }

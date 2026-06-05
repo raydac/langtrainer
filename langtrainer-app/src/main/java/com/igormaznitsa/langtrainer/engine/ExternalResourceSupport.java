@@ -20,6 +20,11 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -28,6 +33,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.SwingWorker;
+import javax.swing.Timer;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 public final class ExternalResourceSupport {
@@ -37,9 +43,14 @@ public final class ExternalResourceSupport {
       "https://github.com/raydac/langtrainer/pub/externals";
   public static final String EXTERNAL_FOLDER_PROPERTY = "LANGTRAINER_EXTERNALS";
   public static final Path EXTERNAL_FOLDER = resolveExternalFolder();
+  private static final long SYNC_TIMEOUT_SECONDS = 60L;
+  private static final int SLOW_SYNC_MESSAGE_DELAY_MS = 10_000;
   private static final String APP_CONFIG_FOLDER_NAME = "LangTrainer";
   private static final String EXTERNAL_RESOURCES_FOLDER_NAME = "externals";
   private static final String EXTERNAL_FOLDER_PATH_KEY_PREFIX = "external:";
+  private static final String SYNC_START_MESSAGE = "Syncing lessons from GitHub...";
+  private static final String SYNC_SLOW_MESSAGE =
+      "Still syncing lessons. Network or GitHub may be slow...";
   private static final List<DialogListEntry.DialogResourceRow> OPENED_FILE_RESOURCE_ROWS =
       new CopyOnWriteArrayList<>();
 
@@ -102,6 +113,12 @@ public final class ExternalResourceSupport {
       final Consumer<ClasspathResourceIndexTree> onTreeLoaded,
       final Runnable onListRefreshNeeded) {
     view.setBusy(true);
+    view.setBusyMessage(SYNC_START_MESSAGE);
+    final Timer slowSyncMessageTimer = new Timer(
+        SLOW_SYNC_MESSAGE_DELAY_MS,
+        event -> view.setBusyMessage(SYNC_SLOW_MESSAGE));
+    slowSyncMessageTimer.setRepeats(false);
+    slowSyncMessageTimer.start();
     new SwingWorker<RefreshResult, Void>() {
       @Override
       protected RefreshResult doInBackground() {
@@ -131,7 +148,9 @@ public final class ExternalResourceSupport {
           LOG.log(Level.SEVERE, "Can't refresh external resources", ex);
           ExternalResourceSupport.showExternalSyncFailure(view, ex);
         } finally {
+          slowSyncMessageTimer.stop();
           view.setBusy(false);
+          view.setBusyMessage("");
         }
       }
     }.execute();
@@ -166,7 +185,36 @@ public final class ExternalResourceSupport {
   }
 
   private static SyncSummary syncExternalFolder() {
-    return new GitHubFolderSynchronizer(EXTERNAL_FOLDER_URL, EXTERNAL_FOLDER).sync();
+    final ExecutorService executor = Executors.newSingleThreadExecutor(syncThreadFactory());
+    try {
+      return executor.submit(
+              () -> new GitHubFolderSynchronizer(EXTERNAL_FOLDER_URL, EXTERNAL_FOLDER).sync())
+          .get(SYNC_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    } catch (final TimeoutException ex) {
+      throw new ExternalSyncTimeoutException(SYNC_TIMEOUT_SECONDS, ex);
+    } catch (final InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Lesson sync was interrupted", ex);
+    } catch (final ExecutionException ex) {
+      final Throwable cause = ex.getCause() == null ? ex : ex.getCause();
+      if (cause instanceof final RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      if (cause instanceof final Error error) {
+        throw error;
+      }
+      throw new IllegalStateException("Lesson sync failed", cause);
+    } finally {
+      executor.shutdownNow();
+    }
+  }
+
+  private static ThreadFactory syncThreadFactory() {
+    return runnable -> {
+      final Thread thread = new Thread(runnable, "langtrainer-github-sync");
+      thread.setDaemon(true);
+      return thread;
+    };
   }
 
   private static void showExternalSyncSuccess(
@@ -220,6 +268,9 @@ public final class ExternalResourceSupport {
   }
 
   private static String describeFailure(final Throwable failure) {
+    if (failure instanceof ExternalSyncTimeoutException) {
+      return failure.getMessage();
+    }
     final Throwable root = getIfNull(getRootCause(failure), failure);
     final String message = root.getMessage();
     return isBlank(message) ? getSimpleName(root) :
@@ -274,6 +325,13 @@ public final class ExternalResourceSupport {
     }
 
     record SyncFailed(ClasspathResourceIndexTree tree, Throwable failure) implements RefreshResult {
+    }
+  }
+
+  private static final class ExternalSyncTimeoutException extends IllegalStateException {
+
+    private ExternalSyncTimeoutException(final long timeoutSeconds, final Throwable cause) {
+      super("Lesson sync timed out after %d seconds".formatted(timeoutSeconds), cause);
     }
   }
 
