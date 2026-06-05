@@ -5,7 +5,6 @@
   "langA": "Eesti",
   "langB": "Русский",
   "modules": [
-    "DIALOG",
     "!IMAGES"
   ],
   "shuffled": false,
