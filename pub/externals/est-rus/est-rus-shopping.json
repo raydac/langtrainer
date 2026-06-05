@@ -1,5 +1,8 @@
 {
   "path": "Estonian-Russian",
+  "modules": [
+    "!IMAGES"
+  ],
   "menuName": "Shopping / Покупки по-эстонски",
   "description": "Shopping words and everyday store phrases with Russian translations",
   "langA": "Eesti",

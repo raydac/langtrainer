@@ -1,5 +1,8 @@
 {
   "path": "Estonian-Russian",
+  "modules": [
+    "!IMAGES"
+  ],
   "menuName": "Pronouns / местоимения",
   "description": "Estonian personal, possessive, demonstrative, interrogative, and indefinite pronouns with Russian translations and short practice phrases",
   "langA": "Eesti",

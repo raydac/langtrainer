@@ -1,5 +1,8 @@
 {
   "path": "Estonian-Russian",
+  "modules": [
+    "!IMAGES"
+  ],
   "menuName": "Colors / Цвета по-эстонски",
   "description": "Estonian color names, shades, and everyday color phrases with Russian translations",
   "langA": "Eesti",

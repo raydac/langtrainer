@@ -1,5 +1,8 @@
 {
   "path": "Estonian-Russian",
+  "modules": [
+    "!IMAGES"
+  ],
   "menuName": "Numerals / Числительные по-эстонски",
   "description": "Estonian numerals with unambiguous Russian translations, declined forms in context, and everyday phrases with numbers",
   "langA": "Eesti",
