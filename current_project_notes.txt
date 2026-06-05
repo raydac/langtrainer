@@ -4,7 +4,11 @@
 - Bars module added: shared resource selector, draggable paired A/B bars with centered bold system-monospace LTR/RTL text, side-specific light blue/yellow bar backgrounds, swap-on-drag ordering, 7-item stages with overlap, deranged start rows, centered `NEXT` stage advance, completion banner, editor/resource module filtering via `BARS`.
 - Fly game repeat pressure reduced by lowering bucket graduation to three successful flights per word; missed timeout words still repeat immediately because they are unfinished.
 - Common bundled lesson text normalized so `A`/`B` entries start with a capitalized cased character.
-- Added Estonian-Russian external shopping lesson with 66 words, store phrases, meat-kind vocabulary, and dairy/egg terms; added public transport lesson with 55 transit, airport, and travel-process words/phrases; added numerals lesson with unambiguous contextual number phrases and declined forms; added colors lesson with 50 color names, shades, everyday phrases, and Estonian flag color phrases.
+- Added Estonian-Russian external shopping lesson with 66 words, store phrases, meat-kind vocabulary, and dairy/egg terms; added public transport lesson with 55 transit, airport, and travel-process words/phrases; added numerals lesson with unambiguous contextual number phrases and declined forms; added colors lesson with 50 color names, shades, everyday phrases, and Estonian flag color phrases; added restaurant, bus, cinema, street, garden, airport, hospital, hotel, taxi, time, work, police, grocery checkout, pharmacy, museum, and hotel-finding tourist dialogs with short etiquette phrases.
+- Reviewed Estonian-Russian dialogs for A2 classroom usefulness: all 16 dialog resources use 16 short role-free single-sentence turns and include more topic-specific practical vocabulary.
+- Added Estonian-Russian monolog resources for A2 exam-style picture descriptions: room, city street, and art picture, each with 12 ordered phrases.
+- Added Estonian-Russian poetry resources for "Lasteaed saab läbi" and "Kooli" with ordered line-by-line Russian translations and author names in titles.
+- Estonian-Russian text-only external resources are marked with `!IMAGES`; only `est-rus-fruits-images.json` is listed for the Images module.
 - Null handling cleanup: resource module lists now normalize to empty lists; several internal "not found" helpers use `Optional` instead of returning `null`.
 - RTL support: JSON `rtl` list, Hebrew keyboard layout, module/editor/Bricks/Crossword behavior, expanded `en-he-small` sample.
 - External lessons: OS default folder, `LANGTRAINER_EXTERNALS`, GitHub sync, hardened sync paths, dual `index.json` merge, source icons, opened files shared across compatible modules.
@@ -15,10 +19,12 @@
 - Crossword: rectangular board scaling; Home/End jumps to first/last editable cell of the focused word using logical word order, so horizontal RTL words navigate right-anchor to left-end correctly; translation hint stays centered.
 - Gson replaced with Jackson; bundled classpath UI icons; optional JetBrains Mono with system monospace fallback.
 - JSON resource lines support optional Base64 `image` values (PNG/JPG/SVG, max 64 KB decoded); editor can load/remove images per line; documented in `langtrainer-app/docs/JSON_format.txt` and `Module_Editor.txt`.
+- JSON `modules` entries may use `!MODULE` deny markers to hide a resource from specific module resource lists; Editor checkboxes support only positive module entries.
 
 ## 2. Architecture & Technical Discoveries
-- `LangTrainerModuleId` drives Editor module checkboxes automatically; adding a module enum value exposes it in the resource editor.
+- `LangTrainerModuleId` drives Editor positive module checkboxes automatically; adding a module enum value exposes it in the resource editor.
 - `DialogDefinition.modules()` is always non-null; an empty list means the resource is visible to all modules.
+- `LangTrainerResourceAccess.visibleToModule` applies JSON module deny markers before positive allow markers.
 - `TextDirectionSupport` centralizes RTL orientation, alignment, and bidi embedding; RTL surfaces prefer `LangTrainerFonts.SYSTEM_MONOSPACED`.
 - Text boundary cleanup uses `String.strip()` instead of `trim()` so Unicode whitespace is handled consistently.
 - Crossword RTL: `placement.col()` anchors letter 0 (rightmost for horizontal RTL); re-apply `CENTER` on translation label after direction setup.

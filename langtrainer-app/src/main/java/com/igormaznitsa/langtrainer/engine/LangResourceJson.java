@@ -24,6 +24,7 @@ public final class LangResourceJson {
   private static final ObjectMapper MAPPER = new ObjectMapper()
       .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
   private static final ObjectWriter PRETTY_WRITER = MAPPER.writerWithDefaultPrettyPrinter();
+  private static final String UNSUPPORTED_MODULE_PREFIX = "!";
 
   private LangResourceJson() {
   }
@@ -146,16 +147,26 @@ public final class LangResourceJson {
       if (isBlank(moduleId)) {
         continue;
       }
-      final String id = moduleId.strip();
-      try {
-        LangTrainerModuleId.valueOf(id);
-      } catch (final IllegalArgumentException ex) {
-        throw new IllegalStateException("Unknown module id in \"modules\": " + id, ex);
-      }
-      if (!out.contains(id)) {
-        out.add(id);
+      final String marker = normalizeModuleMarker(moduleId.strip());
+      if (!out.contains(marker)) {
+        out.add(marker);
       }
     }
     return List.copyOf(out);
+  }
+
+  private static String normalizeModuleMarker(final String marker) {
+    final String id = marker.startsWith(UNSUPPORTED_MODULE_PREFIX)
+        ? marker.substring(UNSUPPORTED_MODULE_PREFIX.length()).strip()
+        : marker;
+    if (isBlank(id)) {
+      throw new IllegalStateException("Blank module id in \"modules\": " + marker);
+    }
+    try {
+      LangTrainerModuleId.valueOf(id);
+    } catch (final IllegalArgumentException ex) {
+      throw new IllegalStateException("Unknown module id in \"modules\": " + marker, ex);
+    }
+    return marker.startsWith(UNSUPPORTED_MODULE_PREFIX) ? UNSUPPORTED_MODULE_PREFIX + id : id;
   }
 }

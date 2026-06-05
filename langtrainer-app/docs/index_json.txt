@@ -66,13 +66,16 @@ Module restriction comes from the optional "modules" array on each resource JSON
 JSON_format.txt):
 
   - If "modules" is missing or empty, all modules may list the resource.
-  - If "modules" is present, only modules whose id is listed see it in the bundled picker.
+  - Plain ids are allow rules: if any plain id is present, only listed modules may list the resource.
+  - Ids prefixed with "!" are deny rules: the named module must not list the resource.
 
-Module id values (enum LangTrainerModuleId, must match exactly): DIALOG, FLY_GAME, CROSSWORD, BRICKS.
+Module id values (enum LangTrainerModuleId, must match exactly, optional "!" prefix for deny rules):
+DIALOG, FLY_GAME, CROSSWORD, BRICKS, BARS, IMAGES.
 
 Example:
 
   { "modules": [ "DIALOG", "FLY_GAME" ], "menuName": "...", ... }
+  { "modules": [ "!IMAGES" ], "menuName": "...", ... }
 
 
 Filtering and visibility
@@ -84,7 +87,8 @@ Filtering and visibility
 
 2) Module gate ("modules" on the resource JSON)
    If "modules" is absent or empty on the loaded resource, all modules may list it.
-   If "modules" is present, the resource appears only in pickers for modules whose id is listed.
+   Plain module ids restrict the resource to listed modules. "!MODULE" entries exclude that module
+   from the picker even when no plain ids are present.
 
 3) Empty branches
    A folder whose subtree contains no leaf visible to the current module is not shown for that

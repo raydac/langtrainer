@@ -5,7 +5,7 @@ Bundled files are normally registered in common/jsons/index.json (see index_json
     {
         "menuName" :  "Menu name of the dialog",
         "path" : "Optional menu path for resource lists (e.g. travel/russian-english/50 words). Segments separated by / or \\ only; spaces allowed inside a segment. Omitted or at root when absent.",
-        "modules" : [ "DIALOG", "BRICKS" ],
+        "modules" : [ "DIALOG", "!IMAGES" ],
         "description" : "Description of the dialog shown as tooltip",
         "langA" : human-readable name of language A as string,
         "langB" : human-readable name of language B as string,
@@ -25,8 +25,17 @@ Bundled files are normally registered in common/jsons/index.json (see index_json
     }
 
     Optional field "modules" is an array of module id strings (LangTrainerModuleId names: DIALOG,
-    FLY_GAME, CROSSWORD, BRICKS, BARS, IMAGES). If omitted or empty, every module may use the
-    resource. If present, only listed modules show the resource in their bundled pickers.
+    FLY_GAME, CROSSWORD, BRICKS, BARS, IMAGES). If omitted or empty, every module may list the
+    resource. A plain module id is an allow rule: if at least one plain id is present, only those
+    modules list the resource. A module id prefixed with "!" is a deny rule: that module must not
+    list the resource even when the resource is otherwise allowed. Deny rules are supported by
+    module resource lists, but the Editor module exposes only plain allow checkboxes and does not
+    edit "!" entries.
+
+    Examples:
+       "modules" : [ "DIALOG", "FLY_GAME" ]   // only Dialog and Words list it
+       "modules" : [ "!IMAGES" ]               // every module except Images lists it
+       "modules" : [ "DIALOG", "!IMAGES" ]     // Dialog lists it; Images is explicitly excluded
 
     Optional field "rtl" is an array of human-readable language names that should be treated as
     right-to-left. Values are compared case-insensitively with "langA" and "langB". If the field is
