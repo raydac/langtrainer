@@ -10,6 +10,7 @@ import static java.nio.file.Files.isRegularFile;
 import static java.nio.file.Files.mismatch;
 import static java.nio.file.Files.move;
 import static java.nio.file.Files.walk;
+import static java.nio.file.Files.write;
 import static java.nio.file.Files.writeString;
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
@@ -18,11 +19,12 @@ import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toUnmodifiableSet;
 import static org.apache.commons.lang3.StringUtils.containsAny;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
-import static org.apache.commons.lang3.StringUtils.stripToNull;
-import static org.apache.commons.lang3.Strings.CS;
 import static org.apache.commons.lang3.SystemUtils.getUserDir;
 import static org.apache.commons.lang3.SystemUtils.getUserHome;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,7 +35,6 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -43,19 +44,21 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
-import okhttp3.OkHttpClient;
-import org.apache.commons.io.IOUtils;
-import org.kohsuke.github.GHContent;
-import org.kohsuke.github.GHRepository;
-import org.kohsuke.github.GitHub;
-import org.kohsuke.github.GitHubBuilder;
-import org.kohsuke.github.extras.okhttp3.OkHttpGitHubConnector;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpStatus;
+import org.apache.hc.core5.http.io.HttpClientResponseHandler;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.util.Timeout;
 
-public final class GitHubFolderSynchronizer {
+public final class ExternalResourceSynchronizer {
 
-  private static final Logger LOG = Logger.getLogger(GitHubFolderSynchronizer.class.getName());
-  private static final String GITHUB_HOST = "github.com";
-  private static final String TREE_SEGMENT = "tree";
+  private static final Logger LOG = Logger.getLogger(ExternalResourceSynchronizer.class.getName());
+  private static final String INDEX_FILE = "index.json";
   private static final String WINDOWS_FORBIDDEN_CHARS = "<>:\"|?*";
   private static final Set<String> WINDOWS_RESERVED_NAMES =
       Set.of("CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6",
@@ -65,24 +68,21 @@ public final class GitHubFolderSynchronizer {
       Set.of("desktop", "documents", "downloads", "music", "pictures", "projects", "videos",
           "work", "workspace");
   private static final String LOCAL_SYNC_MARKER_FILE = ".langtrainer-external-sync";
-  private static final String LANGTRAINER_GITHUB_TOKEN = "LANGTRAINER_GITHUB_TOKEN";
-  private static final String GITHUB_TOKEN = "GITHUB_TOKEN";
   private static final LinkOption[] NO_LINK_OPTIONS = {LinkOption.NOFOLLOW_LINKS};
-  private static final Duration GITHUB_CONNECT_TIMEOUT = Duration.ofSeconds(10L);
-  private static final Duration GITHUB_READ_TIMEOUT = Duration.ofSeconds(20L);
-  private static final Duration GITHUB_WRITE_TIMEOUT = Duration.ofSeconds(10L);
-  private static final Duration GITHUB_CALL_TIMEOUT = Duration.ofSeconds(30L);
+  private static final Duration HTTP_CONNECT_TIMEOUT = Duration.ofSeconds(10L);
+  private static final Duration HTTP_RESPONSE_TIMEOUT = Duration.ofSeconds(20L);
+  private static final ObjectMapper MAPPER = new ObjectMapper()
+      .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-  private final URI githubFolderUri;
+  private final URI indexUri;
   private final Path localFolder;
 
-  public GitHubFolderSynchronizer(final String githubFolderUrl, final Path localFolder) {
-    this(URI.create(requireNonNull(githubFolderUrl, "githubFolderUrl must not be null")),
-        localFolder);
+  public ExternalResourceSynchronizer(final String indexUrl, final Path localFolder) {
+    this(URI.create(requireNonNull(indexUrl, "indexUrl must not be null")), localFolder);
   }
 
-  public GitHubFolderSynchronizer(final URI githubFolderUri, final Path localFolder) {
-    this.githubFolderUri = requireNonNull(githubFolderUri, "githubFolderUri must not be null");
+  public ExternalResourceSynchronizer(final URI indexUri, final Path localFolder) {
+    this.indexUri = requireNonNull(indexUri, "indexUri must not be null").normalize();
     this.localFolder = requireNonNull(localFolder, "localFolder must not be null")
         .toAbsolutePath()
         .normalize();
@@ -100,41 +100,6 @@ public final class GitHubFolderSynchronizer {
         || WINDOWS_RESERVED_NAMES.contains(baseName);
   }
 
-  private static OkHttpClient okHttpClient() {
-    return new OkHttpClient.Builder()
-        .connectTimeout(GITHUB_CONNECT_TIMEOUT)
-        .readTimeout(GITHUB_READ_TIMEOUT)
-        .writeTimeout(GITHUB_WRITE_TIMEOUT)
-        .callTimeout(GITHUB_CALL_TIMEOUT)
-        .build();
-  }
-
-  private FolderSource parseFolderSource() {
-    this.requireGitHubUrl();
-    final List<String> segments = this.pathSegments();
-    if (segments.size() < 3) {
-      throw new IllegalArgumentException(
-          "GitHub folder URL must include owner, repository, and path");
-    }
-    if (TREE_SEGMENT.equals(segments.get(2))) {
-      return this.parseTreeFolderSource(segments);
-    }
-    return new FolderSource(
-        this.repositoryFullName(segments),
-        this.joinPath(segments.subList(2, segments.size())),
-        null);
-  }
-
-  private FolderSource parseTreeFolderSource(final List<String> segments) {
-    if (segments.size() < 5) {
-      throw new IllegalArgumentException("GitHub tree URL must include branch and folder path");
-    }
-    return new FolderSource(
-        this.repositoryFullName(segments),
-        this.joinPath(segments.subList(4, segments.size())),
-        segments.get(3));
-  }
-
   private static Path normalizePath(final Path path) {
     return path.toAbsolutePath().normalize();
   }
@@ -143,173 +108,208 @@ public final class GitHubFolderSynchronizer {
     return normalizePath(file.toPath());
   }
 
-  private void requireGitHubUrl() {
-    if (!"https".equalsIgnoreCase(this.githubFolderUri.getScheme())
-        || !GITHUB_HOST.equalsIgnoreCase(this.githubFolderUri.getHost())) {
-      throw new IllegalArgumentException("Only https://github.com folder URLs are supported");
-    }
-  }
-
-  private String repositoryFullName(final List<String> segments) {
-    return segments.get(0) + '/' + this.stripGitSuffix(segments.get(1));
-  }
-
-  private List<String> pathSegments() {
-    return Stream.of(this.githubFolderUri.getPath().split("/"))
-        .filter(not(org.apache.commons.lang3.StringUtils::isBlank))
-        .map(this::requireValidUrlPathSegment)
-        .toList();
-  }
-
-  private String joinPath(final List<String> segments) {
-    if (segments.isEmpty()) {
-      throw new IllegalArgumentException("GitHub folder path must not be empty");
-    }
-    return String.join("/", segments);
-  }
-
-  private static Optional<String> configuredSecret(final String name) {
-    return Optional.ofNullable(stripToNull(System.getProperty(name)))
-        .or(() -> Optional.of(readGat()));
-  }
-
-  private static String readGat() {
-    try {
-      final String resource = IOUtils.resourceToString("/common/gat.txt", StandardCharsets.UTF_8);
-      return new String(Base64.getDecoder().decode(resource), StandardCharsets.UTF_8);
-    } catch (final IOException ex) {
-      throw new IllegalStateException("Can't read GAT resource", ex);
-    }
-  }
-
   private static long elapsedMillis(final long startedAtNs) {
     return Duration.ofNanos(System.nanoTime() - startedAtNs).toMillis();
   }
 
+  private static CloseableHttpClient httpClient() {
+    return HttpClients.custom()
+        .setDefaultRequestConfig(RequestConfig.custom()
+            .setConnectTimeout(Timeout.of(HTTP_CONNECT_TIMEOUT))
+            .setResponseTimeout(Timeout.of(HTTP_RESPONSE_TIMEOUT))
+            .build())
+        .build();
+  }
+
+  private static void requireSuccessfulResponse(
+      final URI uri,
+      final ClassicHttpResponse response) throws IOException {
+    final int statusCode = response.getCode();
+    if (statusCode < HttpStatus.SC_SUCCESS || statusCode >= HttpStatus.SC_REDIRECTION) {
+      EntityUtils.consumeQuietly(response.getEntity());
+      throw new IOException("HTTP %d for %s".formatted(statusCode, uri));
+    }
+  }
+
+  private static HttpEntity requireEntity(
+      final URI uri,
+      final ClassicHttpResponse response) throws IOException {
+    return Optional.ofNullable(response.getEntity())
+        .orElseThrow(() -> new IOException("Empty response body for " + uri));
+  }
+
   public SyncSummary sync() {
     final long startedAtNs = System.nanoTime();
-    LOG.info(() -> "Starting GitHub lesson sync: source=%s target=%s".formatted(
-        this.githubFolderUri, this.localFolder));
-    try {
-      final FolderSource source = this.parseFolderSource();
-      this.logResolvedSource(source);
-      final RemoteFolder remote = this.collectRemoteFolder(
-          this.connectToGitHub().getRepository(source.repositoryFullName()),
-          source);
+    LOG.info(() -> "Starting external lesson sync: source=%s target=%s".formatted(
+        this.indexUri, this.localFolder));
+    try (CloseableHttpClient httpClient = httpClient()) {
+      this.requireIndexUrl();
+      final RemoteFolder remote = this.collectRemoteFolder(httpClient);
       this.logRemoteInventory(remote);
       final SyncSummaryBuilder summary = new SyncSummaryBuilder();
 
       LOG.info(() -> "Preparing local lesson sync folder: " + this.localFolder);
       this.requireLocalFolderReady();
-      LOG.info("Creating lesson directories from GitHub inventory");
+      LOG.info("Creating lesson directories from external index");
       this.createRemoteDirectories(remote, summary);
       LOG.info(() -> "Downloading or updating %d lesson files".formatted(remote.files().size()));
-      this.downloadRemoteFiles(remote, summary);
-      LOG.info("Removing local lesson files missing from GitHub inventory");
+      this.downloadRemoteFiles(httpClient, remote, summary);
+      LOG.info("Removing local lesson files missing from external index");
       this.removeLocalEntriesMissingFrom(remote, summary);
       return this.logSyncCompleted(summary.build(), startedAtNs);
     } catch (final IOException ex) {
       throw new IllegalStateException(
-          "Can't sync GitHub folder %s into %s".formatted(this.githubFolderUri, this.localFolder),
+          "Can't sync external resources %s into %s".formatted(this.indexUri, this.localFolder),
           ex);
     }
   }
 
-  private RemoteFolder collectRemoteFolder(final GHRepository repository, final FolderSource source)
+  private void requireIndexUrl() {
+    if (!"https".equalsIgnoreCase(this.indexUri.getScheme())
+        || this.indexUri.getHost() == null
+        || this.indexUri.getRawQuery() != null
+        || this.indexUri.getRawFragment() != null) {
+      throw new IllegalArgumentException("Only HTTPS external resource index URLs are supported");
+    }
+  }
+
+  private RemoteFolder collectRemoteFolder(final CloseableHttpClient httpClient)
       throws IOException {
-    LOG.info(() -> "Collecting GitHub lesson inventory from %s/%s".formatted(
-        source.repositoryFullName(), source.remotePath()));
+    LOG.info(() -> "Collecting external lesson inventory from " + this.indexUri);
+    final byte[] indexBytes = this.fetchBytes(httpClient, this.indexUri);
     final List<RemoteFile> files = new ArrayList<>();
     final Set<String> directories = new LinkedHashSet<>();
     directories.add("");
-    this.collectRemoteDirectory(repository, source, source.remotePath(), files, directories);
+    files.add(RemoteFile.inline(INDEX_FILE, this.indexUri, indexBytes));
+    this.resourceFiles(indexBytes).forEach(file -> {
+      files.add(file);
+      this.parentDirectories(file.relativePath()).forEach(directories::add);
+    });
     return RemoteFolder.of(files, directories);
   }
 
-  private GitHub connectToGitHub() throws IOException {
-    LOG.info(() -> "Connecting to GitHub with timeouts: connectMs=%d readMs=%d writeMs=%d callMs=%d"
-        .formatted(
-            GITHUB_CONNECT_TIMEOUT.toMillis(),
-            GITHUB_READ_TIMEOUT.toMillis(),
-            GITHUB_WRITE_TIMEOUT.toMillis(),
-            GITHUB_CALL_TIMEOUT.toMillis()));
-    final GitHubBuilder builder = new GitHubBuilder()
-        .withConnector(new OkHttpGitHubConnector(okHttpClient()));
-    this.configuredGitHubToken().ifPresent(builder::withOAuthToken);
-    LOG.info(() -> "GitHub lesson sync authentication: " + this.githubAuthenticationMode());
-    return builder.build();
+  private List<RemoteFile> resourceFiles(final byte[] indexBytes) {
+    final JsonNode index = this.requireIndexWithResourcesArray(this.parseIndex(indexBytes));
+    final List<RemoteFile> files = new ArrayList<>();
+    for (final JsonNode entry : index.get("resources")) {
+      if (entry.isObject() && this.isLeafNode(entry)) {
+        final String resource = entry.get("resource").asText();
+        files.add(RemoteFile.remote(
+            this.localResourcePath(resource),
+            this.requireResourceUri(resource)));
+      }
+    }
+    return List.copyOf(files);
   }
 
-  private Optional<String> configuredGitHubToken() {
-    return configuredSecret(LANGTRAINER_GITHUB_TOKEN).or(() -> configuredSecret(GITHUB_TOKEN));
+  private JsonNode parseIndex(final byte[] indexBytes) {
+    try {
+      return MAPPER.readTree(new String(indexBytes, StandardCharsets.UTF_8));
+    } catch (final IOException ex) {
+      throw new IllegalStateException("Invalid external resource index: " + this.indexUri, ex);
+    }
   }
 
-  private String githubAuthenticationMode() {
-    return this.configuredGitHubToken().isPresent() ? "token" : "anonymous";
+  private JsonNode requireIndexWithResourcesArray(final JsonNode root) {
+    if (root == null || !root.has("resources") || !root.get("resources").isArray()) {
+      throw new IllegalStateException("Invalid external resource index: " + this.indexUri);
+    }
+    return root;
   }
 
-  private void logResolvedSource(final FolderSource source) {
-    LOG.info(() -> "Resolved GitHub lesson source: repository=%s path=%s ref=%s".formatted(
-        source.repositoryFullName(),
-        source.remotePath(),
-        source.ref() == null ? "<default>" : source.ref()));
+  private boolean isLeafNode(final JsonNode entry) {
+    return entry.has("resource") && entry.get("resource").isValueNode();
+  }
+
+  private URI requireResourceUri(final String resource) {
+    final URI resolved = this.indexUri.resolve(this.requireRelativeResource(resource)).normalize();
+    if (!this.hasSameOrigin(resolved)
+        || resolved.getRawQuery() != null
+        || resolved.getRawFragment() != null) {
+      throw new IllegalStateException("External resource URL must stay under the index origin: "
+          + resource);
+    }
+    return resolved;
+  }
+
+  private String requireRelativeResource(final String resource) {
+    final String normalized = Optional.ofNullable(resource)
+        .map(String::strip)
+        .filter(not(String::isEmpty))
+        .orElseThrow(() -> new IllegalStateException(
+            "Missing resource path in external index: " + this.indexUri));
+    if (URI.create(normalized).isAbsolute()) {
+      throw new IllegalStateException("External resource path must be relative: " + resource);
+    }
+    return normalized;
+  }
+
+  private boolean hasSameOrigin(final URI uri) {
+    return this.indexUri.getScheme().equalsIgnoreCase(uri.getScheme())
+        && this.indexUri.getHost().equalsIgnoreCase(uri.getHost())
+        && this.indexUri.getPort() == uri.getPort();
+  }
+
+  private String localResourcePath(final String resource) {
+    final String path = String.join("/", this.normalizedResourceSegments(resource));
+    if (!path.endsWith(".json")) {
+      throw new IllegalStateException(
+          "External resource path must point to a JSON file: " + resource);
+    }
+    return path;
+  }
+
+  private List<String> normalizedResourceSegments(final String resource) {
+    final List<String> segments = new ArrayList<>();
+    for (final String segment : this.requireRelativeResource(resource).split("/")) {
+      if (segment.isEmpty() || ".".equals(segment)) {
+        continue;
+      }
+      if ("..".equals(segment)) {
+        if (segments.isEmpty()) {
+          throw new IllegalStateException("External resource path escapes local folder: "
+              + resource);
+        }
+        segments.remove(segments.size() - 1);
+      } else {
+        segments.add(this.requirePortableLocalSegment(segment));
+      }
+    }
+    if (segments.isEmpty()) {
+      throw new IllegalStateException("External resource path must not be empty: " + resource);
+    }
+    return List.copyOf(segments);
+  }
+
+  private List<String> parentDirectories(final String relativePath) {
+    final List<String> directories = new ArrayList<>();
+    final List<String> segments = List.of(relativePath.split("/"));
+    for (int i = 1; i < segments.size(); i++) {
+      directories.add(String.join("/", segments.subList(0, i)));
+    }
+    return List.copyOf(directories);
+  }
+
+  private byte[] fetchBytes(final CloseableHttpClient httpClient, final URI uri)
+      throws IOException {
+    return httpClient.execute(new HttpGet(uri), new BinaryResponseHandler(uri));
   }
 
   private void logRemoteInventory(final RemoteFolder remote) {
-    LOG.info(() -> "Collected GitHub lesson inventory: directories=%d files=%d".formatted(
+    LOG.info(() -> "Collected external lesson inventory: directories=%d files=%d".formatted(
         remote.directories().size(), remote.files().size()));
   }
 
   private SyncSummary logSyncCompleted(final SyncSummary summary, final long startedAtNs) {
-    LOG.info(
-        () -> "Completed GitHub lesson sync: checked=%d loaded=%d updated=%d removed=%d elapsedMs=%d"
-        .formatted(
-            summary.checkedFiles(),
-            summary.loadedFiles(),
-            summary.updatedFiles(),
-            summary.removedFiles(),
-            elapsedMillis(startedAtNs)));
+    LOG.info(() -> (
+        "Completed external lesson sync: checked=%d loaded=%d updated=%d removed=%d "
+            + "elapsedMs=%d").formatted(
+        summary.checkedFiles(),
+        summary.loadedFiles(),
+        summary.updatedFiles(),
+        summary.removedFiles(),
+        elapsedMillis(startedAtNs)));
     return summary;
-  }
-
-  private void collectRemoteDirectory(
-      final GHRepository repository,
-      final FolderSource source,
-      final String directoryPath,
-      final List<RemoteFile> files,
-      final Set<String> directories) throws IOException {
-    for (final GHContent content : repository.getDirectoryContent(directoryPath, source.ref())) {
-      final String relativePath = this.relativeRemotePath(source.remotePath(), content.getPath());
-      if (content.isDirectory()) {
-        directories.add(relativePath);
-        this.collectRemoteDirectory(repository, source, content.getPath(), files, directories);
-      } else if (content.isFile()) {
-        files.add(new RemoteFile(relativePath, content));
-      } else {
-        throw new IllegalStateException("Unsupported GitHub content entry: " + content.getPath());
-      }
-    }
-  }
-
-  private String relativeRemotePath(final String remoteRootPath, final String contentPath) {
-    if (!contentPath.startsWith(remoteRootPath + '/')) {
-      throw new IllegalStateException(
-          "GitHub content path is outside selected folder: " + contentPath);
-    }
-    final String relativePath = contentPath.substring(remoteRootPath.length() + 1);
-    this.requirePortableRelativePath(relativePath);
-    return relativePath;
-  }
-
-  private String requireValidUrlPathSegment(final String segment) {
-    if ("..".equals(segment) || containsAny(segment, '\\')) {
-      throw new IllegalArgumentException("Invalid GitHub URL path segment: " + segment);
-    }
-    return segment;
-  }
-
-  private String stripGitSuffix(final String repoName) {
-    return CS.removeEnd(repoName, ".git");
   }
 
   private void requireLocalFolderReady() throws IOException {
@@ -410,16 +410,20 @@ public final class GitHubFolderSynchronizer {
     createDirectories(target);
   }
 
-  private void downloadRemoteFiles(final RemoteFolder remote, final SyncSummaryBuilder summary)
-      throws IOException {
+  private void downloadRemoteFiles(
+      final CloseableHttpClient httpClient,
+      final RemoteFolder remote,
+      final SyncSummaryBuilder summary) throws IOException {
     for (final RemoteFile file : remote.files()) {
       summary.fileChecked();
-      this.downloadRemoteFile(file, summary);
+      this.downloadRemoteFile(httpClient, file, summary);
     }
   }
 
-  private void downloadRemoteFile(final RemoteFile file, final SyncSummaryBuilder summary)
-      throws IOException {
+  private void downloadRemoteFile(
+      final CloseableHttpClient httpClient,
+      final RemoteFile file,
+      final SyncSummaryBuilder summary) throws IOException {
     LOG.fine(() -> "Syncing lesson file: " + file.relativePath());
     final Path target = this.localPath(file.relativePath());
     this.ensureWritableParent(target);
@@ -427,13 +431,24 @@ public final class GitHubFolderSynchronizer {
       summary.addRemovedFiles(this.deleteRecursively(target));
     }
 
-    final Path tempFile = createTempFile(target.getParent(), ".github-sync-", ".tmp");
-    try (InputStream input = file.content().read()) {
-      copy(input, tempFile, REPLACE_EXISTING);
+    final Path tempFile = createTempFile(target.getParent(), ".external-sync-", ".tmp");
+    try {
+      this.downloadIntoTempFile(httpClient, file, tempFile);
       this.moveDownloadedFile(tempFile, target, summary);
     } finally {
       deleteIfExists(tempFile);
     }
+  }
+
+  private void downloadIntoTempFile(
+      final CloseableHttpClient httpClient,
+      final RemoteFile file,
+      final Path tempFile) throws IOException {
+    if (file.content().isPresent()) {
+      write(tempFile, file.content().orElseThrow());
+      return;
+    }
+    httpClient.execute(new HttpGet(file.uri()), new FileResponseHandler(file.uri(), tempFile));
   }
 
   private void moveDownloadedFile(
@@ -521,6 +536,55 @@ public final class GitHubFolderSynchronizer {
     return removedFiles;
   }
 
+  private boolean isDirectoryEmpty(final Path path) throws IOException {
+    try (Stream<Path> children = walk(path, 1)) {
+      return children.count() == 1L;
+    }
+  }
+
+  private Path localPath(final String relativePath) {
+    Path resolved = this.localFolder;
+    for (final String segment : this.requirePortableRelativePath(relativePath)) {
+      resolved = resolved.resolve(segment);
+    }
+    resolved = resolved.normalize();
+    if (!resolved.startsWith(this.localFolder)) {
+      throw new IllegalStateException("External resource path escapes local folder: "
+          + relativePath);
+    }
+    return resolved;
+  }
+
+  private List<String> requirePortableRelativePath(final String relativePath) {
+    final List<String> segments = Stream.of(relativePath.split("/"))
+        .map(this::requirePortableLocalSegment)
+        .toList();
+    if (segments.isEmpty()) {
+      throw new IllegalStateException("External resource path must not be empty");
+    }
+    return segments;
+  }
+
+  private String requirePortableLocalSegment(final String segment) {
+    if (isEmpty(segment) || ".".equals(segment) || "..".equals(segment)) {
+      throw new IllegalStateException("Invalid external resource path segment: " + segment);
+    }
+    if (containsAny(segment, '/', '\\') || hasControlCharacter(segment)) {
+      throw new IllegalStateException("Unsupported external resource path segment: " + segment);
+    }
+    if (hasWindowsUnsafeName(segment)) {
+      throw new IllegalStateException(
+          "External resource path segment is not portable across supported OSes: " + segment);
+    }
+    return segment;
+  }
+
+  private String localRelativePath(final Path path) {
+    return this.localFolder.relativize(path)
+        .toString()
+        .replace(path.getFileSystem().getSeparator(), "/");
+  }
+
   public record SyncSummary(int checkedFiles, int loadedFiles, int updatedFiles, int removedFiles) {
   }
 
@@ -556,58 +620,58 @@ public final class GitHubFolderSynchronizer {
     }
   }
 
-  private boolean isDirectoryEmpty(final Path path) throws IOException {
-    try (Stream<Path> children = walk(path, 1)) {
-      return children.count() == 1L;
+  private static final class BinaryResponseHandler implements HttpClientResponseHandler<byte[]> {
+
+    private final URI uri;
+
+    private BinaryResponseHandler(final URI uri) {
+      this.uri = requireNonNull(uri, "uri must not be null");
+    }
+
+    @Override
+    public byte[] handleResponse(final ClassicHttpResponse response) throws IOException {
+      requireSuccessfulResponse(this.uri, response);
+      final HttpEntity entity = requireEntity(this.uri, response);
+      return EntityUtils.toByteArray(entity);
     }
   }
 
-  private Path localPath(final String relativePath) {
-    Path resolved = this.localFolder;
-    for (final String segment : this.requirePortableRelativePath(relativePath)) {
-      resolved = resolved.resolve(segment);
+  private static final class FileResponseHandler implements HttpClientResponseHandler<Void> {
+
+    private final URI uri;
+    private final Path target;
+
+    private FileResponseHandler(final URI uri, final Path target) {
+      this.uri = requireNonNull(uri, "uri must not be null");
+      this.target = requireNonNull(target, "target must not be null");
     }
-    resolved = resolved.normalize();
-    if (!resolved.startsWith(this.localFolder)) {
-      throw new IllegalStateException("GitHub content path escapes local folder: " + relativePath);
+
+    @Override
+    public Void handleResponse(final ClassicHttpResponse response) throws IOException {
+      requireSuccessfulResponse(this.uri, response);
+      try (InputStream input = requireEntity(this.uri, response).getContent()) {
+        copy(input, this.target, REPLACE_EXISTING);
+      }
+      return null;
     }
-    return resolved;
   }
 
-  private List<String> requirePortableRelativePath(final String relativePath) {
-    final List<String> segments = Stream.of(relativePath.split("/"))
-        .map(this::requirePortableLocalSegment)
-        .toList();
-    if (segments.isEmpty()) {
-      throw new IllegalStateException("GitHub content path must not be empty");
-    }
-    return segments;
-  }
+  private record RemoteFile(String relativePath, URI uri, Optional<byte[]> content) {
 
-  private String requirePortableLocalSegment(final String segment) {
-    if (isEmpty(segment) || ".".equals(segment) || "..".equals(segment)) {
-      throw new IllegalStateException("Invalid GitHub content path segment: " + segment);
+    private RemoteFile {
+      requireNonNull(relativePath, "relativePath must not be null");
+      requireNonNull(uri, "uri must not be null");
+      requireNonNull(content, "content must not be null");
     }
-    if (containsAny(segment, '/', '\\') || hasControlCharacter(segment)) {
-      throw new IllegalStateException("Unsupported GitHub content path segment: " + segment);
+
+    private static RemoteFile inline(
+        final String relativePath, final URI uri, final byte[] content) {
+      return new RemoteFile(relativePath, uri, Optional.of(content.clone()));
     }
-    if (hasWindowsUnsafeName(segment)) {
-      throw new IllegalStateException(
-          "GitHub content path segment is not portable across supported OSes: " + segment);
+
+    private static RemoteFile remote(final String relativePath, final URI uri) {
+      return new RemoteFile(relativePath, uri, Optional.empty());
     }
-    return segment;
-  }
-
-  private String localRelativePath(final Path path) {
-    return this.localFolder.relativize(path)
-        .toString()
-        .replace(path.getFileSystem().getSeparator(), "/");
-  }
-
-  private record FolderSource(String repositoryFullName, String remotePath, String ref) {
-  }
-
-  private record RemoteFile(String relativePath, GHContent content) {
   }
 
   private record RemoteFolder(List<RemoteFile> files, Set<String> directories,
@@ -637,12 +701,12 @@ public final class GitHubFolderSynchronizer {
         final Set<String> normalizedPaths, final String path) {
       if (LOCAL_SYNC_MARKER_FILE.equals(path)) {
         throw new IllegalStateException(
-            "GitHub folder contains reserved local sync marker: " + path);
+            "External resource index contains reserved local sync marker: " + path);
       }
       final String normalizedPath = path.toLowerCase(Locale.ROOT);
       if (!path.isEmpty() && !normalizedPaths.add(normalizedPath)) {
         throw new IllegalStateException(
-            "GitHub folder contains case-insensitive path collision: " + path);
+            "External resource index contains case-insensitive path collision: " + path);
       }
     }
 

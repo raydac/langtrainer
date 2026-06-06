@@ -11,7 +11,7 @@ import static org.apache.commons.lang3.SystemUtils.getUserHome;
 import static org.apache.commons.lang3.exception.ExceptionUtils.getRootCause;
 
 import com.igormaznitsa.langtrainer.api.AbstractLangTrainerModule;
-import com.igormaznitsa.langtrainer.engine.GitHubFolderSynchronizer.SyncSummary;
+import com.igormaznitsa.langtrainer.engine.ExternalResourceSynchronizer.SyncSummary;
 import java.awt.Component;
 import java.io.File;
 import java.nio.file.Path;
@@ -41,8 +41,8 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 public final class ExternalResourceSupport {
 
   private static final Logger LOG = Logger.getLogger(ExternalResourceSupport.class.getName());
-  public static final String EXTERNAL_FOLDER_URL =
-      "https://github.com/raydac/langtrainer/pub/externals";
+  public static final String EXTERNAL_INDEX_URL =
+      "https://www.igormaznitsa.com/pub/externals/index.json";
   public static final String EXTERNAL_FOLDER_PROPERTY = "LANGTRAINER_EXTERNALS";
   public static final Path EXTERNAL_FOLDER = resolveExternalFolder();
   private static final long SYNC_TIMEOUT_SECONDS = 60L;
@@ -50,9 +50,9 @@ public final class ExternalResourceSupport {
   private static final String APP_CONFIG_FOLDER_NAME = "LangTrainer";
   private static final String EXTERNAL_RESOURCES_FOLDER_NAME = "externals";
   private static final String EXTERNAL_FOLDER_PATH_KEY_PREFIX = "external:";
-  private static final String SYNC_START_MESSAGE = "Syncing lessons from GitHub...";
+  private static final String SYNC_START_MESSAGE = "Syncing external lessons...";
   private static final String SYNC_SLOW_MESSAGE =
-      "Still syncing lessons. Network or GitHub may be slow...";
+      "Still syncing lessons. Network may be slow...";
   private static final List<DialogListEntry.DialogResourceRow> OPENED_FILE_RESOURCE_ROWS =
       new CopyOnWriteArrayList<>();
 
@@ -195,7 +195,7 @@ public final class ExternalResourceSupport {
       final SyncSummary summary = syncExternalFolder();
       return new RefreshResult.SyncSucceeded(loadLocalTree(module), summary);
     } catch (final Exception ex) {
-      LOG.log(Level.WARNING, "Can't sync external resources from " + EXTERNAL_FOLDER_URL, ex);
+      LOG.log(Level.WARNING, "Can't sync external resources from " + EXTERNAL_INDEX_URL, ex);
       return new RefreshResult.SyncFailed(loadLocalTree(module), ex);
     }
   }
@@ -222,7 +222,7 @@ public final class ExternalResourceSupport {
     final ExecutorService executor = Executors.newSingleThreadExecutor(syncThreadFactory());
     try {
       return executor.submit(
-              () -> new GitHubFolderSynchronizer(EXTERNAL_FOLDER_URL, EXTERNAL_FOLDER).sync())
+              () -> new ExternalResourceSynchronizer(EXTERNAL_INDEX_URL, EXTERNAL_FOLDER).sync())
           .get(SYNC_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     } catch (final TimeoutException ex) {
       throw new ExternalSyncTimeoutException(SYNC_TIMEOUT_SECONDS, ex);
@@ -245,7 +245,7 @@ public final class ExternalResourceSupport {
 
   private static ThreadFactory syncThreadFactory() {
     return runnable -> {
-      final Thread thread = new Thread(runnable, "langtrainer-github-sync");
+      final Thread thread = new Thread(runnable, "langtrainer-external-sync");
       thread.setDaemon(true);
       return thread;
     };
@@ -273,7 +273,7 @@ public final class ExternalResourceSupport {
         Changed files updated: %d
         Stale files removed: %d
         """.formatted(
-        EXTERNAL_FOLDER_URL,
+        EXTERNAL_INDEX_URL,
         EXTERNAL_FOLDER.toAbsolutePath().normalize(),
         summary.checkedFiles(),
         summary.loadedFiles(),
@@ -292,14 +292,14 @@ public final class ExternalResourceSupport {
 
   private static String externalSyncFailureMessage(final Throwable failure) {
     return """
-        Can't sync external resources from GitHub.
+        Can't sync external resources.
         
         Source: %s
         Target: %s
         Reason: %s
         
         Existing local resources will still be shown if they can be loaded.
-        """.formatted(EXTERNAL_FOLDER_URL, EXTERNAL_FOLDER.toAbsolutePath().normalize(),
+        """.formatted(EXTERNAL_INDEX_URL, EXTERNAL_FOLDER.toAbsolutePath().normalize(),
         describeFailure(failure));
   }
 
