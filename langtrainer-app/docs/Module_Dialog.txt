@@ -27,7 +27,8 @@ Module DIALOG
 6. Before play, the module shows the resource list; after choosing a resource, the user picks which side (language A or B) they will type; the other side is the prompt target.
 7. The non-active entry zone shows the expected line in the target language; the user types in the chosen language zone.
 7a. If JSON "rtl" contains the chosen language name (case-insensitive match against langA/langB), input and output text areas switch to right-to-left component orientation for that side.
-8. On Enter, entered text is compared to the expected line (TypingComparisonUtils — not strict equals; punctuation and similar characters may be tolerated). On success, both show zones advance; the exercise continues line by line.
+8. During typing, the module does not auto-insert punctuation or missing separators from the expected line; the user may enter the phrase naturally. Input equivalence rules may still replace the typed character when it matches the expected character position.
+8a. On Enter, entered text is checked against the expected line with DialogPhraseInputSupport: separators are ignored and a small number of typing mistakes is tolerated. On success, both show zones receive the original expected resource lines; the exercise continues line by line.
 9. Optional UI: shuffle order, show phrase, typing tip — see module toolbar and toggles in code.
 10. When all lines are completed, a full-window modal banner shows "Hurraa! Completed!" (see DialogModule). Clicking the banner (or waiting 10 seconds) dismisses the overlay and returns to the resource selection card inside the module (not the same as exiting the whole application).
 11. Small sample bundled resources exist under /common/jsons/ and are wired through index.json.

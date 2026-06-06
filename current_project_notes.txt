@@ -15,6 +15,7 @@
 - Resource selectors: `Start` / `Open from file` / `Sync Lessons` layout, tooltips, uppercase folder labels, folder-first alphabetical tree rows, Start disabled until a row is selected.
 - Resource selectors merge bundled and external trees by canonical path, so same-named folders appear once while resource rows retain source icons; duplicate resource titles in the same folder get display suffixes `(1)`, `(2)`, etc.
 - Virtual keyboard stays mouse-only to preserve typing focus; header row uses fixed control height.
+- Dialogs input stays free-form while typing: no automatic expected punctuation/separator insertion; input-equivalence character replacement still runs by expected position, and Enter accepts close answers while history shows canonical resource lines.
 - Bricks module has a `Show` help flash button beside the cue; brick text uses bold `LangTrainerFonts.SYSTEM_MONOSPACED`.
 - Crossword: rectangular board scaling; Home/End jumps to first/last editable cell of the focused word using logical word order, so horizontal RTL words navigate right-anchor to left-end correctly; translation hint stays centered.
 - Gson replaced with Jackson; bundled classpath UI icons; optional JetBrains Mono with system monospace fallback.

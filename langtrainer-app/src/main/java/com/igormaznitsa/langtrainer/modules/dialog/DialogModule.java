@@ -18,7 +18,6 @@ import com.igormaznitsa.langtrainer.engine.ResourceListModelMaterializer;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
 import com.igormaznitsa.langtrainer.engine.TextDirectionSupport;
 import com.igormaznitsa.langtrainer.text.PhraseWordSupport;
-import com.igormaznitsa.langtrainer.text.TypingPhraseFormatter;
 import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
 import com.igormaznitsa.langtrainer.ui.PhraseFlashBanner;
 import java.awt.BorderLayout;
@@ -137,7 +136,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private Timer completionDismissTimer;
   private final PhraseFlashBanner phraseFlashBanner = new PhraseFlashBanner();
   private boolean applyingInputEquivalence;
-  private boolean applyingDialogPhraseNormalization;
 
   public DialogModule() {
     this.classpathResourceTree =
@@ -610,15 +608,13 @@ public final class DialogModule extends AbstractLangTrainerModule {
     area.getDocument().addDocumentListener(new DocumentListener() {
       @Override
       public void insertUpdate(final DocumentEvent event) {
-        if (DialogModule.this.applyingInputEquivalence
-            || DialogModule.this.applyingDialogPhraseNormalization) {
+        if (DialogModule.this.applyingInputEquivalence) {
           return;
         }
         final int start = event.getOffset();
         final int insertLen = event.getLength();
         SwingUtilities.invokeLater(() -> {
           try {
-            DialogModule.this.normalizeDialogInput(area);
             DialogModule.this.applyingInputEquivalence = true;
             DialogModule.this.applyInputEquivalence(area, start, insertLen);
           } finally {
@@ -640,33 +636,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
     });
   }
 
-  private void normalizeDialogInput(final JTextArea area) {
-    if (!this.workRoundActive || this.activeDialog == null || area != this.focusedInput()) {
-      return;
-    }
-    if (this.remainingLineIndices.isEmpty()) {
-      return;
-    }
-    final DialogLine line = this.activeDialog.lines().get(this.currentLineOrdinal);
-    final String expected = this.userWritesToA ? line.a() : line.b();
-    final String raw = extractDocumentText(area.getDocument());
-    final int caret = Math.min(area.getCaretPosition(), raw.length());
-    final int lettersBefore = TypingPhraseFormatter.countLetterDigitsBefore(raw, caret);
-    final String merged = DialogPhraseInputSupport.normalizeWorkInput(raw, expected);
-    if (merged.equals(raw)) {
-      return;
-    }
-    this.applyingDialogPhraseNormalization = true;
-    try {
-      area.setText(merged);
-      int newCaret = TypingPhraseFormatter.caretAfterNthLetterSlot(merged, lettersBefore);
-      newCaret = Math.max(0, Math.min(newCaret, merged.length()));
-      area.setCaretPosition(newCaret);
-    } finally {
-      this.applyingDialogPhraseNormalization = false;
-    }
-  }
-
   private void applyInputEquivalence(final JTextArea area, final int start, final int insertLen) {
     if (!this.workRoundActive || this.activeDialog == null || area != this.focusedInput()) {
       return;
@@ -684,7 +653,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     if (doc.isEmpty()) {
       return;
     }
-    InputEquivalenceSupport.applyAfterInsert(area, expectedFull, rules, 0, doc.length());
+    InputEquivalenceSupport.applyAfterInsert(area, expectedFull, rules, start, insertLen);
   }
 
   private void scheduleTipRefreshAfterInputMutation() {
@@ -962,6 +931,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
     if (this.activeDialog != null && !this.remainingLineIndices.isEmpty()) {
       final DialogLine line = this.activeDialog.lines().get(this.currentLineOrdinal);
       final String expected = this.userWritesToA ? line.a() : line.b();
+      this.reapplyInputEquivalenceBeforeSubmit();
       final String entered = this.focusedInput().getText();
       if (DialogPhraseInputSupport.isAnswerAccepted(entered, expected)) {
         this.historyA.add(line.a());
@@ -979,6 +949,20 @@ public final class DialogModule extends AbstractLangTrainerModule {
       } else {
         java.awt.Toolkit.getDefaultToolkit().beep();
       }
+    }
+  }
+
+  private void reapplyInputEquivalenceBeforeSubmit() {
+    final JTextArea area = this.focusedInput();
+    final int length = area.getDocument().getLength();
+    if (length <= 0 || this.applyingInputEquivalence) {
+      return;
+    }
+    try {
+      this.applyingInputEquivalence = true;
+      this.applyInputEquivalence(area, 0, length);
+    } finally {
+      this.applyingInputEquivalence = false;
     }
   }
 
