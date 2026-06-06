@@ -33,6 +33,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -45,14 +46,19 @@ import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.ClientTlsStrategyBuilder;
+import org.apache.hc.client5.http.ssl.TrustAllStrategy;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.apache.hc.core5.util.Timeout;
 
 public final class ExternalResourceSynchronizer {
@@ -114,11 +120,28 @@ public final class ExternalResourceSynchronizer {
 
   private static CloseableHttpClient httpClient() {
     return HttpClients.custom()
+        .setConnectionManager(PoolingHttpClientConnectionManagerBuilder.create()
+            .setTlsSocketStrategy(ClientTlsStrategyBuilder.create()
+                .setSslContext(createTrustingSslContext())
+                .buildClassic())
+            .setDefaultConnectionConfig(ConnectionConfig.custom()
+                .setConnectTimeout(Timeout.of(HTTP_CONNECT_TIMEOUT))
+                .build())
+            .build())
         .setDefaultRequestConfig(RequestConfig.custom()
-            .setConnectTimeout(Timeout.of(HTTP_CONNECT_TIMEOUT))
             .setResponseTimeout(Timeout.of(HTTP_RESPONSE_TIMEOUT))
             .build())
         .build();
+  }
+
+  private static javax.net.ssl.SSLContext createTrustingSslContext() {
+    try {
+      return SSLContextBuilder.create()
+          .loadTrustMaterial(TrustAllStrategy.INSTANCE)
+          .build();
+    } catch (final GeneralSecurityException ex) {
+      throw new IllegalStateException("Can't create external sync TLS context", ex);
+    }
   }
 
   private static void requireSuccessfulResponse(
@@ -183,7 +206,7 @@ public final class ExternalResourceSynchronizer {
     files.add(RemoteFile.inline(INDEX_FILE, this.indexUri, indexBytes));
     this.resourceFiles(indexBytes).forEach(file -> {
       files.add(file);
-      this.parentDirectories(file.relativePath()).forEach(directories::add);
+      directories.addAll(this.parentDirectories(file.relativePath()));
     });
     return RemoteFolder.of(files, directories);
   }

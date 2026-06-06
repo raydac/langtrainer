@@ -31,7 +31,7 @@
 - Bricks RTL: mirrored build-strip margins; completion fly uses visible history width, not spacer width.
 - Fly game uses a small bucketed Leitner scheduler (`FlyLeitnerSession`); failed cards stay in practice and missed timeout words retry immediately.
 - External index merges `<externals>/common/jsons/index.json` and `<externals>/index.json`; entries may be absolute or relative to the index file.
-- `ExternalResourceSynchronizer` downloads `https://www.igormaznitsa.com/pub/externals/index.json` and its listed relative JSON resources using Apache HttpClient 5; external sync has a 60s whole-operation timeout, reports checked files separately from changed files, logs phase/source/summary details for terminal diagnostics, and failures still show local resources when load succeeds.
+- `ExternalResourceSynchronizer` downloads `https://www.igormaznitsa.com/pub/externals/index.json` and its listed relative JSON resources using Apache HttpClient 5; it trusts unknown HTTPS certificate chains for sync while keeping hostname checks, has a 60s whole-operation timeout, reports checked files separately from changed files, logs phase/source/summary details for terminal diagnostics, and failures still show local resources when load succeeds.
 - `InputEquivalenceSupport`: positional match when key/value sizes match, otherwise any-key; equal token sets act as equivalence classes.
 - Image-based modules return `requiresResourceImages()` and call `ResourceImageSupport.ensureRequiredImagesReady(...)` before starting, then use `ImageResourceLoader.loadLineImages(...)`; embedded SVGs rasterize at larger working width to avoid blurry card scaling, and Images game cards cache fitted rasters per resolved image area. `ImageResourceLoader` hardens Batik 1.19 transcoding: no external resources/scripts/onload, stream input for classpath SVG, 1024 px raster cap, rejects DTD/entity/script markup in user SVG.
 - Build with `mvn22`; assembly descriptors need `**/*` includes; JSON via Jackson databind 2.21.
@@ -62,6 +62,7 @@
 - Keep changelog entries compact and short; include only important user-facing information and avoid overloading the changelog with implementation details.
 - Regularly review `current_project_notes.txt`, record note-review/cleanup actions, and compact or remove records that are outdated, repetitive, or no longer useful.
 - Prefer avoiding direct `null` where practical; use empty collections for collection results and `Optional` for absent values when it improves functional, fluent handling.
+- Do not introduce deprecated APIs or methods; when a dependency deprecates a method, use the supported replacement immediately.
 - Use English for all answers and project-development communication. If the user writes in Russian, translate the request internally and continue processing and responding in English.
 
 ## 9. Notes Maintenance Log
