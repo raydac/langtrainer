@@ -62,6 +62,7 @@ import javax.swing.JToggleButton;
 import javax.swing.JViewport;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -135,6 +136,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private JDialog completionOverlay;
   private Timer completionDismissTimer;
   private final PhraseFlashBanner phraseFlashBanner = new PhraseFlashBanner();
+  private SwingWorker<?, ?> externalSyncWorker;
   private boolean applyingInputEquivalence;
 
   public DialogModule() {
@@ -327,6 +329,17 @@ public final class DialogModule extends AbstractLangTrainerModule {
         this.dialogSelectionList.requestFocusInWindow();
       }
     });
+  }
+
+  @Override
+  public void onClose() {
+    this.cancelExternalResourceSync();
+    this.dismissCompletionBanner();
+    this.phraseFlashBanner.dismiss();
+    this.workRoundActive = false;
+    this.activeDialog = null;
+    this.remainingLineIndices.clear();
+    this.setTipControlsWorkMode(false);
   }
 
   private JPanel makeWorkPanel() {
@@ -544,11 +557,19 @@ public final class DialogModule extends AbstractLangTrainerModule {
   }
 
   private void loadExternalResources() {
-    ExternalResourceSupport.syncAndLoadAsync(
+    this.cancelExternalResourceSync();
+    this.externalSyncWorker = ExternalResourceSupport.syncAndLoadAsync(
         this,
         this.resourceSelectView,
         tree -> this.externalResourceTree = tree,
         this::rebuildDialogResourceListModel);
+  }
+
+  private void cancelExternalResourceSync() {
+    if (this.externalSyncWorker != null) {
+      this.externalSyncWorker.cancel(true);
+      this.externalSyncWorker = null;
+    }
   }
 
   private void reloadExternalResourcesFromDisk() {

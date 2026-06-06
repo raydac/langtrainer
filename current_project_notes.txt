@@ -21,6 +21,8 @@
 - Gson replaced with Jackson; bundled classpath UI icons; optional JetBrains Mono with system monospace fallback.
 - JSON resource lines support optional Base64 `image` values (PNG/JPG/SVG, max 64 KB decoded); editor can load/remove images per line; documented in `langtrainer-app/docs/JSON_format.txt` and `Module_Editor.txt`.
 - JSON `modules` entries may use `!MODULE` deny markers to hide a resource from specific module resource lists; Editor checkboxes support only positive module entries.
+- External sync hardening: redirects are supported and HTTPS accepts any certificate by product requirement; index/resource payloads stay bounded, downloads run with a three-thread limit, symlinked target paths are rejected, non-empty sync folders require the LangTrainer marker, sync runs are serialized, and module-close cancellation prevents stale UI updates.
+- Module lifecycle cleanup: Dialog, Bars, Bricks, Images, Fly, Crossword, and Editor now clean active workers/timers/overlays/drag state or table editing in `onClose`.
 
 ## 2. Architecture & Technical Discoveries
 - `LangTrainerModuleId` drives Editor positive module checkboxes automatically; adding a module enum value exposes it in the resource editor.
@@ -32,9 +34,9 @@
 - Bricks RTL: mirrored build-strip margins; completion fly uses visible history width, not spacer width.
 - Fly game uses a small bucketed Leitner scheduler (`FlyLeitnerSession`); failed cards stay in practice and missed timeout words retry immediately.
 - External index merges `<externals>/common/jsons/index.json` and `<externals>/index.json`; entries may be absolute or relative to the index file.
-- `ExternalResourceSynchronizer` downloads `https://www.igormaznitsa.com/pub/externals/index.json` and its listed relative JSON resources using Apache HttpClient 5; it trusts unknown HTTPS certificate chains for sync while keeping hostname checks, has a 60s whole-operation timeout, reports checked files separately from changed files, logs phase/source/summary details for terminal diagnostics, and failures still show local resources when load succeeds.
+- `ExternalResourceSynchronizer` downloads `https://www.igormaznitsa.com/pub/externals/index.json` and its listed relative JSON resources using Apache HttpClient 5 with redirect support, trust-all HTTPS certificates, three concurrent resource downloads, bounded payload reads, safe sync-folder ownership checks, and phase/source/summary logging; failures still show local resources when load succeeds.
 - `InputEquivalenceSupport`: positional match when key/value sizes match, otherwise any-key; equal token sets act as equivalence classes.
-- Image-based modules return `requiresResourceImages()` and call `ResourceImageSupport.ensureRequiredImagesReady(...)` before starting, then use `ImageResourceLoader.loadLineImages(...)`; embedded SVGs rasterize at larger working width to avoid blurry card scaling, and Images game cards cache fitted rasters per resolved image area. `ImageResourceLoader` hardens Batik 1.19 transcoding: no external resources/scripts/onload, stream input for classpath SVG, 1024 px raster cap, rejects DTD/entity/script markup in user SVG.
+- Image-based modules prepare embedded line images through `ImageResourceLoader.loadLineImages(...)`; Images validates/decodes images during its own async start flow. Embedded SVGs rasterize at larger working width to avoid blurry card scaling, and Images game cards cache fitted rasters per resolved image area. `ImageResourceLoader` hardens Batik 1.19 transcoding: no external resources/scripts/onload, stream input for classpath SVG, 1024 px raster cap, rejects DTD/entity/script markup in user SVG.
 - Build with `mvn22`; assembly descriptors need `**/*` includes; JSON via Jackson databind 2.21.
 
 ## 3. Technical Debt & Refactoring
@@ -65,6 +67,9 @@
 - Prefer avoiding direct `null` where practical; use empty collections for collection results and `Optional` for absent values when it improves functional, fluent handling.
 - Do not introduce deprecated APIs or methods; when a dependency deprecates a method, use the supported replacement immediately.
 - Use English for all answers and project-development communication. If the user writes in Russian, translate the request internally and continue processing and responding in English.
+- External lesson sync must support HTTP redirects and accept any HTTPS certificate.
+- Do not add custom AutoCloseable wrapper abstractions just to force try-with-resources for executors; use direct AutoCloseable executors when the Java target supports the needed close semantics, otherwise use explicit `try/finally`.
+- Do not keep dead or unused code in the project; remove unused methods, constants, imports, and obsolete compatibility paths when they are discovered.
 
 ## 9. Notes Maintenance Log
 - 2026-05-26: Reviewed and compacted notes (~78 to ~40 lines); merged RTL/external-resource bullets; removed changelog/README/meta duplicates and resolved one-off bugfix history.

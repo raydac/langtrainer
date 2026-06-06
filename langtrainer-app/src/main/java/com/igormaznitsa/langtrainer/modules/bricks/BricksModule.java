@@ -24,6 +24,7 @@ import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 
 public final class BricksModule extends AbstractLangTrainerModule {
 
@@ -38,6 +39,8 @@ public final class BricksModule extends AbstractLangTrainerModule {
   private JList<DialogListEntry> selectionList;
   private ResourceListSelectPanel.Result resourceSelectView;
   private File lastOpenDir;
+  private SwingWorker<?, ?> externalSyncWorker;
+
   public BricksModule() {
     this.classpathResourceTree =
         ClasspathLangResourceIndex.loadSharedTree(
@@ -110,11 +113,19 @@ public final class BricksModule extends AbstractLangTrainerModule {
   }
 
   private void loadExternalResources() {
-    ExternalResourceSupport.syncAndLoadAsync(
+    this.cancelExternalResourceSync();
+    this.externalSyncWorker = ExternalResourceSupport.syncAndLoadAsync(
         this,
         this.resourceSelectView,
         tree -> this.externalResourceTree = tree,
         this::rebuildResourceListModel);
+  }
+
+  private void cancelExternalResourceSync() {
+    if (this.externalSyncWorker != null) {
+      this.externalSyncWorker.cancel(true);
+      this.externalSyncWorker = null;
+    }
   }
 
   private void reloadExternalResourcesFromDisk() {
@@ -199,5 +210,11 @@ public final class BricksModule extends AbstractLangTrainerModule {
         this.selectionList.requestFocusInWindow();
       }
     });
+  }
+
+  @Override
+  public void onClose() {
+    this.cancelExternalResourceSync();
+    this.workPanel.resetToIdle();
   }
 }

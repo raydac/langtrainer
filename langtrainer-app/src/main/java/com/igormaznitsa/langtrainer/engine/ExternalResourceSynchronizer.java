@@ -1,19 +1,23 @@
 package com.igormaznitsa.langtrainer.engine;
 
-import static java.nio.file.Files.copy;
 import static java.nio.file.Files.createDirectories;
 import static java.nio.file.Files.createTempFile;
 import static java.nio.file.Files.deleteIfExists;
 import static java.nio.file.Files.exists;
 import static java.nio.file.Files.isDirectory;
 import static java.nio.file.Files.isRegularFile;
+import static java.nio.file.Files.isSymbolicLink;
+import static java.nio.file.Files.list;
 import static java.nio.file.Files.mismatch;
 import static java.nio.file.Files.move;
+import static java.nio.file.Files.newOutputStream;
 import static java.nio.file.Files.walk;
 import static java.nio.file.Files.write;
 import static java.nio.file.Files.writeString;
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toUnmodifiableSet;
@@ -25,9 +29,11 @@ import static org.apache.commons.lang3.SystemUtils.getUserHome;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -43,6 +49,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
@@ -77,6 +90,10 @@ public final class ExternalResourceSynchronizer {
   private static final LinkOption[] NO_LINK_OPTIONS = {LinkOption.NOFOLLOW_LINKS};
   private static final Duration HTTP_CONNECT_TIMEOUT = Duration.ofSeconds(10L);
   private static final Duration HTTP_RESPONSE_TIMEOUT = Duration.ofSeconds(20L);
+  private static final int DOWNLOAD_THREAD_LIMIT = 3;
+  private static final int HTTP_BUFFER_SIZE = 8192;
+  private static final int MAX_INDEX_BYTES = 1024 * 1024;
+  private static final int MAX_RESOURCE_BYTES = 8 * 1024 * 1024;
   private static final ObjectMapper MAPPER = new ObjectMapper()
       .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
@@ -127,6 +144,8 @@ public final class ExternalResourceSynchronizer {
             .setDefaultConnectionConfig(ConnectionConfig.custom()
                 .setConnectTimeout(Timeout.of(HTTP_CONNECT_TIMEOUT))
                 .build())
+            .setMaxConnTotal(DOWNLOAD_THREAD_LIMIT)
+            .setMaxConnPerRoute(DOWNLOAD_THREAD_LIMIT)
             .build())
         .setDefaultRequestConfig(RequestConfig.custom()
             .setResponseTimeout(Timeout.of(HTTP_RESPONSE_TIMEOUT))
@@ -144,6 +163,14 @@ public final class ExternalResourceSynchronizer {
     }
   }
 
+  private static ThreadFactory downloadThreadFactory() {
+    return runnable -> {
+      final Thread thread = new Thread(runnable, "langtrainer-external-download");
+      thread.setDaemon(true);
+      return thread;
+    };
+  }
+
   private static void requireSuccessfulResponse(
       final URI uri,
       final ClassicHttpResponse response) throws IOException {
@@ -159,6 +186,33 @@ public final class ExternalResourceSynchronizer {
       final ClassicHttpResponse response) throws IOException {
     return Optional.ofNullable(response.getEntity())
         .orElseThrow(() -> new IOException("Empty response body for " + uri));
+  }
+
+  private static byte[] readBoundedBytes(
+      final InputStream input,
+      final URI uri,
+      final int maxBytes) throws IOException {
+    final ByteArrayOutputStream output = new ByteArrayOutputStream();
+    copyBounded(input, output, uri, maxBytes);
+    return output.toByteArray();
+  }
+
+  private static void copyBounded(
+      final InputStream input,
+      final OutputStream output,
+      final URI uri,
+      final int maxBytes) throws IOException {
+    final byte[] buffer = new byte[HTTP_BUFFER_SIZE];
+    int total = 0;
+    int read;
+    while ((read = input.read(buffer)) >= 0) {
+      if (total > maxBytes - read) {
+        throw new IOException(
+            "HTTP response is too large for %s: maximum %d bytes".formatted(uri, maxBytes));
+      }
+      output.write(buffer, 0, read);
+      total += read;
+    }
   }
 
   public SyncSummary sync() {
@@ -337,12 +391,12 @@ public final class ExternalResourceSynchronizer {
 
   private void requireLocalFolderReady() throws IOException {
     this.requireSafeSyncTarget();
-    if (exists(this.localFolder, NO_LINK_OPTIONS)
-        && !isDirectory(this.localFolder, NO_LINK_OPTIONS)) {
+    final boolean folderExists = exists(this.localFolder, NO_LINK_OPTIONS);
+    if (folderExists && !isDirectory(this.localFolder, NO_LINK_OPTIONS)) {
       throw new IllegalStateException("Local sync target is not a folder: " + this.localFolder);
     }
     createDirectories(this.localFolder);
-    this.ensureLangTrainerSyncMarker();
+    this.requireLangTrainerSyncMarkerOrEmptyFolder(folderExists);
   }
 
   private void requireSafeSyncTarget() {
@@ -363,6 +417,10 @@ public final class ExternalResourceSynchronizer {
     if (this.isLikelyProjectRoot()) {
       throw new IllegalStateException(
           "Refusing to sync into a project root folder: " + this.localFolder);
+    }
+    if (this.hasSymbolicLocalPathSegment()) {
+      throw new IllegalStateException(
+          "Refusing to sync through a symbolic link: " + this.localFolder);
     }
   }
 
@@ -400,13 +458,30 @@ public final class ExternalResourceSynchronizer {
     return exists(this.localFolder.resolve(name), NO_LINK_OPTIONS);
   }
 
-  private void ensureLangTrainerSyncMarker() throws IOException {
+  private boolean hasSymbolicLocalPathSegment() {
+    Path current = this.localFolder.getRoot();
+    for (final Path segment : this.localFolder) {
+      current = current == null ? segment : current.resolve(segment);
+      if (exists(current, NO_LINK_OPTIONS) && isSymbolicLink(current)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private void requireLangTrainerSyncMarkerOrEmptyFolder(final boolean folderExisted)
+      throws IOException {
     final Path marker = this.localPath(LOCAL_SYNC_MARKER_FILE);
     if (exists(marker, NO_LINK_OPTIONS)) {
       if (!isRegularFile(marker, NO_LINK_OPTIONS)) {
         throw new IllegalStateException("Invalid LangTrainer sync marker: " + marker);
       }
       return;
+    }
+    if (folderExisted && !this.isDirectoryEmpty(this.localFolder)) {
+      throw new IllegalStateException(
+          "Refusing to sync into an existing folder without LangTrainer marker: "
+              + this.localFolder);
     }
     writeString(marker, "LangTrainer external resources sync folder\n", StandardCharsets.UTF_8);
   }
@@ -437,10 +512,60 @@ public final class ExternalResourceSynchronizer {
       final CloseableHttpClient httpClient,
       final RemoteFolder remote,
       final SyncSummaryBuilder summary) throws IOException {
-    for (final RemoteFile file : remote.files()) {
+    final ExecutorService executor = Executors.newFixedThreadPool(
+        DOWNLOAD_THREAD_LIMIT, downloadThreadFactory());
+    try {
+      final List<Future<Void>> downloads = remote.files().stream()
+          .map(file -> executor.submit(this.downloadTask(httpClient, file, summary)))
+          .toList();
+
+      this.awaitDownloads(downloads);
+    } finally {
+      executor.shutdownNow();
+    }
+  }
+
+  private Callable<Void> downloadTask(
+      final CloseableHttpClient httpClient,
+      final RemoteFile file,
+      final SyncSummaryBuilder summary) {
+    return () -> {
       summary.fileChecked();
       this.downloadRemoteFile(httpClient, file, summary);
+      return null;
+    };
+  }
+
+  private void awaitDownloads(final List<Future<Void>> downloads) throws IOException {
+    for (final Future<Void> download : downloads) {
+      try {
+        download.get();
+      } catch (final InterruptedException ex) {
+        Thread.currentThread().interrupt();
+        this.cancelDownloads(downloads);
+        throw new IOException("External resource download was interrupted", ex);
+      } catch (final ExecutionException ex) {
+        this.cancelDownloads(downloads);
+        this.throwDownloadFailure(ex.getCause() == null ? ex : ex.getCause());
+      }
     }
+  }
+
+  private void cancelDownloads(final List<Future<Void>> downloads) {
+    downloads.forEach(download -> download.cancel(true));
+  }
+
+  private void throwDownloadFailure(final Throwable cause) throws IOException {
+    if (cause instanceof final IOException ioException) {
+      throw ioException;
+    }
+    if (cause instanceof final RuntimeException runtimeException) {
+      throw runtimeException;
+    }
+    if (cause instanceof final Error error) {
+      throw error;
+    }
+    throw new IllegalStateException("External resource download failed", cause);
   }
 
   private void downloadRemoteFile(
@@ -560,8 +685,8 @@ public final class ExternalResourceSynchronizer {
   }
 
   private boolean isDirectoryEmpty(final Path path) throws IOException {
-    try (Stream<Path> children = walk(path, 1)) {
-      return children.count() == 1L;
+    try (Stream<Path> children = list(path)) {
+      return children.findAny().isEmpty();
     }
   }
 
@@ -612,40 +737,41 @@ public final class ExternalResourceSynchronizer {
   }
 
   private static final class SyncSummaryBuilder {
-    private int checkedFiles;
-    private int loadedFiles;
-    private int updatedFiles;
-    private int removedFiles;
+    private final AtomicInteger checkedFiles = new AtomicInteger();
+    private final AtomicInteger loadedFiles = new AtomicInteger();
+    private final AtomicInteger updatedFiles = new AtomicInteger();
+    private final AtomicInteger removedFiles = new AtomicInteger();
 
     private void fileChecked() {
-      this.checkedFiles++;
+      this.checkedFiles.incrementAndGet();
     }
 
     private void fileLoaded() {
-      this.loadedFiles++;
+      this.loadedFiles.incrementAndGet();
     }
 
     private void fileRemoved() {
-      this.removedFiles++;
+      this.removedFiles.incrementAndGet();
     }
 
     private void fileUpdated() {
-      this.updatedFiles++;
+      this.updatedFiles.incrementAndGet();
     }
 
     private void addRemovedFiles(final int removedFiles) {
-      this.removedFiles += removedFiles;
+      this.removedFiles.addAndGet(removedFiles);
     }
 
     private SyncSummary build() {
       return new SyncSummary(
-          this.checkedFiles, this.loadedFiles, this.updatedFiles, this.removedFiles);
+          this.checkedFiles.get(),
+          this.loadedFiles.get(),
+          this.updatedFiles.get(),
+          this.removedFiles.get());
     }
   }
 
-  private static final class BinaryResponseHandler implements HttpClientResponseHandler<byte[]> {
-
-    private final URI uri;
+  private record BinaryResponseHandler(URI uri) implements HttpClientResponseHandler<byte[]> {
 
     private BinaryResponseHandler(final URI uri) {
       this.uri = requireNonNull(uri, "uri must not be null");
@@ -655,7 +781,11 @@ public final class ExternalResourceSynchronizer {
     public byte[] handleResponse(final ClassicHttpResponse response) throws IOException {
       requireSuccessfulResponse(this.uri, response);
       final HttpEntity entity = requireEntity(this.uri, response);
-      return EntityUtils.toByteArray(entity);
+      try (InputStream input = entity.getContent()) {
+        return readBoundedBytes(input, this.uri, MAX_INDEX_BYTES);
+      } finally {
+        EntityUtils.consumeQuietly(entity);
+      }
     }
   }
 
@@ -672,8 +802,12 @@ public final class ExternalResourceSynchronizer {
     @Override
     public Void handleResponse(final ClassicHttpResponse response) throws IOException {
       requireSuccessfulResponse(this.uri, response);
-      try (InputStream input = requireEntity(this.uri, response).getContent()) {
-        copy(input, this.target, REPLACE_EXISTING);
+      final HttpEntity entity = requireEntity(this.uri, response);
+      try (InputStream input = entity.getContent();
+           OutputStream output = newOutputStream(this.target, WRITE, TRUNCATE_EXISTING)) {
+        copyBounded(input, output, this.uri, MAX_RESOURCE_BYTES);
+      } finally {
+        EntityUtils.consumeQuietly(entity);
       }
       return null;
     }

@@ -35,12 +35,15 @@
         <plugins>
             <plugin>
                 <artifactId>maven-clean-plugin</artifactId>
+                <version>3.3.2</version>
                 <configuration>
                     <followSymLinks>false</followSymLinks>
                     <excludeDefaultDirectories>true</excludeDefaultDirectories>
                     <filesets>
                         <fileset>
                             <directory>${go.target.folder}</directory>
+                        </fileset>
+                        <fileset>
                             <directory>${go.target.temp.build}</directory>
                         </fileset>
                     </filesets>
@@ -63,6 +66,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
                 <executions>
                     <execution>
                         <id>copy-resources-to-temp-build</id>

@@ -3,7 +3,6 @@ package com.igormaznitsa.langtrainer.text;
 import static java.util.Optional.ofNullable;
 
 import java.util.Locale;
-import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 
 /**
@@ -66,16 +65,5 @@ public final class TypingComparisonUtils {
 
   public static boolean isCloseEnough(final String actual, final String expected) {
     return similarity(actual, expected) >= DEFAULT_CLOSE_ENOUGH;
-  }
-
-  /**
-   * HTML-escape for short snippets embedded in Swing HTML labels; newlines become {@code <br/>}.
-   */
-  public static String escapeHtmlForBanner(final String text) {
-    if (text == null || text.isEmpty()) {
-      return "";
-    }
-    final String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
-    return StringEscapeUtils.escapeHtml4(normalized).replace("\n", "<br/>");
   }
 }

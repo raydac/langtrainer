@@ -4,7 +4,6 @@ import static java.util.Objects.requireNonNull;
 
 import java.util.List;
 import java.util.Objects;
-import javax.swing.DefaultListModel;
 import javax.swing.ListModel;
 
 public sealed interface DialogListEntry
@@ -12,26 +11,6 @@ public sealed interface DialogListEntry
 
   static DialogResourceRow fileResourceRow(final DialogDefinition definition) {
     return new DialogResourceRow(definition, ResourceSource.FILE, 0, definition.menuName());
-  }
-
-  static DialogListEntry resource(
-      final DialogDefinition definition, final boolean fromExternalFile) {
-    return new DialogResourceRow(definition, sourceOf(fromExternalFile), 0, definition.menuName());
-  }
-
-  static DialogListEntry resource(
-      final DialogDefinition definition,
-      final boolean fromExternalFile,
-      final int indentLevel) {
-    return new DialogResourceRow(
-        definition, sourceOf(fromExternalFile), indentLevel, definition.menuName());
-  }
-
-  static DialogListEntry resource(
-      final DialogDefinition definition,
-      final ResourceSource source,
-      final int indentLevel) {
-    return new DialogResourceRow(definition, source, indentLevel, definition.menuName());
   }
 
   static DialogListEntry resource(
@@ -93,29 +72,6 @@ public sealed interface DialogListEntry
       }
     }
     fileRows.add(row);
-  }
-
-  static int addOrReplaceByMenuTitle(
-      final DefaultListModel<DialogListEntry> model, final DialogListEntry newEntry) {
-    if (!(newEntry instanceof final DialogResourceRow resourceRow)) {
-      model.addElement(newEntry);
-      return model.getSize() - 1;
-    }
-    final String title = resourceRow.definition().menuName();
-    for (int i = 0; i < model.getSize(); i++) {
-      final DialogListEntry at = model.getElementAt(i);
-      if (at instanceof final DialogResourceRow existing
-          && Objects.equals(existing.definition().menuName(), title)) {
-        model.set(i, newEntry);
-        return i;
-      }
-    }
-    model.addElement(newEntry);
-    return model.getSize() - 1;
-  }
-
-  private static ResourceSource sourceOf(final boolean fromExternalFile) {
-    return fromExternalFile ? ResourceSource.EXTERNAL : ResourceSource.EMBEDDED;
   }
 
   enum ResourceSource {

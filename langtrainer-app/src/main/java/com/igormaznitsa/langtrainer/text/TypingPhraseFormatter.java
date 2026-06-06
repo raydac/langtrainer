@@ -121,41 +121,6 @@ public final class TypingPhraseFormatter {
     return out.toString();
   }
 
-  public static String mergeLettersIntoExpectedKeepingExtraInput(
-      final String expected,
-      final String rawInput) {
-    if (expected == null || expected.isEmpty()) {
-      return rawInput == null ? "" : rawInput;
-    }
-    final String raw = rawInput == null ? "" : rawInput;
-    final String letters = TypingPhraseFormatter.extractLetterDigits(raw);
-    final String expectedLetters = TypingPhraseFormatter.extractLetterDigits(expected);
-    final String merged = TypingPhraseFormatter.mergeLettersIntoExpected(expected, raw);
-    final int expectedLetterCount = TypingPhraseFormatter.codePointCount(expectedLetters);
-    if (TypingPhraseFormatter.codePointCount(letters) <= expectedLetterCount) {
-      return merged;
-    }
-    return merged
-        + raw.substring(TypingPhraseFormatter.indexAfterLetterDigits(raw, expectedLetterCount));
-  }
-
-  private static int codePointCount(final String text) {
-    return text.codePointCount(0, text.length());
-  }
-
-  private static int indexAfterLetterDigits(final String text, final int count) {
-    int index = 0;
-    int seen = 0;
-    while (seen < count && index < text.length()) {
-      final int codePoint = text.codePointAt(index);
-      index += Character.charCount(codePoint);
-      if (Character.isLetterOrDigit(codePoint)) {
-        seen++;
-      }
-    }
-    return index;
-  }
-
   private static int alignLetterCase(final int typedLetter, final int expectedLetter) {
     if (Character.isUpperCase(expectedLetter)) {
       return Character.toUpperCase(typedLetter);

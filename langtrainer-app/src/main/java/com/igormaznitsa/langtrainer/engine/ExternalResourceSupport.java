@@ -20,6 +20,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -27,6 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -49,25 +51,18 @@ public final class ExternalResourceSupport {
   private static final int SLOW_SYNC_MESSAGE_DELAY_MS = 10_000;
   private static final String APP_CONFIG_FOLDER_NAME = "LangTrainer";
   private static final String EXTERNAL_RESOURCES_FOLDER_NAME = "externals";
-  private static final String EXTERNAL_FOLDER_PATH_KEY_PREFIX = "external:";
   private static final String SYNC_START_MESSAGE = "Syncing external lessons...";
   private static final String SYNC_SLOW_MESSAGE =
       "Still syncing lessons. Network may be slow...";
   private static final List<DialogListEntry.DialogResourceRow> OPENED_FILE_RESOURCE_ROWS =
       new CopyOnWriteArrayList<>();
+  private static final ReentrantLock SYNC_LOCK = new ReentrantLock();
 
   private ExternalResourceSupport() {
   }
 
   public static ClasspathResourceIndexTree loadLocalTree(final AbstractLangTrainerModule module) {
     return ExternalLangResourceIndex.loadSharedTree(EXTERNAL_FOLDER, module);
-  }
-
-  public static void materializeLocalTree(
-      final ClasspathResourceIndexTree tree,
-      final javax.swing.DefaultListModel<DialogListEntry> model,
-      final java.util.Set<String> expandedFolderPathKeys) {
-    tree.materializeInto(model, expandedFolderPathKeys, true, EXTERNAL_FOLDER_PATH_KEY_PREFIX);
   }
 
   public static void materializeOpenedFileRows(
@@ -141,7 +136,7 @@ public final class ExternalResourceSupport {
     }
   }
 
-  public static void syncAndLoadAsync(
+  public static SwingWorker<?, ?> syncAndLoadAsync(
       final AbstractLangTrainerModule module,
       final ResourceListSelectPanel.Result view,
       final Consumer<ClasspathResourceIndexTree> onTreeLoaded,
@@ -153,7 +148,7 @@ public final class ExternalResourceSupport {
         event -> view.setBusyMessage(SYNC_SLOW_MESSAGE));
     slowSyncMessageTimer.setRepeats(false);
     slowSyncMessageTimer.start();
-    new SwingWorker<RefreshResult, Void>() {
+    final SwingWorker<RefreshResult, Void> worker = new SwingWorker<>() {
       @Override
       protected RefreshResult doInBackground() {
         return ExternalResourceSupport.refreshExternalResources(module);
@@ -162,6 +157,9 @@ public final class ExternalResourceSupport {
       @Override
       protected void done() {
         try {
+          if (this.isCancelled()) {
+            return;
+          }
           final RefreshResult result = this.get();
           onTreeLoaded.accept(result.tree());
           onListRefreshNeeded.run();
@@ -178,6 +176,8 @@ public final class ExternalResourceSupport {
           final Throwable cause = ex.getCause() == null ? ex : ex.getCause();
           LOG.log(Level.SEVERE, "Can't refresh external resources", cause);
           ExternalResourceSupport.showExternalSyncFailure(view, cause);
+        } catch (final CancellationException ex) {
+          LOG.log(Level.FINE, "External resource refresh was cancelled", ex);
         } catch (final Exception ex) {
           LOG.log(Level.SEVERE, "Can't refresh external resources", ex);
           ExternalResourceSupport.showExternalSyncFailure(view, ex);
@@ -187,7 +187,9 @@ public final class ExternalResourceSupport {
           view.setBusyMessage("");
         }
       }
-    }.execute();
+    };
+    worker.execute();
+    return worker;
   }
 
   private static RefreshResult refreshExternalResources(final AbstractLangTrainerModule module) {
@@ -219,6 +221,9 @@ public final class ExternalResourceSupport {
   }
 
   private static SyncSummary syncExternalFolder() {
+    if (!SYNC_LOCK.tryLock()) {
+      throw new IllegalStateException("External lesson sync is already running");
+    }
     final ExecutorService executor = Executors.newSingleThreadExecutor(syncThreadFactory());
     try {
       return executor.submit(
@@ -240,6 +245,7 @@ public final class ExternalResourceSupport {
       throw new IllegalStateException("Lesson sync failed", cause);
     } finally {
       executor.shutdownNow();
+      SYNC_LOCK.unlock();
     }
   }
 

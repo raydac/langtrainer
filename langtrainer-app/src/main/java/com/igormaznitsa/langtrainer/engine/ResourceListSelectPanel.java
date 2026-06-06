@@ -625,12 +625,10 @@ public final class ResourceListSelectPanel {
     FOLDER
   }
 
-  private static final class ResourceSourceIcon implements Icon {
+  private record ResourceSourceIcon(Color outline, Color accent, ResourceGlyph glyph)
+      implements Icon {
 
     private static final int SIZE = 18;
-    private final Color outline;
-    private final Color accent;
-    private final ResourceGlyph glyph;
 
     private ResourceSourceIcon(
         final Color outline, final Color accent, final ResourceGlyph glyph) {

@@ -164,6 +164,8 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     }
   }
 
+  private SwingWorker<?, ?> externalSyncWorker;
+
   private void openFromFile(final JList<DialogListEntry> list) {
     ExternalResourceSupport.openResourceFromFile(
             this.rootPanel, this.lastOpenDirectory, "Crossword JSON (*.json)", "Can't open file")
@@ -197,6 +199,13 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
   private boolean generationInProgress;
   private long generationStartedAtNs;
   private Timer generationProgressTimer;
+
+  @Override
+  public void onClose() {
+    this.cancelExternalResourceSync();
+    this.cancelGenerationIfRunning();
+    this.finishGameAndReveal();
+  }
 
   private void paintCrosswordBoard(final Graphics graphics) {
     final Graphics2D g2 = (Graphics2D) graphics.create();
@@ -311,10 +320,13 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     this.syncEndButtonEnabled();
   }
 
-  @Override
-  public void onClose() {
-    this.cancelGenerationIfRunning();
-    this.finishGameAndReveal();
+  private void loadExternalResources() {
+    this.cancelExternalResourceSync();
+    this.externalSyncWorker = ExternalResourceSupport.syncAndLoadAsync(
+        this,
+        this.resourceSelectView,
+        tree -> this.externalResourceTree = tree,
+        this::rebuildCrosswordResourceListModel);
   }
 
   @Override
@@ -358,12 +370,45 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     return view.panel();
   }
 
-  private void loadExternalResources() {
-    ExternalResourceSupport.syncAndLoadAsync(
-        this,
-        this.resourceSelectView,
-        tree -> this.externalResourceTree = tree,
-        this::rebuildCrosswordResourceListModel);
+  private void cancelExternalResourceSync() {
+    if (this.externalSyncWorker != null) {
+      this.externalSyncWorker.cancel(true);
+      this.externalSyncWorker = null;
+    }
+  }
+
+  private List<WordPlacement> buildCrossword(final List<WordPair> words) {
+    if (words.isEmpty()) {
+      return List.of();
+    }
+    final long startedAt = System.nanoTime();
+    final Map<Character, Long> letterFrequency = this.makeLetterFrequency(words);
+    final List<WordPair> rankedWords = this.rankWordsForStart(words, letterFrequency);
+    final int startsToTry = Math.min(MAX_START_WORDS_TO_TRY, rankedWords.size());
+    List<WordPlacement> best = List.of();
+    for (int i = 0; i < startsToTry; i++) {
+      if (this.isCrosswordSearchExpiredOrCancelled(startedAt)) {
+        break;
+      }
+      final WordPair startWord = rankedWords.get(i);
+      final List<WordPlacement> horizontal =
+          this.tryBuildFromStart(words, startWord, true, letterFrequency, startedAt);
+      if (this.isBetterPlacementSet(horizontal, best)) {
+        best = horizontal;
+      }
+      if (this.isCrosswordSearchExpiredOrCancelled(startedAt)) {
+        break;
+      }
+      final List<WordPlacement> vertical =
+          this.tryBuildFromStart(words, startWord, false, letterFrequency, startedAt);
+      if (this.isBetterPlacementSet(vertical, best)) {
+        best = vertical;
+      }
+      if (best.size() == words.size()) {
+        break;
+      }
+    }
+    return best;
   }
 
   private void reloadExternalResourcesFromDisk() {
@@ -1093,40 +1138,6 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
         cp -> Character.isLetter(cp) || PhraseWordSupport.isIntraWordJoiner(cp));
   }
 
-  private List<WordPlacement> buildCrossword(final List<WordPair> words) {
-    if (words.isEmpty()) {
-      return List.of();
-    }
-    final long startedAt = System.nanoTime();
-    final Map<Character, Long> letterFrequency = this.makeLetterFrequency(words);
-    final List<WordPair> rankedWords = this.rankWordsForStart(words, letterFrequency);
-    final int startsToTry = Math.min(MAX_START_WORDS_TO_TRY, rankedWords.size());
-    List<WordPlacement> best = List.of();
-    for (int i = 0; i < startsToTry; i++) {
-      if (System.nanoTime() - startedAt >= SEARCH_TIME_BUDGET_NS) {
-        break;
-      }
-      final WordPair startWord = rankedWords.get(i);
-      final List<WordPlacement> horizontal =
-          this.tryBuildFromStart(words, startWord, true, letterFrequency, startedAt);
-      if (this.isBetterPlacementSet(horizontal, best)) {
-        best = horizontal;
-      }
-      if (System.nanoTime() - startedAt >= SEARCH_TIME_BUDGET_NS) {
-        break;
-      }
-      final List<WordPlacement> vertical =
-          this.tryBuildFromStart(words, startWord, false, letterFrequency, startedAt);
-      if (this.isBetterPlacementSet(vertical, best)) {
-        best = vertical;
-      }
-      if (best.size() == words.size()) {
-        break;
-      }
-    }
-    return best;
-  }
-
   private List<WordPlacement> tryBuildFromStart(
       final List<WordPair> allWords,
       final WordPair startWord,
@@ -1154,9 +1165,12 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
         this.evaluateStateScore(placed, board)));
     List<WordPlacement> best = placed;
 
-    while (!beam.isEmpty() && System.nanoTime() - startedAt < SEARCH_TIME_BUDGET_NS) {
+    while (!beam.isEmpty() && !this.isCrosswordSearchExpiredOrCancelled(startedAt)) {
       final List<SearchState> nextBeam = new ArrayList<>();
       for (final SearchState state : beam) {
+        if (this.isCrosswordSearchExpiredOrCancelled(startedAt)) {
+          break;
+        }
         if (state.remaining().isEmpty()) {
           continue;
         }
@@ -1170,6 +1184,9 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
           continue;
         }
         for (final PlacementCandidate candidate : candidates) {
+          if (this.isCrosswordSearchExpiredOrCancelled(startedAt)) {
+            break;
+          }
           final char[][] nextBoard = this.copyBoard(state.board());
           final Map<Character, Set<AnchorCell>> nextAnchors =
               this.copyAnchors(state.boardAnchors());
@@ -1201,6 +1218,13 @@ public final class CrosswordModule extends AbstractLangTrainerModule {
     }
     return best;
   }
+
+  private boolean isCrosswordSearchExpiredOrCancelled(final long startedAt) {
+    return Thread.currentThread().isInterrupted()
+        || System.nanoTime() - startedAt >= SEARCH_TIME_BUDGET_NS;
+  }
+
+
 
   private List<PlacementCandidate> findPlacementCandidates(
       final List<WordPair> remaining,

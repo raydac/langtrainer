@@ -64,6 +64,7 @@ import javax.swing.JToggleButton;
 import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -96,6 +97,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   private JList<DialogListEntry> selectionList;
   private ResourceListSelectPanel.Result resourceSelectView;
   private File lastOpenDir;
+  private SwingWorker<?, ?> externalSyncWorker;
 
   public FlyGameModule() {
     this.classpathResourceTree =
@@ -181,6 +183,7 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
 
   @Override
   public void onClose() {
+    this.cancelExternalResourceSync();
     this.gameBoard.shutdownSession();
   }
 
@@ -232,11 +235,19 @@ public final class FlyGameModule extends AbstractLangTrainerModule {
   }
 
   private void loadExternalResources() {
-    ExternalResourceSupport.syncAndLoadAsync(
+    this.cancelExternalResourceSync();
+    this.externalSyncWorker = ExternalResourceSupport.syncAndLoadAsync(
         this,
         this.resourceSelectView,
         tree -> this.externalResourceTree = tree,
         this::rebuildFlyResourceListModel);
+  }
+
+  private void cancelExternalResourceSync() {
+    if (this.externalSyncWorker != null) {
+      this.externalSyncWorker.cancel(true);
+      this.externalSyncWorker = null;
+    }
   }
 
   private void reloadExternalResourcesFromDisk() {

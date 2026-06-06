@@ -102,6 +102,7 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
   private final List<Integer> poolIds = new ArrayList<>();
   private final Deque<String> historyLines = new ArrayDeque<>();
   private Timer completionFlyTimer;
+  private Timer advanceAfterSolvedTimer;
   private JPanel completionAnimTopSpacer;
   /**
    * Hides the fixed suffix on the build strip while the solved row flies into history.
@@ -207,14 +208,11 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     topBar.add(this.showPhraseButton, BorderLayout.EAST);
     this.add(topBar, BorderLayout.NORTH);
     this.add(this.layered, BorderLayout.CENTER);
-  }  private final AWTEventListener globalDragMouseListener = this::onGlobalMouseWhileDragging;
-  private Timer dragGhostPollTimer;
-  private JPanel dragRootGlass;
-  private Component savedGlassPane;
-  private boolean savedGlassWasVisible;
+  }
 
   void resetToIdle() {
     this.cancelPendingOrActiveDrag();
+    this.stopAdvanceAfterSolvedTimer();
     this.stopCompletionFlyAnimation();
     this.phraseFlashBanner.dismiss();
     this.definition = null;
@@ -233,6 +231,28 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     this.fieldCanvas.setRightToLeft(false);
     this.fieldCanvas.setBuildBrickFill(BUILD_PARTIAL_BG);
     this.repaint();
+  }  private final AWTEventListener globalDragMouseListener = this::onGlobalMouseWhileDragging;
+  private Timer dragGhostPollTimer;
+  private JPanel dragRootGlass;
+  private Component savedGlassPane;
+  private boolean savedGlassWasVisible;
+
+  private void scheduleAdvanceIfSolved() {
+    if (this.poolIds.isEmpty()
+        && this.buildIds.size() == this.wordTokens.size()
+        && this.isOrderCorrect()) {
+      this.stopAdvanceAfterSolvedTimer();
+      this.advanceAfterSolvedTimer =
+          new Timer(
+              450,
+              event -> {
+                ((Timer) event.getSource()).stop();
+                BricksWorkPanel.this.advanceAfterSolvedTimer = null;
+                BricksWorkPanel.this.startCompletionFlyThenAdvance();
+              });
+      this.advanceAfterSolvedTimer.setRepeats(false);
+      this.advanceAfterSolvedTimer.start();
+    }
   }
 
   static List<DialogLine> filterMultiWordTargetLines(
@@ -779,21 +799,14 @@ final class BricksWorkPanel extends JPanel implements BricksFieldCanvas.FieldHos
     this.syncFieldCanvas();
   }
 
-  private void scheduleAdvanceIfSolved() {
-    if (this.poolIds.isEmpty()
-        && this.buildIds.size() == this.wordTokens.size()
-        && this.isOrderCorrect()) {
-      final Timer timer =
-          new Timer(
-              450,
-              event -> {
-                ((Timer) event.getSource()).stop();
-                BricksWorkPanel.this.startCompletionFlyThenAdvance();
-              });
-      timer.setRepeats(false);
-      timer.start();
+  private void stopAdvanceAfterSolvedTimer() {
+    if (this.advanceAfterSolvedTimer != null) {
+      this.advanceAfterSolvedTimer.stop();
+      this.advanceAfterSolvedTimer = null;
     }
   }
+
+
 
   private void stopCompletionFlyAnimation() {
     if (this.completionFlyTimer != null) {

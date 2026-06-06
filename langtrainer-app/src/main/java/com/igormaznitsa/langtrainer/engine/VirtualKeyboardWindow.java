@@ -48,6 +48,7 @@ public final class VirtualKeyboardWindow {
   private static final int KEY_HORIZONTAL_PADDING = 12;
   private static final int KEY_LABEL_MIN_WIDTH = 72;
   private static final int SPACE_KEY_MIN_WIDTH = 180;
+  private static final int HEADER_CONTROL_WIDTH = 42;
   private static final int HEADER_CONTROL_HEIGHT = 42;
   private static final int LANGUAGE_COMBO_EXTRA_WIDTH = 48;
   private static KeyboardLanguage lastSelectedLanguage = KeyboardLanguage.ENG;
@@ -346,7 +347,7 @@ public final class VirtualKeyboardWindow {
   }
 
   private void applyHeaderButtonSize(final JComponent button) {
-    final Dimension fixedSize = new Dimension(HEADER_CONTROL_HEIGHT, HEADER_CONTROL_HEIGHT);
+    final Dimension fixedSize = new Dimension(HEADER_CONTROL_WIDTH, HEADER_CONTROL_HEIGHT);
     button.setMinimumSize(fixedSize);
     button.setPreferredSize(fixedSize);
     button.setMaximumSize(fixedSize);

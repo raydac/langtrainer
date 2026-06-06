@@ -50,6 +50,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 
 public final class BarsModule extends AbstractLangTrainerModule {
 
@@ -65,6 +66,7 @@ public final class BarsModule extends AbstractLangTrainerModule {
   private JList<DialogListEntry> selectionList;
   private ResourceListSelectPanel.Result resourceSelectView;
   private File lastOpenDir;
+  private SwingWorker<?, ?> externalSyncWorker;
 
   public BarsModule() {
     this.classpathResourceTree =
@@ -113,6 +115,12 @@ public final class BarsModule extends AbstractLangTrainerModule {
     this.showSelectCard();
   }
 
+  @Override
+  public void onClose() {
+    this.cancelExternalResourceSync();
+    this.workPanel.reset();
+  }
+
   private JPanel makeSelectPanel() {
     final ResourceListSelectPanel.Result view = ResourceListSelectPanel.build(
         this.listModel,
@@ -153,11 +161,19 @@ public final class BarsModule extends AbstractLangTrainerModule {
   }
 
   private void loadExternalResources() {
-    ExternalResourceSupport.syncAndLoadAsync(
+    this.cancelExternalResourceSync();
+    this.externalSyncWorker = ExternalResourceSupport.syncAndLoadAsync(
         this,
         this.resourceSelectView,
         tree -> this.externalResourceTree = tree,
         this::rebuildResourceListModel);
+  }
+
+  private void cancelExternalResourceSync() {
+    if (this.externalSyncWorker != null) {
+      this.externalSyncWorker.cancel(true);
+      this.externalSyncWorker = null;
+    }
   }
 
   private void reloadExternalResourcesFromDisk() {

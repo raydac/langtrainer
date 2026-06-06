@@ -109,10 +109,8 @@ public final class LangResourceIndexTrees {
     }
 
     private ClasspathResourceIndexTree.IndexedClasspathNode.IndexedFolder toIndexedFolder() {
-      final List<ClasspathResourceIndexTree.IndexedClasspathNode> children = new ArrayList<>();
-      for (final ClasspathResourceIndexTree.IndexedClasspathNode.IndexedLeaf leaf : this.leaves) {
-        children.add(leaf);
-      }
+      final List<ClasspathResourceIndexTree.IndexedClasspathNode> children =
+          new ArrayList<>(this.leaves);
       for (final FolderBuilder sub : this.childFoldersByKey.values()) {
         children.add(sub.toIndexedFolder());
       }

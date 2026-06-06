@@ -71,6 +71,8 @@ public final class ImagesModule extends AbstractLangTrainerModule {
   private JList<DialogListEntry> selectionList;
   private ResourceListSelectPanel.Result resourceSelectView;
   private File lastOpenDir;
+  private SwingWorker<?, ?> externalSyncWorker;
+  private SwingWorker<PreparedImagesSession, Void> preparedImagesWorker;
 
   public ImagesModule() {
     this.classpathResourceTree =
@@ -93,11 +95,6 @@ public final class ImagesModule extends AbstractLangTrainerModule {
   @Override
   public boolean isVirtualKeyboardToolbarButtonShown() {
     return false;
-  }
-
-  @Override
-  public boolean requiresResourceImages() {
-    return true;
   }
 
   @Override
@@ -131,6 +128,13 @@ public final class ImagesModule extends AbstractLangTrainerModule {
     this.workPanel.reset();
     this.reloadExternalResourcesFromDisk();
     this.showSelectCard();
+  }
+
+  @Override
+  public void onClose() {
+    this.cancelExternalResourceSync();
+    this.cancelPreparedImagesWorker();
+    this.workPanel.reset();
   }
 
   @Override
@@ -185,11 +189,19 @@ public final class ImagesModule extends AbstractLangTrainerModule {
   }
 
   private void loadExternalResources() {
-    ExternalResourceSupport.syncAndLoadAsync(
+    this.cancelExternalResourceSync();
+    this.externalSyncWorker = ExternalResourceSupport.syncAndLoadAsync(
         this,
         this.resourceSelectView,
         tree -> this.externalResourceTree = tree,
         this::rebuildResourceListModel);
+  }
+
+  private void cancelExternalResourceSync() {
+    if (this.externalSyncWorker != null) {
+      this.externalSyncWorker.cancel(true);
+      this.externalSyncWorker = null;
+    }
   }
 
   private void reloadExternalResourcesFromDisk() {
@@ -216,7 +228,7 @@ public final class ImagesModule extends AbstractLangTrainerModule {
     final int opt = JOptionPane.showConfirmDialog(
         this.rootPanel,
         combo,
-        "Show bars in which language?",
+        "Show image labels in which language?",
         JOptionPane.OK_CANCEL_OPTION,
         JOptionPane.QUESTION_MESSAGE);
     if (opt == JOptionPane.OK_OPTION) {
@@ -226,8 +238,9 @@ public final class ImagesModule extends AbstractLangTrainerModule {
 
   private void prepareImagesAndStart(final DialogDefinition definition,
                                      final boolean targetIsSideA) {
+    this.cancelPreparedImagesWorker();
     this.resourceSelectView.setBusy(true);
-    new SwingWorker<PreparedImagesSession, Void>() {
+    this.preparedImagesWorker = new SwingWorker<>() {
       @Override
       protected PreparedImagesSession doInBackground() {
         return new PreparedImagesSession(
@@ -240,18 +253,36 @@ public final class ImagesModule extends AbstractLangTrainerModule {
       protected void done() {
         ImagesModule.this.finishPreparedImagesSession(this);
       }
-    }.execute();
+    };
+    this.preparedImagesWorker.execute();
   }
 
   private void finishPreparedImagesSession(
       final SwingWorker<PreparedImagesSession, Void> worker) {
+    if (worker != this.preparedImagesWorker) {
+      return;
+    }
+    this.preparedImagesWorker = null;
     this.resourceSelectView.setBusy(false);
+    if (worker.isCancelled()) {
+      return;
+    }
     try {
       this.startImages(worker.get());
     } catch (final InterruptedException ex) {
       Thread.currentThread().interrupt();
     } catch (final ExecutionException ex) {
       this.showImageLoadFailure(ex.getCause() == null ? ex : ex.getCause());
+    }
+  }
+
+  private void cancelPreparedImagesWorker() {
+    if (this.preparedImagesWorker != null) {
+      this.preparedImagesWorker.cancel(true);
+      this.preparedImagesWorker = null;
+    }
+    if (this.resourceSelectView != null) {
+      this.resourceSelectView.setBusy(false);
     }
   }
 
@@ -326,7 +357,8 @@ public final class ImagesModule extends AbstractLangTrainerModule {
     private final JPanel topPanel = new JPanel(new CardLayout());
     private final JLabel statusLabel = new JLabel(" ", SwingConstants.CENTER);
     private final JButton nextButton = new JButton("NEXT");
-    private final Random random = new Random();    private final ImageBoardPanel boardPanel = new ImageBoardPanel(this::onStageSolved);
+    private final Random random = new Random();
+    private final ImageBoardPanel boardPanel = new ImageBoardPanel(this::onStageSolved);
     private List<ImageEntry> entries = List.of();
     private int stageStart;
     private int stageEnd;

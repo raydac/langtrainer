@@ -25,6 +25,7 @@ public final class LangResourceJson {
       .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
   private static final ObjectWriter PRETTY_WRITER = MAPPER.writerWithDefaultPrettyPrinter();
   private static final String UNSUPPORTED_MODULE_PREFIX = "!";
+  private static final long MAX_JSON_BYTES = 8L * 1024L * 1024L;
 
   private LangResourceJson() {
   }
@@ -88,9 +89,18 @@ public final class LangResourceJson {
 
   public static DialogDefinition parseFromPath(final Path path) {
     try {
+      requireJsonFileSize(path);
       return parse(Files.readString(path, StandardCharsets.UTF_8));
     } catch (final IOException ex) {
       throw new IllegalStateException("Can't load JSON file: " + path, ex);
+    }
+  }
+
+  private static void requireJsonFileSize(final Path path) throws IOException {
+    final long size = Files.size(path);
+    if (size > MAX_JSON_BYTES) {
+      throw new IllegalStateException(
+          "JSON file is too large: %s bytes, maximum is %s bytes".formatted(size, MAX_JSON_BYTES));
     }
   }
 

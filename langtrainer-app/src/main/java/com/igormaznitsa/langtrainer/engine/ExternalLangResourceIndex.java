@@ -21,6 +21,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 public final class ExternalLangResourceIndex {
 
@@ -57,7 +58,7 @@ public final class ExternalLangResourceIndex {
   }
 
   private static List<Path> resolveExternalIndexes(final Path root) {
-    return List.of(SHARED_INDEX, ROOT_INDEX).stream()
+    return Stream.of(SHARED_INDEX, ROOT_INDEX)
         .map(root::resolve)
         .map(Path::normalize)
         .filter(path -> isRegularLocalFile(root, path))

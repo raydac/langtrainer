@@ -20,7 +20,6 @@ import java.nio.file.Path;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.imageio.ImageIO;
@@ -35,7 +34,6 @@ import org.apache.batik.transcoder.image.PNGTranscoder;
 public final class ImageResourceLoader {
 
   private static final ConcurrentHashMap<String, Icon> ICON_CACHE = new ConcurrentHashMap<>();
-  private static final int EMBEDDED_ICON_SIZE = 36;
   private static final int EMBEDDED_IMAGE_MAX_BYTES = 64 * 1024;
   private static final int EMBEDDED_SVG_RASTER_WIDTH = 1024;
   private static final int EMBEDDED_SVG_RASTER_MAX_HEIGHT = 1024;
@@ -77,20 +75,6 @@ public final class ImageResourceLoader {
             ? Optional.of(decodeEmbeddedImage(line.image(), "line image"))
             : Optional.<BufferedImage>empty())
         .toList();
-  }
-
-  public static void requireLoadableLineImages(final DialogDefinition definition) {
-    requireNonNull(definition, "definition must not be null");
-    for (int index = 0; index < definition.lines().size(); index++) {
-      final DialogLine line = definition.lines().get(index);
-      if (line.hasImage()) {
-        decodeEmbeddedImage(line.image(), "line Id " + (index + 1));
-      }
-    }
-  }
-
-  public static Icon embeddedImageIcon(final String base64Text) {
-    return embeddedImageIcon(base64Text, EMBEDDED_ICON_SIZE, EMBEDDED_ICON_SIZE);
   }
 
   public static Icon embeddedImageIcon(
@@ -239,15 +223,6 @@ public final class ImageResourceLoader {
     }
     if (head.contains("<script")) {
       throw new IllegalStateException("SVG in " + context + " must not contain scripts");
-    }
-  }
-
-  public static BufferedImage loadImage(final String resourcePath) {
-    try (final InputStream stream = Objects.requireNonNull(
-        ImageResourceLoader.class.getResourceAsStream(resourcePath))) {
-      return ImageIO.read(stream);
-    } catch (Exception ex) {
-      throw new RuntimeException("Can't load image " + resourcePath, ex);
     }
   }
 

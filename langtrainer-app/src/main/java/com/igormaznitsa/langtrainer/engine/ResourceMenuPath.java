@@ -27,6 +27,9 @@ public final class ResourceMenuPath {
     for (final String part : parts) {
       final String trimmed = part.strip();
       if (!trimmed.isEmpty()) {
+        if (".".equals(trimmed) || "..".equals(trimmed)) {
+          throw new IllegalStateException("Resource menu path segment is not allowed: " + trimmed);
+        }
         segments.add(trimmed);
       }
     }

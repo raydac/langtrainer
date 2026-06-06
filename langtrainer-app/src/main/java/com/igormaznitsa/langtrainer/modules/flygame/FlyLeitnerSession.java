@@ -123,10 +123,6 @@ final class FlyLeitnerSession {
     return this.active.size();
   }
 
-  boolean isFinished() {
-    return this.finished;
-  }
-
   boolean hasWorkLeft() {
     return !this.finished && !this.active.isEmpty();
   }

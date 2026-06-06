@@ -1,6 +1,6 @@
 ![LangTrainer](./assets/banner.png)
 [![License Apache 2.0](https://img.shields.io/badge/license-Apache%20License%202.0-green.svg)](http://www.apache.org/licenses/LICENSE-2.0)
-[![Java 21+](https://img.shields.io/badge/java-21%2b-green.svg)](https://bell-sw.com/pages/downloads/#jdk-21-lts)   
+[![Java 17+](https://img.shields.io/badge/java-21%2b-green.svg)](https://bell-sw.com/pages/downloads/#jdk-21-lts)   
 [![Arthur's Acres Animal Sanctuary — donate](assets/arthur_sanctuary_banner.png)](https://www.arthursacresanimalsanctuary.org/donate)
 
 # LangTrainer

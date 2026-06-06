@@ -45,26 +45,12 @@ public final class SoundClip implements AutoCloseable {
   }
 
 
-  public synchronized SoundClip play(final int loops) {
-    this.stop();
-    if (this.playing.compareAndSet(false, true)) {
-      this.clip.setFramePosition(0);
-      this.clip.setLoopPoints(0, -1);
-      this.clip.loop(loops);
-    }
-    return this;
-  }
-
   public synchronized SoundClip stop() {
     if (this.playing.compareAndSet(true, false)
         && this.clip.isActive()) {
       this.clip.stop();
     }
     return this;
-  }
-
-  public boolean isPlaying() {
-    return this.playing.get();
   }
 
   public static final class SoundClipInitializationException extends IllegalStateException {

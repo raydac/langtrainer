@@ -1409,4 +1409,16 @@ public final class EditorModule extends AbstractLangTrainerModule {
   public void onActivation() {
     SwingUtilities.invokeLater(this.fieldTitle::requestFocusInWindow);
   }
+
+  @Override
+  public void onClose() {
+    this.stopTableEditing(this.linesTable);
+    this.stopTableEditing(this.equivPairTable);
+  }
+
+  private void stopTableEditing(final JTable table) {
+    if (table.isEditing()) {
+      table.getCellEditor().stopCellEditing();
+    }
+  }
 }

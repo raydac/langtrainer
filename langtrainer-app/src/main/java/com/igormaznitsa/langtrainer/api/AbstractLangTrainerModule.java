@@ -28,14 +28,6 @@ public abstract class AbstractLangTrainerModule {
     return true;
   }
 
-  /**
-   * Future image-driven modules can return {@code true} so resource activation validates embedded
-   * line images before the module starts.
-   */
-  public boolean requiresResourceImages() {
-    return false;
-  }
-
   public void onCharClick(final char symbol) {
   }
 
