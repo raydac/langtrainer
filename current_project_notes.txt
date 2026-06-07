@@ -1,5 +1,5 @@
 ## 1. Implementation Progress
-- Images module added: shared resource selector, target-language choice, `IMAGES` module filtering, background embedded-image preparation with busy overlay, cyan draggable text bars with stable heap sizing, six-card image stages, prerendered card image cache, answer flash toolbar button, and completion/next stage flow.
+- Images module added: shared resource selector, target-language choice, `IMAGES` module filtering, background embedded-image preparation with busy overlay, cyan draggable text bars with stable heap sizing, six-card image stages, prerendered card image cache, answer flash toolbar button, and shared completion/next stage flow.
 - Added bundled Estonian-Russian Images-only fruit/produce test resource using embedded SVG icons from `~/Misc/Icons/SVG`.
 - Bars module added: shared resource selector, draggable paired A/B bars with centered bold system-monospace LTR/RTL text, side-specific light blue/yellow bar backgrounds, swap-on-drag ordering, 7-item stages with overlap, deranged start rows, centered `NEXT` stage advance, completion banner, editor/resource module filtering via `BARS`.
 - Fly game repeat pressure reduced by lowering bucket graduation to three successful flights per word; missed timeout words still repeat immediately because they are unfinished.
@@ -15,7 +15,7 @@
 - Resource selectors: `Start` / `Open from file` / `Sync Lessons` layout, tooltips, uppercase folder labels, folder-first alphabetical tree rows, Start disabled until a row is selected.
 - Resource selectors merge bundled and external trees by canonical path, so same-named folders appear once while resource rows retain source icons; duplicate resource titles in the same folder get display suffixes `(1)`, `(2)`, etc.
 - Virtual keyboard stays mouse-only to preserve typing focus; header row uses fixed control height.
-- Dialogs input stays free-form while typing: no automatic expected punctuation/separator insertion; input-equivalence character replacement still runs by expected position, and Enter accepts close answers while history shows canonical resource lines.
+- Dialogs input stays free-form while typing: no automatic expected punctuation/separator insertion; input-equivalence character replacement still runs by expected position, Enter accepts close answers while history shows canonical resource lines, and completion uses the shared compact centered banner.
 - Bricks module has a `Show` help flash button beside the cue; brick text uses bold `LangTrainerFonts.SYSTEM_MONOSPACED`.
 - Crossword: rectangular board scaling; Home/End jumps to first/last editable cell of the focused word using logical word order, so horizontal RTL words navigate right-anchor to left-end correctly; translation hint stays centered.
 - Gson replaced with Jackson; bundled classpath UI icons; optional JetBrains Mono with system monospace fallback.
@@ -37,6 +37,7 @@
 - `ExternalResourceSynchronizer` downloads `https://www.igormaznitsa.com/pub/externals/index.json` and its listed relative JSON resources using Apache HttpClient 5 with redirect support, trust-all HTTPS certificates, three concurrent resource downloads, bounded payload reads, safe sync-folder ownership checks, and phase/source/summary logging; failures still show local resources when load succeeds.
 - `InputEquivalenceSupport`: positional match when key/value sizes match, otherwise any-key; equal token sets act as equivalence classes.
 - Image-based modules prepare embedded line images through `ImageResourceLoader.loadLineImages(...)`; Images validates/decodes images during its own async start flow. Embedded SVGs rasterize at larger working width to avoid blurry card scaling, and Images game cards cache fitted rasters per resolved image area. `ImageResourceLoader` hardens Batik 1.19 transcoding: no external resources/scripts/onload, stream input for classpath SVG, 1024 px raster cap, rejects DTD/entity/script markup in user SVG.
+- `CompletionBanner` centralizes the compact green/orange completion banner painter and modal overlay controller used by matching modules and Dialogs.
 - Build with `mvn22`; assembly descriptors need `**/*` includes; JSON via Jackson databind 2.21.
 
 ## 3. Technical Debt & Refactoring

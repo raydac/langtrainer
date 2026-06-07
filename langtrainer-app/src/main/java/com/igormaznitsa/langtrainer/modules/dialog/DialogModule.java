@@ -18,6 +18,7 @@ import com.igormaznitsa.langtrainer.engine.ResourceListModelMaterializer;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
 import com.igormaznitsa.langtrainer.engine.TextDirectionSupport;
 import com.igormaznitsa.langtrainer.text.PhraseWordSupport;
+import com.igormaznitsa.langtrainer.ui.CompletionBanner;
 import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
 import com.igormaznitsa.langtrainer.ui.PhraseFlashBanner;
 import java.awt.BorderLayout;
@@ -36,8 +37,6 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -50,7 +49,6 @@ import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
-import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -63,7 +61,6 @@ import javax.swing.JViewport;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
-import javax.swing.Timer;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.BadLocationException;
@@ -82,10 +79,6 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private static final float PROGRESS_HEADER_FONT_SIZE = 20f;
   private static final Color PROGRESS_HEADER_BG = new Color(255, 248, 220);
   private static final Color PROGRESS_HEADER_FG = new Color(20, 20, 20);
-
-  private static final Color BANNER_BG = new Color(0, 75, 38);
-  private static final Color BANNER_FG = new Color(255, 145, 30);
-  private static final float BANNER_FONT_SIZE = 72f;
 
   private static final Color TIP_ZONE_BG = new Color(255, 205, 205);
   private static final Color TIP_ZONE_FG = new Color(90, 0, 0);
@@ -133,8 +126,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   private final List<Integer> remainingLineIndices = new ArrayList<>();
   private int currentLineOrdinal;
   private boolean workRoundActive;
-  private JDialog completionOverlay;
-  private Timer completionDismissTimer;
+  private final CompletionBanner completionBanner = new CompletionBanner();
   private final PhraseFlashBanner phraseFlashBanner = new PhraseFlashBanner();
   private SwingWorker<?, ?> externalSyncWorker;
   private boolean applyingInputEquivalence;
@@ -996,14 +988,7 @@ public final class DialogModule extends AbstractLangTrainerModule {
   }
 
   private void dismissCompletionBanner() {
-    if (this.completionDismissTimer != null) {
-      this.completionDismissTimer.stop();
-      this.completionDismissTimer = null;
-    }
-    if (this.completionOverlay != null) {
-      this.completionOverlay.dispose();
-      this.completionOverlay = null;
-    }
+    this.completionBanner.dismiss();
   }
 
   private void showCompletionBannerOverlay() {
@@ -1012,56 +997,16 @@ public final class DialogModule extends AbstractLangTrainerModule {
       this.showCard(CARD_SELECT);
       return;
     }
-    this.dismissCompletionBanner();
-    final JDialog overlay = new JDialog(owner, java.awt.Dialog.ModalityType.APPLICATION_MODAL);
-    this.completionOverlay = overlay;
-    overlay.setUndecorated(true);
-    overlay.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+    this.completionBanner.show(owner, this::returnToDialogSelection);
+  }
 
-    final JPanel pane = new JPanel(new BorderLayout());
-    pane.setOpaque(true);
-    pane.setBackground(BANNER_BG);
-    pane.setBorder(BorderFactory.createEmptyBorder(32, 32, 32, 32));
-    overlay.setContentPane(pane);
-
-    final Runnable closeAndReturn = () -> {
-      this.dismissCompletionBanner();
-      this.showCard(CARD_SELECT);
-      SwingUtilities.invokeLater(() -> {
-        if (this.dialogSelectionList != null) {
-          this.dialogSelectionList.requestFocusInWindow();
-        }
-      });
-    };
-
-    final JLabel label = new JLabel("Hurraa! Completed!", SwingConstants.CENTER);
-    label.setFont(LangTrainerFonts.MONO_NL_EXTRA_BOLD.atPoints(BANNER_FONT_SIZE));
-    label.setForeground(BANNER_FG);
-    label.setOpaque(false);
-    label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    label.addMouseListener(new MouseAdapter() {
-      @Override
-      public void mouseClicked(final MouseEvent event) {
-        closeAndReturn.run();
+  private void returnToDialogSelection() {
+    this.showCard(CARD_SELECT);
+    SwingUtilities.invokeLater(() -> {
+      if (this.dialogSelectionList != null) {
+        this.dialogSelectionList.requestFocusInWindow();
       }
     });
-    pane.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    pane.addMouseListener(new MouseAdapter() {
-      @Override
-      public void mouseClicked(final MouseEvent event) {
-        closeAndReturn.run();
-      }
-    });
-    pane.add(label, BorderLayout.CENTER);
-
-    overlay.setSize(owner.getWidth(), owner.getHeight());
-    overlay.setLocation(owner.getLocationOnScreen());
-
-    this.completionDismissTimer = new Timer(10_000, event -> closeAndReturn.run());
-    this.completionDismissTimer.setRepeats(false);
-    this.completionDismissTimer.start();
-
-    SwingUtilities.invokeLater(() -> overlay.setVisible(true));
   }
 
   private JTextArea focusedInput() {

@@ -15,6 +15,7 @@ import com.igormaznitsa.langtrainer.engine.LangTrainerResourceAccess;
 import com.igormaznitsa.langtrainer.engine.ResourceListModelMaterializer;
 import com.igormaznitsa.langtrainer.engine.ResourceListSelectPanel;
 import com.igormaznitsa.langtrainer.engine.TextDirectionSupport;
+import com.igormaznitsa.langtrainer.ui.CompletionBanner;
 import com.igormaznitsa.langtrainer.ui.LangTrainerFonts;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
@@ -476,8 +477,6 @@ public final class ImagesModule extends AbstractLangTrainerModule {
     private static final Color DRAG_BORDER = new Color(21, 101, 192);
     private static final Color ANSWER_BG = new Color(25, 45, 85, 220);
     private static final Color ANSWER_FG = Color.WHITE;
-    private static final Color COMPLETED_OVERLAY_BG = new Color(0, 75, 38, 210);
-    private static final Color COMPLETED_OVERLAY_FG = new Color(255, 145, 30);
     private static final int OUTER_GAP = 14;
     private static final int HEAP_HEIGHT = 112;
     private static final int GAP = 10;
@@ -838,27 +837,7 @@ public final class ImagesModule extends AbstractLangTrainerModule {
     }
 
     private void paintCompletedBanner(final Graphics2D g2) {
-      final int width = this.getWidth();
-      final int height = this.getHeight();
-      final String text = "COMPLETED";
-      g2.setFont(LangTrainerFonts.MONO_NL_BOLD.atPoints(Math.max(36f, width / 15f)));
-      final FontMetrics fm = g2.getFontMetrics();
-      final int bannerWidth = Math.min(width - OUTER_GAP * 2, Math.max(width * 3 / 4,
-          fm.stringWidth(text) + 80));
-      final int bannerHeight = fm.getHeight() + 32;
-      final Rectangle banner = new Rectangle(
-          (width - bannerWidth) / 2,
-          (height - bannerHeight) / 2,
-          bannerWidth,
-          bannerHeight);
-
-      g2.setColor(COMPLETED_OVERLAY_BG);
-      g2.fillRoundRect(banner.x, banner.y, banner.width, banner.height, 28, 28);
-      g2.setColor(COMPLETED_OVERLAY_FG);
-      g2.drawString(
-          text,
-          banner.x + (banner.width - fm.stringWidth(text)) / 2,
-          banner.y + (banner.height - fm.getHeight()) / 2 + fm.getAscent());
+      CompletionBanner.paintCentered(g2, this, OUTER_GAP);
     }
 
     private void onMousePressed(final Point point) {
