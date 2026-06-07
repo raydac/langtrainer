@@ -24,6 +24,7 @@
 - External sync hardening: redirects are supported and HTTPS accepts any certificate by product requirement; index/resource payloads stay bounded, downloads run with a three-thread limit, symlinked target paths are rejected, non-empty sync folders require the LangTrainer marker, sync runs are serialized, and module-close cancellation prevents stale UI updates.
 - Module lifecycle cleanup: Dialog, Bars, Bricks, Images, Fly, Crossword, and Editor now clean active workers/timers/overlays/drag state or table editing in `onClose`.
 - Exec Maven plugin passes the app version with `systemProperties`; `systemPropertyVariables` is not supported by `exec-maven-plugin`.
+- README refreshed to cover current modules, external lesson sync, JSON images/RTL support, and public source build commands with standard `mvn`.
 
 ## 2. Architecture & Technical Discoveries
 - `LangTrainerModuleId` drives Editor positive module checkboxes automatically; adding a module enum value exposes it in the resource editor.
