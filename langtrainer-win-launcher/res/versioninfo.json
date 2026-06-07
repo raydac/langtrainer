@@ -2,14 +2,14 @@
   "FixedFileInfo": {
     "FileVersion": {
       "Major": 1,
-      "Minor": 0,
-      "Patch": 1,
+      "Minor": 1,
+      "Patch": 0,
       "Build": 0
     },
     "ProductVersion": {
       "Major": 1,
-      "Minor": 0,
-      "Patch": 1,
+      "Minor": 1,
+      "Patch": 0,
       "Build": 0
     },
     "FileFlagsMask": "3f",
@@ -22,14 +22,14 @@
     "Comments": "Application to learn dialogs and words",
     "CompanyName": "Igor Maznitsa",
     "FileDescription": "LangTrainer application",
-    "FileVersion": "v1.0.1.0",
+    "FileVersion": "v1.1.0.0",
     "InternalName": "langtrainer.exe",
     "LegalCopyright": "Copyright (C) 2026 Igor Maznitsa",
     "LegalTrademarks": "",
     "OriginalFilename": "langtrainer.exe",
     "PrivateBuild": "",
     "ProductName": "LangTrainer desktop",
-    "ProductVersion": "v1.0.1.0",
+    "ProductVersion": "v1.1.0.0",
     "SpecialBuild": ""
   },
   "VarFileInfo": {

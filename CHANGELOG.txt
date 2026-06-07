@@ -1,4 +1,4 @@
-1.1.0 (SNAPSHOT)
+1.1.0 (07-jun-2026)
  - Added an Images training module for matching text bars to embedded line images, with cached card rendering for smoother play.
  - Added optional embedded images for JSON resource lines, with editor support, a 64 KB image limit, and hardened SVG decoding (no scripts/DTDs/external fetches; capped raster size).
  - Made Fly game practice less repetitive by reducing required repeat passes per word.

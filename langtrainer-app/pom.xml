@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.igormaznitsa</groupId>
         <artifactId>langtrainer-pom</artifactId>
-        <version>1.1.0-SNAPSHOT</version>
+        <version>1.1.0</version>
     </parent>
 
     <artifactId>langtrainer-app</artifactId>
@@ -678,9 +678,12 @@
                 </executions>
                 <configuration>
                     <mainClass>LangTrainer</mainClass>
-                    <systemPropertyVariables>
-                        <langtrainer.app.version>${project.version}</langtrainer.app.version>
-                    </systemPropertyVariables>
+                    <systemProperties>
+                        <systemProperty>
+                            <key>langtrainer.app.version</key>
+                            <value>${project.version}</value>
+                        </systemProperty>
+                    </systemProperties>
                 </configuration>
             </plugin>
             <plugin>
@@ -723,7 +726,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
-                <version>3.6.2</version>
+                <version>3.6.3</version>
                 <executions>
                     <execution>
                         <id>enforce</id>
@@ -752,7 +755,7 @@
                     <dependency>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>extra-enforcer-rules</artifactId>
-                        <version>1.11.0</version>
+                        <version>1.12.0</version>
                     </dependency>
                 </dependencies>
             </plugin>
