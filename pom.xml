@@ -6,7 +6,7 @@
     <groupId>com.igormaznitsa</groupId>
 
     <artifactId>langtrainer-pom</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <description>Desktop application to help learn dialogs and words of foreign languages.</description>
