@@ -1,6 +1,7 @@
 ![LangTrainer](./assets/banner.png)
 [![License Apache 2.0](https://img.shields.io/badge/license-Apache%20License%202.0-green.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 [![Java 17+](https://img.shields.io/badge/java-17%2b-green.svg)](https://bell-sw.com/pages/downloads/)
+
 [![Arthur's Acres Animal Sanctuary — donate](assets/arthur_sanctuary_banner.png)](https://www.arthursacresanimalsanctuary.org/donate)
 
 # LangTrainer
